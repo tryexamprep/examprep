@@ -1,0 +1,24 @@
+{
+  "name": "examprep",
+  "version": "0.1.0",
+  "description": "ExamPrep - SaaS platform for exam preparation with auto-cropped MCQs and AI-generated similar questions",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "build": "node scripts/build-prod.mjs"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "dotenv": "^16.4.7",
+    "@supabase/supabase-js": "^2.47.10",
+    "pdf-to-img": "^4.6.0",
+    "pdfjs-dist": "^4.10.38",
+    "sharp": "^0.34.0",
+    "multer": "^2.0.0",
+    "stripe": "^17.5.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

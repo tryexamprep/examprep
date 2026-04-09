@@ -1,0 +1,7 @@
+// Auto-generated from .env at server startup. DO NOT edit directly.
+window.APP_CONFIG = {
+  SUPABASE_URL: "__SUPABASE_URL__",
+  SUPABASE_ANON_KEY: "__SUPABASE_ANON_KEY__",
+  APP_TITLE: "__APP_TITLE__",
+  APP_URL: "__APP_URL__",
+};

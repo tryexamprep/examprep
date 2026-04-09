@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  <title>ExamPrep - תרגול שאלות אמריקאיות מותאם אישית</title>
+  <meta name="description" content="פלטפורמה ישראלית לתרגול שאלות אמריקאיות. העלה PDF של מבחן וקבל אפליקציית תרגול אוטומטית, ניתוח דפוסי המרצה, ושאלות AI מותאמות אישית." />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563eb'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-size='60' fill='white' font-family='Arial' font-weight='bold'%3E%E2%9C%93%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/public/styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- ============ Templates ============ -->
+
+  <!-- Landing Page -->
+  <template id="tmpl-landing">
+    <div class="landing">
+      <header class="navbar">
+        <div class="navbar-inner container">
+          <a href="/" class="logo" data-route="/">
+            <span class="logo-icon">📚</span>
+            <span class="logo-text">ExamPrep</span>
+          </a>
+          <nav class="nav-links">
+            <a href="#features">פיצ'רים</a>
+            <a href="#how">איך זה עובד</a>
+            <a href="#pricing">מחירים</a>
+            <a href="#faq">שאלות נפוצות</a>
+          </nav>
+          <div class="nav-cta">
+            <a href="/login" class="btn btn-ghost" data-route="/login">כניסה</a>
+            <a href="/login?signup=1" class="btn btn-primary" data-route="/login?signup=1">התחל בחינם</a>
+          </div>
+          <button class="hamburger" id="hamburger">☰</button>
+        </div>
+      </header>
+
+      <!-- HERO -->
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-text">
+            <div class="badge">🎓 חדש - יצירת מבחנים אוטומטית מ-PDF</div>
+            <h1>תרגול חכם של<br/><span class="grad">שאלות אמריקאיות</span><br/>מהמבחנים שלך</h1>
+            <p class="hero-sub">העלה קבצי PDF של מבחנים קודמים. המערכת תחתוך את השאלות אוטומטית, תזהה את התשובות הנכונות, ותיצור לך אפליקציית תרגול מקצועית עם ניתוח דפוסי המרצה ושאלות AI דומות.</p>
+            <div class="hero-ctas">
+              <a href="/login?signup=1" class="btn btn-primary btn-lg" data-route="/login?signup=1">התחל בחינם - 5 PDFs ראשונים חינם</a>
+              <a href="#how" class="btn btn-ghost btn-lg">איך זה עובד? ↓</a>
+            </div>
+            <div class="trust">
+              <span>✅ ללא כרטיס אשראי</span>
+              <span>✅ עברית מלאה</span>
+              <span>✅ מותאם לטלפון</span>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="hero-card-mock">
+              <div class="mock-header">
+                <span class="mock-dot red"></span>
+                <span class="mock-dot yellow"></span>
+                <span class="mock-dot green"></span>
+                <span class="mock-title">שאלה 3 / 20</span>
+              </div>
+              <div class="mock-content">
+                <div class="mock-question">איזו מהשורות הבאות תעבור קומפילציה?</div>
+                <div class="mock-code">List&lt;? extends String&gt; lst = ...<br/>lst.add("hello");</div>
+                <div class="mock-options">
+                  <div class="mock-opt">1. תקמפל</div>
+                  <div class="mock-opt selected">2. לא תקמפל</div>
+                  <div class="mock-opt">3. שגיאת ריצה</div>
+                </div>
+                <div class="mock-timer">⏱ 14:32</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FEATURES -->
+      <section class="features" id="features">
+        <div class="container">
+          <h2 class="section-title">למה ExamPrep?</h2>
+          <p class="section-sub">כל מה שצריך כדי להצליח במבחנים האקדמיים במקום אחד</p>
+          <div class="features-grid">
+            <div class="feature">
+              <div class="feature-icon">📤</div>
+              <h3>העלאה אוטומטית</h3>
+              <p>פשוט העלה את קובץ ה-PDF של המבחן + הפתרון. המערכת חותכת את השאלות לתמונות מקצועיות אוטומטית - שומרת על העברית, הקוד והפורמט המקורי.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🎯</div>
+              <h3>זיהוי תשובות חכם</h3>
+              <p>זיהוי אוטומטי של התשובות הנכונות מקובץ הפתרונות (סימונים בצהוב), בלי שתצטרך להזין כלום ידנית.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🧠</div>
+              <h3>ניתוח דפוסי המרצה</h3>
+              <p>AI מנתח את כל המבחנים שלך ומזהה אילו נושאים המרצה אוהב לשאול עליהם. מקבל המלצות ממוקדות מה ללמוד.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">✨</div>
+              <h3>שאלות AI דומות</h3>
+              <p>יוצר עבורך שאלות חדשות באותו סגנון של המבחנים שלך - תרגול בלתי מוגבל בנושאים שאתה חלש בהם.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📊</div>
+              <h3>מעקב התקדמות</h3>
+              <p>סטטיסטיקות מפורטות פר קורס - איזה נושאים אתה שולט בהם ובאיזה צריך עוד עבודה. תור חזרה אוטומטי.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">⏱</div>
+              <h3>תרגול עם טיימר</h3>
+              <p>מקבצים אקראיים, טיימר מותאם, קיצורי מקלדת - בדיוק כמו במבחן האמיתי. מותאם למחשב ולטלפון.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">💡</div>
+              <h3>פידבק חכם</h3>
+              <p>אחרי כל מקבץ - AI נותן לך חוות דעת מפורטת: על מה לחזור, אילו נושאים לחזק, ומציע שאלות לתרגול ממוקד.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">📚</div>
+              <h3>קורסים מרובים</h3>
+              <p>נהל קורסים נפרדים (תוכנה 1, חשבון אינפי, מבני נתונים...) עם התקדמות אישית לכל אחד.</p>
+            </div>
+            <div class="feature">
+              <div class="feature-icon">🔒</div>
+              <h3>פרטיות ואבטחה</h3>
+              <p>הנתונים שלך מוצפנים וניתנים לגישה רק לך. תואם GDPR וחוקי הגנת הפרטיות בישראל.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOW IT WORKS -->
+      <section class="how" id="how">
+        <div class="container">
+          <h2 class="section-title">איך זה עובד?</h2>
+          <p class="section-sub">3 שלבים פשוטים לאפליקציית תרגול מותאמת אישית</p>
+          <div class="steps">
+            <div class="step">
+              <div class="step-num">1</div>
+              <h3>פתח חשבון חינמי</h3>
+              <p>הירשם בלי כרטיס אשראי. תקבל 5 PDFs בחינם להתנסות.</p>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <h3>העלה את המבחנים שלך</h3>
+              <p>העלה PDFs של מבחנים קודמים + קובצי פתרון. תוך שניות הכל מעובד.</p>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <h3>תרגל ושפר</h3>
+              <p>קבל מקבצי תרגול חכמים, פידבק AI, וניתוח דפוסים. הצלחה מובטחת.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PRICING -->
+      <section class="pricing" id="pricing">
+        <div class="container">
+          <h2 class="section-title">מחירים פשוטים</h2>
+          <p class="section-sub">בחר את החבילה שמתאימה לך. אפשר לשדרג בכל עת.</p>
+          <div class="pricing-grid">
+            <div class="price-card">
+              <div class="price-name">חינמי</div>
+              <div class="price-amount">₪0<span>/לעולם</span></div>
+              <div class="price-desc">להתנסות במוצר</div>
+              <ul class="price-features">
+                <li>✅ עד 5 קבצי PDF</li>
+                <li>✅ קורס אחד</li>
+                <li>✅ תרגול שאלות מלא</li>
+                <li>✅ טיימר ומעקב התקדמות</li>
+                <li>❌ שאלות AI דומות</li>
+                <li>❌ ניתוח דפוסים</li>
+              </ul>
+              <a href="/login?signup=1" class="btn btn-ghost btn-block" data-route="/login?signup=1">התחל בחינם</a>
+            </div>
+            <div class="price-card popular">
+              <div class="popular-badge">הכי פופולרי</div>
+              <div class="price-name">Basic</div>
+              <div class="price-amount">₪19.90<span>/חודש</span></div>
+              <div class="price-desc">לסטודנט הסטנדרטי</div>
+              <ul class="price-features">
+                <li>✅ עד 30 PDFs בחודש</li>
+                <li>✅ עד 5 קורסים</li>
+                <li>✅ 100 שאלות AI בחודש</li>
+                <li>✅ ניתוח דפוסי מרצה</li>
+                <li>✅ פידבק AI אחרי מקבץ</li>
+                <li>✅ ייצוא נתונים</li>
+              </ul>
+              <a href="/login?signup=1&plan=basic" class="btn btn-primary btn-block" data-route="/login?signup=1">הצטרף ל-Basic</a>
+            </div>
+            <div class="price-card">
+              <div class="price-name">Pro</div>
+              <div class="price-amount">₪49.90<span>/חודש</span></div>
+              <div class="price-desc">לסטודנט הרציני</div>
+              <ul class="price-features">
+                <li>✅ עד 150 PDFs בחודש</li>
+                <li>✅ קורסים בלתי-מוגבלים</li>
+                <li>✅ 500 שאלות AI בחודש</li>
+                <li>✅ ניתוח דפוסים מתקדם</li>
+                <li>✅ עדיפות בעיבוד</li>
+                <li>✅ תמיכה מהירה</li>
+              </ul>
+              <a href="/login?signup=1&plan=pro" class="btn btn-ghost btn-block" data-route="/login?signup=1">הצטרף ל-Pro</a>
+            </div>
+            <div class="price-card">
+              <div class="price-name">Education</div>
+              <div class="price-amount">₪199<span>/חודש</span></div>
+              <div class="price-desc">למורים ולמתרגלים</div>
+              <ul class="price-features">
+                <li>✅ הכל מ-Pro</li>
+                <li>✅ עד 50 תלמידים</li>
+                <li>✅ דשבורד מורה</li>
+                <li>✅ 2000 שאלות AI</li>
+                <li>✅ שיתוף קורסים</li>
+                <li>✅ דוחות תלמידים</li>
+              </ul>
+              <a href="/login?signup=1&plan=education" class="btn btn-ghost btn-block" data-route="/login?signup=1">הצטרף</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section class="faq" id="faq">
+        <div class="container">
+          <h2 class="section-title">שאלות נפוצות</h2>
+          <div class="faq-list">
+            <details class="faq-item">
+              <summary>איך עובד עיבוד ה-PDF?</summary>
+              <p>המערכת חותכת אוטומטית כל שאלה מהקובץ שלך לתמונה נפרדת, ומזהה את התשובה הנכונה לפי הסימונים בקובץ הפתרונות (סימונים בצהוב). התהליך לוקח כמה שניות לקובץ.</p>
+            </details>
+            <details class="faq-item">
+              <summary>אילו סוגי מבחנים נתמכים?</summary>
+              <p>כל מבחן בעברית או באנגלית עם שאלות אמריקאיות (multiple choice). תומכים בקבצים מהאוניברסיטה (תל אביב, העברית, טכניון, בן-גוריון, חיפה, ב"א ועוד), פסיכומטרי, AMIRAM, מבחני בגרות וכל מבחן אחר.</p>
+            </details>
+            <details class="faq-item">
+              <summary>כמה זמן לוקח לעבד קובץ?</summary>
+              <p>בממוצע 10-30 שניות לקובץ של 20 עמודים. קבצים גדולים יותר (עד 100 עמודים) יכולים לקחת עד דקה.</p>
+            </details>
+            <details class="faq-item">
+              <summary>איך עובד ניתוח דפוסי המרצה?</summary>
+              <p>אחרי שהעלית כמה מבחנים, ה-AI סורק את כולם ומזהה דפוסים: באילו נושאים המרצה מתמקד, אילו סוגי שאלות חוזרים, ומה הסטייה הסטטיסטית. מקבל המלצות ממוקדות.</p>
+            </details>
+            <details class="faq-item">
+              <summary>מה זה "שאלות AI דומות"?</summary>
+              <p>אחרי שיש לך מאגר שאלות, ה-AI מייצר שאלות חדשות באותו סגנון - אותה רמת קושי, אותם נושאים, אותה צורת ניסוח. תרגול בלתי מוגבל בלי שאוזלות לך השאלות.</p>
+            </details>
+            <details class="faq-item">
+              <summary>האם המידע שלי פרטי?</summary>
+              <p>כן בהחלט. אנחנו מצפינים את כל הקבצים שלך, ורק אתה יכול לגשת אליהם. אנחנו תואמים תקנות הגנת הפרטיות (תשע"ז-2017), GDPR, ולא משתפים נתונים עם צד שלישי.</p>
+            </details>
+            <details class="faq-item">
+              <summary>אפשר לבטל בכל עת?</summary>
+              <p>כן - אפשר לבטל מנוי בכל עת מהדשבורד. תמשיך לקבל את השירות עד סוף תקופת החיוב הנוכחית.</p>
+            </details>
+            <details class="faq-item">
+              <summary>איך מתבצע התשלום?</summary>
+              <p>תשלום מאובטח דרך Stripe (כרטיסי אשראי) או דרך ספקי תשלום ישראליים (Tranzila). הנתונים שלך לעולם לא נשמרים אצלנו.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="cta-section">
+        <div class="container">
+          <h2>מוכן להתחיל?</h2>
+          <p>הירשם בחינם ועלה את המבחן הראשון שלך תוך פחות מדקה</p>
+          <a href="/login?signup=1" class="btn btn-primary btn-lg" data-route="/login?signup=1">התחל עכשיו - חינם</a>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="footer">
+        <div class="container footer-grid">
+          <div class="footer-col">
+            <div class="logo">
+              <span class="logo-icon">📚</span>
+              <span class="logo-text">ExamPrep</span>
+            </div>
+            <p class="muted">פלטפורמה ישראלית לתרגול שאלות אמריקאיות במבחנים אקדמיים.</p>
+          </div>
+          <div class="footer-col">
+            <h4>המוצר</h4>
+            <a href="#features">פיצ'רים</a>
+            <a href="#pricing">מחירים</a>
+            <a href="#how">איך זה עובד</a>
+            <a href="#faq">שאלות נפוצות</a>
+          </div>
+          <div class="footer-col">
+            <h4>משפטי</h4>
+            <a href="/legal/privacy.html">מדיניות פרטיות</a>
+            <a href="/legal/terms.html">תנאי שימוש</a>
+            <a href="/legal/accessibility.html">הצהרת נגישות</a>
+            <a href="/legal/cookies.html">מדיניות עוגיות</a>
+          </div>
+          <div class="footer-col">
+            <h4>צור קשר</h4>
+            <a href="mailto:support@examprep.app">support@examprep.app</a>
+            <p class="muted">ת"א, ישראל</p>
+          </div>
+        </div>
+        <div class="footer-bottom container">
+          <p>© 2026 ExamPrep. כל הזכויות שמורות.</p>
+        </div>
+      </footer>
+    </div>
+  </template>
+
+  <!-- Login -->
+  <template id="tmpl-login">
+    <div class="auth-screen">
+      <div class="auth-card">
+        <a href="/" class="logo center" data-route="/">
+          <span class="logo-icon">📚</span>
+          <span class="logo-text">ExamPrep</span>
+        </a>
+        <h2 id="auth-title">כניסה / הרשמה</h2>
+        <form id="auth-form">
+          <input type="email" name="email" placeholder="כתובת מייל" required autocomplete="email" />
+          <input type="password" name="password" placeholder="סיסמה (לפחות 6 תווים)" required minlength="6" autocomplete="current-password" />
+          <div class="auth-actions">
+            <button type="button" id="btn-login" class="btn btn-primary btn-block">כניסה</button>
+            <button type="button" id="btn-signup" class="btn btn-ghost btn-block">הרשמה חדשה</button>
+          </div>
+          <p class="error" id="auth-error"></p>
+          <p class="auth-back"><a href="/" data-route="/">← חזרה לדף הבית</a></p>
+        </form>
+        <p class="auth-policy muted">
+          בהרשמה אתה מסכים ל<a href="/legal/terms.html">תנאי השימוש</a> ול<a href="/legal/privacy.html">מדיניות הפרטיות</a> שלנו.
+        </p>
+      </div>
+    </div>
+  </template>
+
+  <!-- Dashboard -->
+  <template id="tmpl-dashboard">
+    <div class="dashboard">
+      <header class="navbar">
+        <div class="navbar-inner container">
+          <a href="/" class="logo" data-route="/dashboard">
+            <span class="logo-icon">📚</span>
+            <span class="logo-text">ExamPrep</span>
+          </a>
+          <nav class="nav-links">
+            <a href="/dashboard" data-route="/dashboard">הקורסים שלי</a>
+            <a href="/pricing" data-route="/pricing">שדרוג</a>
+          </nav>
+          <div class="nav-cta">
+            <span class="user-badge" id="user-badge"></span>
+            <button id="btn-logout" class="btn btn-ghost">יציאה</button>
+          </div>
+        </div>
+      </header>
+      <main class="dashboard-main container">
+        <div class="dashboard-header">
+          <h1>הקורסים שלי</h1>
+          <button id="btn-new-course" class="btn btn-primary">+ קורס חדש</button>
+        </div>
+        <div class="quota-bar" id="quota-bar"></div>
+        <div id="courses-grid" class="courses-grid"></div>
+      </main>
+    </div>
+  </template>
+
+  <!-- New course modal -->
+  <template id="tmpl-new-course">
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal">
+        <h2>קורס חדש</h2>
+        <form id="new-course-form">
+          <input type="text" name="name" placeholder="שם הקורס (לדוגמה: תוכנה 1)" required minlength="2" maxlength="100" />
+          <textarea name="description" placeholder="תיאור (אופציונלי)" rows="3" maxlength="500"></textarea>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">צור</button>
+            <button type="button" id="btn-cancel-course" class="btn btn-ghost">ביטול</button>
+          </div>
+          <p class="error" id="course-error"></p>
+        </form>
+      </div>
+    </div>
+  </template>
+
+  <script src="/public/config.js"></script>
+  <script src="/public/app.js" type="module"></script>
+</body>
+</html>

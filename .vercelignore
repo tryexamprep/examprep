@@ -1,0 +1,15 @@
+node_modules
+server.mjs
+data/storage
+data/temp
+data/app.db
+data/app.db-*
+.env
+.env.local
+.env.*.local
+*.log
+/tmp
+.DS_Store
+docs
+BUSINESS_PLAN.md
+README.md

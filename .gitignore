@@ -1,0 +1,22 @@
+node_modules/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Generated config
+public/config.js
+
+# Vercel
+.vercel
+
+# Local data
+data/storage/
+data/temp/
+data/app.db
+data/app.db-*
+
+.DS_Store
+*.log
+/tmp/
