@@ -96,72 +96,260 @@ function renderLanding() {
 }
 
 // ===== Login / Signup =====
-function renderLogin(signupMode = false) {
+// Real RFC-5322 simplified email regex (good enough for 99% of valid emails)
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+// Block obviously fake/disposable email domains
+const BLOCKED_EMAIL_DOMAINS = [
+  'tempmail.com', 'temp-mail.org', '10minutemail.com', 'guerrillamail.com',
+  'mailinator.com', 'throwaway.email', 'yopmail.com', 'fake.com', 'test.com',
+  'example.com', 'example.org', 'local', 'localhost', 'tohna1.app', 'tohna1quiz.com',
+];
+
+function validateEmail(email) {
+  if (!email) return 'כתובת מייל חובה';
+  if (email.length > 254) return 'כתובת מייל ארוכה מדי';
+  if (!EMAIL_REGEX.test(email)) return 'כתובת מייל לא חוקית';
+  const domain = email.split('@')[1].toLowerCase();
+  if (BLOCKED_EMAIL_DOMAINS.includes(domain)) return 'כתובת המייל הזו אינה מורשית. השתמש במייל אמיתי.';
+  if (!domain.includes('.')) return 'דומיין המייל לא חוקי';
+  const tld = domain.split('.').pop();
+  if (tld.length < 2) return 'סיומת דומיין לא חוקית';
+  return null;
+}
+
+function checkPasswordStrength(password) {
+  return {
+    length: password.length >= 8,
+    letter: /[a-zA-Z]/.test(password),
+    number: /[0-9]/.test(password),
+    symbol: /[!@#$%^&*()_+\-=\[\]{};:'",.<>?\/\\|`~]/.test(password),
+  };
+}
+
+function validatePassword(password) {
+  const checks = checkPasswordStrength(password);
+  if (!checks.length) return 'הסיסמה חייבת להכיל לפחות 8 תווים';
+  if (!checks.letter) return 'הסיסמה חייבת להכיל לפחות אות אחת';
+  if (!checks.number) return 'הסיסמה חייבת להכיל לפחות ספרה אחת';
+  return null;
+}
+
+function passwordStrengthScore(password) {
+  const c = checkPasswordStrength(password);
+  let score = 0;
+  if (c.length) score++;
+  if (c.letter) score++;
+  if (c.number) score++;
+  if (c.symbol) score++;
+  if (password.length >= 12) score++;
+  return score; // 0-5
+}
+
+function renderLogin(signupModeInit = false) {
   $app.innerHTML = '';
   $app.appendChild(tmpl('tmpl-login'));
-  document.getElementById('auth-title').textContent = signupMode ? 'הרשמה חדשה' : 'כניסה לחשבון';
 
+  let signupMode = signupModeInit;
   const form = document.getElementById('auth-form');
   const errEl = document.getElementById('auth-error');
+  const emailErr = document.getElementById('email-error');
+  const pwErr = document.getElementById('password-error');
+  const pwStrength = document.getElementById('password-strength');
+  const strengthFill = document.getElementById('strength-fill');
+  const checkLen = document.getElementById('check-len');
+  const checkLetter = document.getElementById('check-letter');
+  const checkNumber = document.getElementById('check-number');
+  const checkSymbol = document.getElementById('check-symbol');
 
-  async function doAuth(action) {
+  function applyMode() {
+    document.getElementById('auth-title').textContent = signupMode ? 'הרשמה חדשה' : 'כניסה לחשבון';
+    document.getElementById('auth-tagline').textContent = signupMode
+      ? 'התחל בחינם - 5 PDFs בלי עלות'
+      : 'ברוך הבא חזרה';
+    document.getElementById('btn-primary-action').textContent = signupMode ? 'צור חשבון' : 'כניסה';
+    document.getElementById('btn-toggle-mode').textContent = signupMode
+      ? 'כבר יש לך חשבון? כניסה'
+      : 'אין לך חשבון? הירשם';
+    document.getElementById('auth-password').autocomplete = signupMode ? 'new-password' : 'current-password';
+    if (signupMode) {
+      pwStrength.classList.remove('hidden');
+    } else {
+      pwStrength.classList.add('hidden');
+    }
     errEl.textContent = '';
-    const email = form.email.value.trim();
-    const password = form.password.value;
-    if (!email.includes('@')) { errEl.textContent = 'כתובת מייל לא חוקית'; return; }
-    if (password.length < 6) { errEl.textContent = 'הסיסמה חייבת להיות לפחות 6 תווים'; return; }
+    emailErr.textContent = '';
+    pwErr.textContent = '';
+  }
+  applyMode();
+
+  // Toggle mode
+  document.getElementById('btn-toggle-mode').addEventListener('click', () => {
+    signupMode = !signupMode;
+    applyMode();
+  });
+
+  // Live validation
+  const emailInput = document.getElementById('auth-email');
+  const pwInput = document.getElementById('auth-password');
+
+  emailInput.addEventListener('blur', () => {
+    const v = emailInput.value.trim();
+    if (!v) { emailErr.textContent = ''; return; }
+    const err = validateEmail(v);
+    emailErr.textContent = err || '';
+    emailInput.classList.toggle('invalid', !!err);
+    emailInput.classList.toggle('valid', !err);
+  });
+
+  pwInput.addEventListener('input', () => {
+    if (!signupMode) return;
+    const v = pwInput.value;
+    const checks = checkPasswordStrength(v);
+    checkLen.classList.toggle('ok', checks.length);
+    checkLetter.classList.toggle('ok', checks.letter);
+    checkNumber.classList.toggle('ok', checks.number);
+    checkSymbol.classList.toggle('ok', checks.symbol);
+    const score = passwordStrengthScore(v);
+    const pct = (score / 5) * 100;
+    strengthFill.style.width = pct + '%';
+    strengthFill.className = 'strength-fill';
+    if (score >= 4) strengthFill.classList.add('strong');
+    else if (score >= 3) strengthFill.classList.add('good');
+    else if (score >= 2) strengthFill.classList.add('weak');
+    else strengthFill.classList.add('vweak');
+  });
+
+  // Google OAuth
+  document.getElementById('btn-google').addEventListener('click', async () => {
+    if (!supabase) { errEl.textContent = 'המערכת אינה מוגדרת כראוי.'; return; }
+    errEl.textContent = '';
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/dashboard' },
+    });
+    if (error) {
+      const m = error.message || '';
+      if (m.includes('not enabled') || m.includes('provider')) {
+        errEl.textContent = 'כניסה דרך Google עדיין לא הוגדרה במערכת. נסה הרשמה רגילה דרך מייל.';
+      } else {
+        errEl.textContent = 'שגיאה: ' + m;
+      }
+    }
+  });
+
+  // Submit handler (works for both modes)
+  async function doAuth() {
+    errEl.textContent = '';
+    emailErr.textContent = '';
+    pwErr.textContent = '';
+
+    const email = emailInput.value.trim().toLowerCase();
+    const password = pwInput.value;
+
+    // Email validation
+    const emailErrMsg = validateEmail(email);
+    if (emailErrMsg) {
+      emailErr.textContent = emailErrMsg;
+      emailInput.classList.add('invalid');
+      emailInput.focus();
+      return;
+    }
+
+    // Password validation
+    if (signupMode) {
+      const pwErrMsg = validatePassword(password);
+      if (pwErrMsg) {
+        pwErr.textContent = pwErrMsg;
+        pwInput.classList.add('invalid');
+        pwInput.focus();
+        return;
+      }
+    } else {
+      if (password.length < 1) {
+        pwErr.textContent = 'הסיסמה חובה';
+        pwInput.focus();
+        return;
+      }
+    }
 
     if (!supabase) {
       errEl.textContent = 'המערכת אינה מוגדרת כראוי. נסה שוב מאוחר יותר.';
       return;
     }
 
-    if (action === 'signup') {
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) { errEl.textContent = translateError(error.message); return; }
-      if (data.user && data.session) {
-        // Create profile
-        const username = email.split('@')[0];
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          username,
+    const submitBtn = document.getElementById('btn-primary-action');
+    submitBtn.disabled = true;
+    submitBtn.textContent = signupMode ? 'יוצר חשבון...' : 'מתחבר...';
+
+    try {
+      if (signupMode) {
+        const { data, error } = await supabase.auth.signUp({
           email,
-          plan: 'free',
+          password,
+          options: {
+            data: {
+              username: email.split('@')[0],
+              signup_source: 'web',
+              signup_at: new Date().toISOString(),
+            },
+            emailRedirectTo: window.location.origin + '/dashboard',
+          },
         });
+        if (error) { errEl.textContent = translateError(error.message); return; }
+        if (data.user && data.session) {
+          // Auto-confirmed
+          await ensureProfile(data.user.id, email);
+          navigate('/dashboard');
+        } else if (data.user && !data.session) {
+          errEl.textContent = '✓ נרשמת בהצלחה! נשלח אליך מייל לאישור החשבון. בדוק את תיבת הדואר.';
+          errEl.style.color = 'var(--success)';
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { errEl.textContent = translateError(error.message); return; }
+        await ensureProfile(data.user.id, email);
         navigate('/dashboard');
-      } else if (data.user && !data.session) {
-        errEl.textContent = 'נשלח אליך מייל לאישור. בדוק את תיבת הדואר שלך.';
       }
-    } else {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { errEl.textContent = translateError(error.message); return; }
-      // Make sure profile exists
-      const profile = await getProfile(data.user.id);
-      if (!profile) {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          username: email.split('@')[0],
-          email,
-          plan: 'free',
-        });
-      }
-      navigate('/dashboard');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = signupMode ? 'צור חשבון' : 'כניסה';
     }
   }
 
-  document.getElementById('btn-login').onclick = () => doAuth('login');
-  document.getElementById('btn-signup').onclick = () => doAuth('signup');
-  form.addEventListener('submit', (e) => { e.preventDefault(); doAuth(signupMode ? 'signup' : 'login'); });
+  document.getElementById('btn-primary-action').addEventListener('click', (e) => {
+    e.preventDefault();
+    doAuth();
+  });
+  form.addEventListener('submit', (e) => { e.preventDefault(); doAuth(); });
+}
+
+async function ensureProfile(userId, email) {
+  if (!supabase) return;
+  const { data: existing } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle();
+  if (existing) return;
+  await supabase.from('profiles').upsert({
+    id: userId,
+    username: email.split('@')[0],
+    email,
+    plan: 'free',
+  }, { onConflict: 'id' });
 }
 
 function translateError(msg) {
   const map = {
-    'Invalid login credentials': 'שם משתמש או סיסמה שגויים',
-    'User already registered': 'משתמש כבר קיים במערכת',
-    'Email not confirmed': 'יש לאשר את המייל לפני התחברות',
-    'Email rate limit exceeded': 'נשלחו יותר מדי אימיילים. המתן כמה דקות.',
+    'Invalid login credentials': 'אימייל או סיסמה שגויים',
+    'User already registered': 'כבר קיים משתמש עם כתובת המייל הזו - נסה להתחבר במקום',
+    'Email not confirmed': 'יש לאשר את המייל. בדוק את תיבת הדואר שלך.',
+    'Email rate limit exceeded': 'נשלחו יותר מדי אימיילים. המתן כמה דקות ונסה שוב.',
+    'Email address is invalid': 'כתובת המייל אינה חוקית',
+    'Signup requires a valid password': 'נדרשת סיסמה חוקית',
+    'Password should be at least 6 characters': 'הסיסמה חייבת להיות לפחות 8 תווים',
   };
-  return map[msg] || msg;
+  for (const [key, val] of Object.entries(map)) {
+    if (msg.toLowerCase().includes(key.toLowerCase())) return val;
+  }
+  return msg;
 }
 
 // ===== Dashboard =====
@@ -219,7 +407,7 @@ function renderQuotaBar() {
 async function loadCourses() {
   if (!supabase) return;
   const { data, error } = await supabase
-    .from('courses')
+    .from('ep_courses')
     .select('*')
     .eq('user_id', state.user.id)
     .order('created_at', { ascending: false });
@@ -273,7 +461,7 @@ function openNewCourseModal() {
     errEl.textContent = '';
     const name = form.name.value.trim();
     const description = form.description.value.trim();
-    const { error } = await supabase.from('courses').insert({
+    const { error } = await supabase.from('ep_courses').insert({
       user_id: state.user.id,
       name,
       description: description || null,

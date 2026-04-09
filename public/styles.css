@@ -570,6 +570,134 @@ section { padding: 80px 0; }
   margin-top: 6px;
 }
 .auth-back { margin-top: 14px; font-size: 14px; }
+.auth-tagline {
+  text-align: center;
+  color: var(--text-2);
+  margin: -12px 0 18px;
+  font-size: 14px;
+}
+
+/* Google button */
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  background: white;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  color: #3c4043;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  margin-bottom: 18px;
+}
+.btn-google:hover {
+  background: #f8f9fa;
+  border-color: #4285F4;
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.15);
+  transform: translateY(-1px);
+}
+
+/* Divider with "or" */
+.auth-divider {
+  position: relative;
+  text-align: center;
+  margin: 18px 0;
+}
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: var(--border);
+}
+.auth-divider span {
+  position: relative;
+  background: white;
+  padding: 0 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Input wrappers with inline errors */
+.input-wrap { position: relative; }
+.input-wrap input.invalid {
+  border-color: var(--danger);
+  background: rgba(220, 38, 38, 0.03);
+}
+.input-wrap input.valid {
+  border-color: var(--success);
+}
+.input-error {
+  display: block;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: right;
+  min-height: 16px;
+  margin-top: 4px;
+  padding-right: 4px;
+}
+
+/* Password strength meter */
+#password-strength {
+  background: var(--bg-subtle);
+  padding: 12px 14px;
+  border-radius: 10px;
+  margin-top: -4px;
+}
+.strength-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.strength-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.strength-fill.vweak { background: var(--danger); }
+.strength-fill.weak { background: #f97316; }
+.strength-fill.good { background: var(--warn); }
+.strength-fill.strong { background: var(--success); }
+.strength-checks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.strength-checks li {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-right: 18px;
+  position: relative;
+  transition: color 0.2s ease;
+}
+.strength-checks li::before {
+  content: '○';
+  position: absolute;
+  right: 0;
+  font-weight: 800;
+}
+.strength-checks li.ok {
+  color: var(--success);
+}
+.strength-checks li.ok::before {
+  content: '✓';
+}
 .auth-policy {
   font-size: 12px;
   margin-top: 24px;
