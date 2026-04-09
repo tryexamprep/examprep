@@ -20,3 +20,5 @@ data/app.db-*
 .DS_Store
 *.log
 /tmp/
+
+.vercel

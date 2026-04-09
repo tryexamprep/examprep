@@ -1,0 +1,16 @@
+{
+  "_comment": "Server-side dependencies. Run 'npm install' against this file when developing locally with the full server (not needed for Vercel static deployment).",
+  "name": "examprep-server",
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "express": "^4.21.2",
+    "dotenv": "^16.4.7",
+    "@supabase/supabase-js": "^2.47.10",
+    "pdf-to-img": "^4.6.0",
+    "pdfjs-dist": "^4.10.38",
+    "sharp": "^0.34.0",
+    "multer": "^2.0.0",
+    "stripe": "^17.5.0"
+  }
+}

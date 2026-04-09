@@ -6,9 +6,17 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(__dirname, '..');
 
+// Try to load .env locally (optional - only needed for local dev)
+// In production (Vercel), env vars are set via dashboard.
 try {
-  const dotenv = await import('dotenv');
-  dotenv.config({ path: path.join(APP_ROOT, '.env') });
+  const envFile = path.join(APP_ROOT, '.env');
+  if (fs.existsSync(envFile)) {
+    const content = fs.readFileSync(envFile, 'utf8');
+    for (const line of content.split('\n')) {
+      const m = line.match(/^([A-Z_]+)=(.*)$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
+    }
+  }
 } catch {}
 
 const templatePath = path.join(APP_ROOT, 'public', 'config.js.template');
