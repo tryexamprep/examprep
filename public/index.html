@@ -22,6 +22,9 @@
   <!-- ============================ -->
   <template id="tmpl-landing">
     <div class="landing">
+      <div class="beta-banner" role="status" aria-live="polite">
+        🚧 האתר נמצא בשלב בטא פרטית — אין עדיין הרשמות לציבור ואין לאחסן כאן נתונים אישיים אמיתיים.
+      </div>
       <header class="navbar" id="navbar">
         <div class="navbar-inner container">
           <a href="#/" class="logo" data-route="/">
@@ -384,46 +387,111 @@
   <!--             AUTH            -->
   <!-- ============================ -->
   <template id="tmpl-auth">
-    <div class="auth-screen">
-      <div class="auth-card">
-        <a href="#/" class="logo" data-route="/">
-          <img src="/public/images/logo.png" alt="ExamPrep" class="logo-img" />
-        </a>
-        <h1 class="auth-title">ברוך הבא</h1>
-        <p class="auth-sub">כניסה לחשבון או הרשמה חדשה</p>
+    <div class="auth-split">
+      <!-- LEFT: brand / marketing visual -->
+      <aside class="auth-left">
+        <div class="auth-left-bg">
+          <div class="auth-orb orb-a"></div>
+          <div class="auth-orb orb-b"></div>
+          <div class="auth-orb orb-c"></div>
+          <div class="auth-grid"></div>
+        </div>
+        <div class="auth-left-inner">
+          <a href="#/" class="auth-left-logo" data-route="/">
+            <img src="/public/images/logo.png" alt="ExamPrep" class="logo-img logo-img-on-dark" />
+          </a>
+          <div class="auth-left-content">
+            <span class="auth-eyebrow">תרגול חכם · לימוד אישי</span>
+            <h1 class="auth-headline">המסע שלך<br/>לציון <span class="auth-headline-grad">מצוין</span><br/>מתחיל כאן</h1>
+            <p class="auth-tagline">העלה PDF של מבחנים, קבל אפליקציית תרגול אוטומטית, וסקור טעויות עם הסברים מפורטים — הכל בעברית.</p>
+            <ul class="auth-perks">
+              <li><span class="check">✓</span> 85 שאלות מוכנות לתרגול מיידי</li>
+              <li><span class="check">✓</span> סקירת טעויות עם הסברים מלאים</li>
+              <li><span class="check">✓</span> מצב מבחן וטיימר</li>
+              <li><span class="check">✓</span> ללא כרטיס אשראי · ללא התחייבות</li>
+            </ul>
+          </div>
+          <div class="auth-left-foot">
+            <span>🔒 הנתונים שלך מאובטחים · לא משותפים עם צד שלישי</span>
+          </div>
+        </div>
+      </aside>
 
-        <div class="auth-tabs">
-          <button class="auth-tab active" data-tab="login">כניסה</button>
-          <button class="auth-tab" data-tab="signup">הרשמה</button>
+      <!-- RIGHT: form panel -->
+      <main class="auth-right">
+        <div class="auth-right-top">
+          <a href="#/" class="auth-back-link" data-route="/">← חזרה לדף הבית</a>
         </div>
 
-        <form class="auth-form" id="auth-form">
-          <div class="field">
-            <label for="auth-email">כתובת אימייל</label>
-            <input type="email" id="auth-email" name="email" placeholder="name@example.com" required autocomplete="email" />
-          </div>
-          <div class="field">
-            <label for="auth-pass">סיסמה</label>
-            <input type="password" id="auth-pass" name="password" placeholder="לפחות 6 תווים" required minlength="6" autocomplete="current-password" />
-          </div>
-          <div class="field" id="signup-name-field" style="display:none;">
-            <label for="auth-name">שם להצגה</label>
-            <input type="text" id="auth-name" name="name" placeholder="לדוגמה: דניאל" />
-          </div>
-          <div class="auth-error" id="auth-error"></div>
-          <button type="submit" class="btn btn-primary btn-block btn-lg" id="auth-submit">כניסה</button>
-        </form>
+        <div class="auth-panel">
+          <a href="#/" class="auth-panel-logo" data-route="/">
+            <img src="/public/images/logo.png" alt="ExamPrep" class="logo-img" />
+          </a>
+          <h2 class="auth-panel-title" id="auth-title">ברוך הבא חזרה</h2>
+          <p class="auth-panel-sub" id="auth-sub">טוב לראות אותך שוב — תכנס כדי להמשיך לתרגל</p>
 
-        <div class="admin-shortcut">
-          <strong>למפתח / אדמין:</strong><br/>
-          לחץ כאן כדי להיכנס מיד עם המשתמש מנהל ולהתחיל לתרגל את "תוכנה 1" (85 שאלות מוכנות).
-          <button id="admin-quick-login">⚡ כניסה מהירה כאדמין</button>
-        </div>
+          <div class="auth-tabs">
+            <button class="auth-tab active" data-tab="login">כניסה</button>
+            <button class="auth-tab" data-tab="signup">הרשמה</button>
+          </div>
 
-        <div class="auth-foot">
-          <a href="#/" data-route="/">← חזרה לדף הבית</a>
+          <button type="button" class="oauth-btn" id="oauth-google">
+            <svg class="oauth-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            <span>המשך עם Google</span>
+          </button>
+
+          <div class="auth-divider"><span>או עם אימייל</span></div>
+
+          <form class="auth-form" id="auth-form">
+            <div class="field" id="signup-name-field" style="display:none;">
+              <label for="auth-name">שם מלא</label>
+              <input type="text" id="auth-name" name="name" placeholder="לדוגמה: דניאל לוי" autocomplete="name" />
+            </div>
+            <div class="field">
+              <label for="auth-email">כתובת אימייל</label>
+              <input type="email" id="auth-email" name="email" placeholder="name@example.com" required autocomplete="email" />
+            </div>
+            <div class="field">
+              <label for="auth-pass">
+                סיסמה
+                <a href="#" class="field-link" id="forgot-link">שכחת סיסמה?</a>
+              </label>
+              <div class="input-with-icon">
+                <input type="password" id="auth-pass" name="password" placeholder="הזן סיסמה" required minlength="6" autocomplete="current-password" />
+                <button type="button" class="input-eye" id="toggle-pass" aria-label="הצג סיסמה">👁</button>
+              </div>
+              <div class="password-rules" id="password-rules" style="display:none;">
+                <div class="rule" data-rule="len"><span class="rule-icon">○</span> לפחות 8 תווים</div>
+                <div class="rule" data-rule="letter"><span class="rule-icon">○</span> לפחות אות אחת (A-Z או a-z)</div>
+                <div class="rule" data-rule="digit"><span class="rule-icon">○</span> לפחות ספרה אחת (0-9)</div>
+                <div class="rule optional" data-rule="symbol"><span class="rule-icon">○</span> סימן מיוחד (!@#$%) — מומלץ</div>
+              </div>
+            </div>
+
+            <div class="auth-options" id="login-options">
+              <label class="remember-me">
+                <input type="checkbox" id="remember-me" />
+                <span class="remember-toggle"></span>
+                <span>זכור אותי</span>
+              </label>
+            </div>
+
+            <div class="auth-error" id="auth-error"></div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="auth-submit">כניסה</button>
+          </form>
+
+          <p class="auth-switch" id="auth-switch">אין לך חשבון? <a href="#" id="auth-switch-link">הירשם עכשיו</a></p>
+
+          <div class="admin-shortcut">
+            <strong>⚡ למפתח / אדמין</strong>
+            <p>היכנס מיד כמנהל וקבל גישה ל-85 השאלות של תוכנה 1</p>
+            <button id="admin-quick-login">כניסה מהירה כאדמין</button>
+          </div>
+
+          <p class="auth-legal">בהרשמה אתה מסכים ל<a href="/legal/terms.html">תנאי השימוש</a> ול<a href="/legal/privacy.html">מדיניות הפרטיות</a> שלנו. הסיסמה שלך מוצפנת ולא נשמרת בטקסט גלוי.</p>
         </div>
-      </div>
+      </main>
     </div>
   </template>
 

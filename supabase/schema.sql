@@ -183,3 +183,99 @@ CREATE POLICY "ep_review_queue_insert_own" ON ep_review_queue FOR INSERT WITH CH
 
 DROP POLICY IF EXISTS "ep_review_queue_delete_own" ON ep_review_queue;
 CREATE POLICY "ep_review_queue_delete_own" ON ep_review_queue FOR DELETE USING (auth.uid() = user_id);
+
+-- ====== ATOMIC QUOTA RPCs ======
+-- Race-safe quota enforcement. The server cannot just SELECT-then-UPDATE
+-- because concurrent uploads from the same user would both pass the check.
+-- These functions perform the check and the increment in a single statement.
+
+-- Reset daily/monthly counters if their window has rolled over.
+CREATE OR REPLACE FUNCTION reset_user_quotas_if_needed(p_user_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE profiles
+  SET pdfs_uploaded_today = 0,
+      ai_questions_used_today = 0,
+      daily_reset_at = NOW()
+  WHERE id = p_user_id
+    AND daily_reset_at < (NOW() - INTERVAL '24 hours');
+
+  UPDATE profiles
+  SET pdfs_uploaded_this_month = 0,
+      ai_questions_used_this_month = 0,
+      monthly_reset_at = NOW()
+  WHERE id = p_user_id
+    AND monthly_reset_at < (NOW() - INTERVAL '30 days');
+END;
+$$;
+
+-- Atomically reserve one PDF upload slot. Returns true if granted.
+-- Pass -1 for any "unlimited" cap to skip that check.
+CREATE OR REPLACE FUNCTION ep_reserve_pdf_slot(
+  p_user_id UUID,
+  p_max_today INTEGER,
+  p_max_month INTEGER,
+  p_max_total INTEGER,
+  p_max_storage_bytes BIGINT
+) RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+DECLARE
+  v_total_count INTEGER;
+  v_updated INTEGER;
+BEGIN
+  -- Lifetime cap (free plan only). Counts existing exam rows.
+  IF p_max_total <> -1 THEN
+    SELECT COUNT(*) INTO v_total_count
+    FROM ep_exams WHERE user_id = p_user_id;
+    IF v_total_count >= p_max_total THEN RETURN FALSE; END IF;
+  END IF;
+
+  UPDATE profiles
+  SET pdfs_uploaded_today = pdfs_uploaded_today + 1,
+      pdfs_uploaded_this_month = pdfs_uploaded_this_month + 1
+  WHERE id = p_user_id
+    AND pdfs_uploaded_today < p_max_today
+    AND pdfs_uploaded_this_month < p_max_month
+    AND storage_bytes_used < p_max_storage_bytes;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  RETURN v_updated = 1;
+END;
+$$;
+
+-- Atomically reserve N AI generation slots.
+CREATE OR REPLACE FUNCTION ep_reserve_ai_slots(
+  p_user_id UUID,
+  p_count INTEGER,
+  p_max_day INTEGER,
+  p_max_month INTEGER
+) RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+DECLARE
+  v_updated INTEGER;
+BEGIN
+  IF p_count < 1 OR p_count > 50 THEN RETURN FALSE; END IF;
+
+  UPDATE profiles
+  SET ai_questions_used_today = ai_questions_used_today + p_count,
+      ai_questions_used_this_month = ai_questions_used_this_month + p_count
+  WHERE id = p_user_id
+    AND ai_questions_used_today + p_count <= p_max_day
+    AND ai_questions_used_this_month + p_count <= p_max_month;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  RETURN v_updated = 1;
+END;
+$$;
+
+-- Lock these RPCs so only the service role + the owner can call them.
+REVOKE ALL ON FUNCTION reset_user_quotas_if_needed(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ep_reserve_pdf_slot(UUID, INTEGER, INTEGER, INTEGER, BIGINT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ep_reserve_ai_slots(UUID, INTEGER, INTEGER, INTEGER) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION reset_user_quotas_if_needed(UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION ep_reserve_pdf_slot(UUID, INTEGER, INTEGER, INTEGER, BIGINT) TO service_role;
+GRANT EXECUTE ON FUNCTION ep_reserve_ai_slots(UUID, INTEGER, INTEGER, INTEGER) TO service_role;

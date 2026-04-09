@@ -1,15 +1,20 @@
 // Run setup SQL via Supabase Management API
 // Usage: SBP_TOKEN=sbp_xxx node scripts/setup-supabase.mjs
+//
+// SECURITY: the token is read from env ONLY. We do not accept it as a CLI
+// argument because process arguments are visible in `ps`, in shell history,
+// and in process listings — env vars are at least scoped to the process.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TOKEN = process.env.SBP_TOKEN || process.argv[2];
+const TOKEN = process.env.SBP_TOKEN;
 const PROJECT_REF = 'bhdkdttsxdrfpbheyouy';
 
 if (!TOKEN) {
-  console.error('Missing SBP_TOKEN env var or CLI arg');
+  console.error('Missing SBP_TOKEN env var.');
+  console.error('Run with: SBP_TOKEN=sbp_xxx node scripts/setup-supabase.mjs');
   process.exit(1);
 }
 

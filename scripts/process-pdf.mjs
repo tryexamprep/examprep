@@ -23,12 +23,18 @@ const MARGIN_BOTTOM = 16;
 const ALL_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט', 'י'];
 
 // ===== Render PDF to PNGs in a temporary folder =====
-export async function renderPdf(pdfPath, outDir) {
+// `maxPages` is a hard cap — if the PDF has more pages we abort instead
+// of rendering them. This is the primary defense against malicious PDFs
+// (gzip bombs, thousand-page docs) eating CPU/memory.
+export async function renderPdf(pdfPath, outDir, maxPages = 200) {
   fs.mkdirSync(outDir, { recursive: true });
   const document = await pdf(pdfPath, { scale: SCALE });
   const pages = [];
   let i = 1;
   for await (const image of document) {
+    if (i > maxPages) {
+      throw new Error(`PDF has more than ${maxPages} pages — aborting`);
+    }
     const outFile = path.join(outDir, `page-${String(i).padStart(2, '0')}.png`);
     fs.writeFileSync(outFile, image);
     pages.push(outFile);
@@ -335,16 +341,17 @@ export async function processExamPair({
   fromQ = 3,
   toQ = 12,
   expectedNumOptions = 4,
+  maxPages = 200,
 }) {
   fs.mkdirSync(outputDir, { recursive: true });
   const examPagesDir = path.join(outputDir, 'exam-pages');
   const solutionPagesDir = path.join(outputDir, 'solution-pages');
 
-  // 1. Render both PDFs to images
-  const examRender = await renderPdf(examPdfPath, examPagesDir);
+  // 1. Render both PDFs to images (capped at maxPages each)
+  const examRender = await renderPdf(examPdfPath, examPagesDir, maxPages);
   let solutionRender = null;
   if (solutionPdfPath && fs.existsSync(solutionPdfPath)) {
-    solutionRender = await renderPdf(solutionPdfPath, solutionPagesDir);
+    solutionRender = await renderPdf(solutionPdfPath, solutionPagesDir, maxPages);
   }
 
   // 2. Extract text positions

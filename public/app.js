@@ -61,8 +61,12 @@ const state = {
   lastBatch: null, // for the mistake review screen
 };
 
-// ===== Local "auth" (for admin testing phase) =====
-// In phase 2 this will be replaced with Supabase Auth.
+// ===== Local "auth" (admin testing phase only) =====
+// SECURITY NOTE: This is a localStorage-only mock for the local-files
+// testing phase. There is NO real authentication here. The `plan` and
+// `isAdmin` fields are not trusted by anything — they're just UI hints.
+// Any user can edit localStorage and set plan='pro'; that's by design
+// for this phase. Phase 2 will replace Auth with supabase.auth.
 const Auth = {
   KEY: 'ep_user',
   current() {
@@ -70,30 +74,29 @@ const Auth = {
   },
   save(user) { localStorage.setItem(this.KEY, JSON.stringify(user)); },
   clear() { localStorage.removeItem(this.KEY); },
-  // Hardcoded admin credentials for the testing phase
-  ADMIN_EMAIL: 'admin+a55c27@examprep.app',
-  ADMIN_PASS: '!xx!6WxSMpRDNT$3',
-  loginAdmin() {
-    const u = {
-      email: this.ADMIN_EMAIL,
-      name: 'אדמין',
-      plan: 'pro',
-      isAdmin: true,
-    };
-    this.save(u);
-    return u;
-  },
   loginLocal(email, password, name) {
-    // Local-only mock auth — accepts any email/pass for the testing phase.
-    // In phase 2 this will hit Supabase Auth.
-    if (email === this.ADMIN_EMAIL && password === this.ADMIN_PASS) {
-      return this.loginAdmin();
-    }
+    // Local-only mock — every account is plan='free'. Any premium
+    // gating must be enforced server-side once phase 2 ships.
     const u = {
       email,
       name: name || email.split('@')[0],
       plan: 'free',
       isAdmin: false,
+    };
+    this.save(u);
+    return u;
+  },
+  loginAdmin() {
+    // Synthetic admin session for the local testing phase. No real credentials
+    // are checked or stored — this is a developer shortcut so the user can
+    // immediately see the dashboard with the תוכנה 1 question bank loaded.
+    // Phase 2 will replace this with a real Supabase Auth call to the actual
+    // admin user that was seeded in the migration step.
+    const u = {
+      email: 'admin@examprep.local',
+      name: 'אדמין',
+      plan: 'pro',
+      isAdmin: true,
     };
     this.save(u);
     return u;
@@ -272,7 +275,7 @@ function renderLanding() {
   });
 }
 
-// ===== Render: Auth =====
+// ===== Render: Auth (split-screen, with all auth UX features) =====
 function renderAuth(signupMode = false) {
   $app.innerHTML = '';
   $app.appendChild(tmpl('tmpl-auth'));
@@ -287,12 +290,41 @@ function renderAuth(signupMode = false) {
   const tabs = document.querySelectorAll('.auth-tab');
   const submitBtn = document.getElementById('auth-submit');
   const nameField = document.getElementById('signup-name-field');
+  const titleEl = document.getElementById('auth-title');
+  const subEl = document.getElementById('auth-sub');
+  const switchEl = document.getElementById('auth-switch');
+  const passwordRules = document.getElementById('password-rules');
+  const loginOptions = document.getElementById('login-options');
+  const forgotLink = document.getElementById('forgot-link');
+  const passInput = document.getElementById('auth-pass');
+  const togglePass = document.getElementById('toggle-pass');
+
   let mode = signupMode ? 'signup' : 'login';
 
   function applyMode() {
     tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === mode));
     nameField.style.display = mode === 'signup' ? '' : 'none';
     submitBtn.textContent = mode === 'signup' ? 'יצירת חשבון' : 'כניסה';
+    if (titleEl) titleEl.textContent = mode === 'signup' ? 'בואו נתחיל' : 'ברוך הבא חזרה';
+    if (subEl) subEl.textContent = mode === 'signup'
+      ? 'צור חשבון חדש בחינם — בלי כרטיס אשראי'
+      : 'טוב לראות אותך שוב — תכנס כדי להמשיך לתרגל';
+    if (switchEl) {
+      switchEl.innerHTML = mode === 'signup'
+        ? 'יש לך כבר חשבון? <a href="#" id="auth-switch-link">התחבר עכשיו</a>'
+        : 'אין לך חשבון? <a href="#" id="auth-switch-link">הירשם עכשיו</a>';
+      const newLink = document.getElementById('auth-switch-link');
+      if (newLink) newLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        mode = mode === 'signup' ? 'login' : 'signup';
+        applyMode();
+      });
+    }
+    if (passwordRules) passwordRules.style.display = mode === 'signup' ? 'flex' : 'none';
+    if (loginOptions) loginOptions.style.display = mode === 'login' ? 'flex' : 'none';
+    if (forgotLink) forgotLink.style.display = mode === 'login' ? '' : 'none';
+    passInput.placeholder = mode === 'signup' ? 'בחר סיסמה חזקה' : 'הזן סיסמה';
+    passInput.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
   }
   applyMode();
 
@@ -301,16 +333,63 @@ function renderAuth(signupMode = false) {
     applyMode();
   }));
 
+  // Password show/hide
+  if (togglePass) togglePass.addEventListener('click', () => {
+    if (passInput.type === 'password') {
+      passInput.type = 'text';
+      togglePass.textContent = '🙈';
+    } else {
+      passInput.type = 'password';
+      togglePass.textContent = '👁';
+    }
+  });
+
+  // Password rules live update (only in signup mode)
+  passInput.addEventListener('input', () => {
+    if (mode !== 'signup') return;
+    const v = passInput.value;
+    const rules = {
+      len:    v.length >= 8,
+      letter: /[A-Za-z]/.test(v),
+      digit:  /\d/.test(v),
+      symbol: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(v),
+    };
+    document.querySelectorAll('.password-rules .rule').forEach(r => {
+      r.classList.toggle('met', !!rules[r.dataset.rule]);
+    });
+  });
+
+  // Forgot password (placeholder)
+  if (forgotLink) forgotLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    toast('שחזור סיסמה — בקרוב! בינתיים תוכל ליצור חשבון חדש או להיכנס כאדמין.', '');
+  });
+
+  // Google OAuth (placeholder for now)
+  const oauthBtn = document.getElementById('oauth-google');
+  if (oauthBtn) oauthBtn.addEventListener('click', () => {
+    toast('כניסה עם Google — בקרוב! בינתיים השתמש באימייל וסיסמה.', '');
+  });
+
+  // Form submit
   document.getElementById('auth-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const email = document.getElementById('auth-email').value.trim();
-    const password = document.getElementById('auth-pass').value;
+    const password = passInput.value;
     const name = document.getElementById('auth-name').value.trim();
     const errEl = document.getElementById('auth-error');
     errEl.textContent = '';
     errEl.classList.remove('success');
     if (!email || !password) { errEl.textContent = 'חובה למלא אימייל וסיסמה'; return; }
-    if (password.length < 6) { errEl.textContent = 'סיסמה חייבת להיות לפחות 6 תווים'; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'כתובת האימייל לא תקינה'; return; }
+    if (mode === 'signup') {
+      if (password.length < 8) { errEl.textContent = 'סיסמה חייבת להיות לפחות 8 תווים'; return; }
+      if (!/[A-Za-z]/.test(password)) { errEl.textContent = 'סיסמה חייבת להכיל לפחות אות אחת'; return; }
+      if (!/\d/.test(password)) { errEl.textContent = 'סיסמה חייבת להכיל לפחות ספרה אחת'; return; }
+      if (!name) { errEl.textContent = 'נא להזין שם מלא'; return; }
+    } else {
+      if (password.length < 6) { errEl.textContent = 'סיסמה לא תקינה'; return; }
+    }
     try {
       const user = Auth.loginLocal(email, password, name);
       state.user = user;
@@ -322,7 +401,9 @@ function renderAuth(signupMode = false) {
     }
   });
 
-  document.getElementById('admin-quick-login').addEventListener('click', () => {
+  // Admin quick-login button
+  const adminBtn = document.getElementById('admin-quick-login');
+  if (adminBtn) adminBtn.addEventListener('click', () => {
     const user = Auth.loginAdmin();
     state.user = user;
     toast('ברוך הבא, אדמין!', 'success');
