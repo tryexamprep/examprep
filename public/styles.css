@@ -3404,7 +3404,7 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
   text-align: right;
   transition: background 150ms ease, color 150ms ease;
 }
-.settings-nav-item svg { color: var(--text-muted); flex-shrink: 0; }
+.settings-nav-item svg { width: 18px; height: 18px; color: var(--text-muted); flex-shrink: 0; }
 .settings-nav-item:hover { background: var(--brand-50); color: var(--brand-800); }
 .settings-nav-item:hover svg { color: var(--brand-700); }
 .settings-nav-item.active {
