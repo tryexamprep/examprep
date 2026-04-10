@@ -835,45 +835,89 @@ function initReviewsCarousel() {
   const grid = document.querySelector('.reviews-grid');
   const stage = document.querySelector('[data-rm-stage]');
   const dotsWrap = document.querySelector('[data-rm-dots]');
-  if (!grid || !stage || !dotsWrap) return;
+  const mobile = document.querySelector('.reviews-mobile');
+  if (!grid || !stage || !dotsWrap || !mobile) return;
 
   const cards = [...grid.querySelectorAll('[data-review]')];
   if (!cards.length) return;
 
-  const snapshots = cards.map(c => c.outerHTML);
+  // Place all cards inside the stage as a horizontal strip
+  stage.innerHTML = cards.map(c => c.outerHTML).join('');
+  const total = cards.length;
   let idx = 0;
   let timer = null;
-  const INTERVAL = 6000;
+  const INTERVAL = 5000;
 
   // Build dots
-  snapshots.forEach((_, i) => {
+  for (let i = 0; i < total; i++) {
     const d = document.createElement('button');
     d.type = 'button';
     d.className = 'rm-dot' + (i === 0 ? ' is-active' : '');
     d.setAttribute('aria-label', 'ביקורת ' + (i + 1));
-    d.addEventListener('click', () => goTo(i, true));
+    d.addEventListener('click', () => { goTo(i); startTimer(); });
     dotsWrap.appendChild(d);
-  });
-
+  }
   const dots = [...dotsWrap.querySelectorAll('.rm-dot')];
 
-  function render(i) {
-    stage.innerHTML = snapshots[i];
-    void stage.offsetWidth;
+  function slide(i) {
+    // RTL: positive translateX to go "forward"
+    const dir = getComputedStyle(mobile).direction === 'rtl' ? 1 : -1;
+    stage.style.transform = `translateX(${dir * i * 100}%)`;
     dots.forEach((d, di) => d.classList.toggle('is-active', di === i));
   }
 
-  function next() { idx = (idx + 1) % snapshots.length; render(idx); }
-  function goTo(i, user) { idx = i; render(idx); if (user) startTimer(); }
+  function next() { idx = (idx + 1) % total; slide(idx); }
+  function prev() { idx = (idx - 1 + total) % total; slide(idx); }
+  function goTo(i) { idx = i; slide(idx); }
   function startTimer() { stopTimer(); timer = setInterval(next, INTERVAL); }
   function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
 
-  render(0);
+  slide(0);
   startTimer();
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) stopTimer(); else startTimer();
   });
+
+  // ---- Swipe / touch support ----
+  let startX = 0, startY = 0, deltaX = 0, swiping = false;
+  const THRESHOLD = 40;
+
+  mobile.addEventListener('touchstart', (e) => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    deltaX = 0;
+    swiping = false;
+    stopTimer();
+  }, { passive: true });
+
+  mobile.addEventListener('touchmove', (e) => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    // Only start swiping if horizontal movement is dominant
+    if (!swiping && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+      swiping = true;
+      stage.classList.add('is-dragging');
+    }
+    if (!swiping) return;
+    deltaX = dx;
+    const dir = getComputedStyle(mobile).direction === 'rtl' ? 1 : -1;
+    const base = dir * idx * 100;
+    const drag = (deltaX / mobile.offsetWidth) * 100;
+    stage.style.transform = `translateX(${base + drag}%)`;
+  }, { passive: true });
+
+  mobile.addEventListener('touchend', () => {
+    stage.classList.remove('is-dragging');
+    if (swiping) {
+      const isRTL = getComputedStyle(mobile).direction === 'rtl';
+      if (deltaX < -THRESHOLD) { isRTL ? prev() : next(); }
+      else if (deltaX > THRESHOLD) { isRTL ? next() : prev(); }
+      else { slide(idx); }
+    }
+    startTimer();
+    swiping = false;
+  }, { passive: true });
 }
 
 // ===== Render: Auth (split-screen, with all auth UX features) =====

@@ -825,40 +825,84 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 /* ===== Contact Section ===== */
 .contact-section { background: var(--bg-subtle); }
 .contact-form {
-  max-width: 640px; margin: 0 auto;
+  max-width: 580px; margin: 0 auto;
   background: var(--card-bg); border: 1px solid var(--border);
-  border-radius: 16px; padding: 36px 32px;
-  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  border-radius: 20px; padding: 40px 36px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
 }
 .contact-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.contact-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
-.contact-field label { font-size: 14px; font-weight: 600; color: var(--text-1); }
-.contact-field input,
-.contact-field select,
-.contact-field textarea {
-  padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+
+/* Floating label fields */
+.cf-float {
+  position: relative; margin-bottom: 18px;
+}
+.cf-float input,
+.cf-float select,
+.cf-float textarea {
+  width: 100%; padding: 20px 16px 8px; border: 1.5px solid var(--border); border-radius: 12px;
   font-size: 15px; background: var(--bg); color: var(--text-1);
   font-family: inherit; transition: border-color .2s, box-shadow .2s;
+  box-sizing: border-box;
+  -webkit-appearance: none; appearance: none;
 }
-.contact-field input:focus,
-.contact-field select:focus,
-.contact-field textarea:focus {
+.cf-float label {
+  position: absolute; top: 50%; right: 16px; transform: translateY(-50%);
+  font-size: 15px; color: var(--text-muted); pointer-events: none;
+  transition: all .2s cubic-bezier(.4,0,.2,1);
+  background: transparent; padding: 0 2px;
+}
+.cf-float textarea ~ label { top: 20px; transform: none; }
+
+/* Float up when focused or has content */
+.cf-float input:focus ~ label,
+.cf-float input:not(:placeholder-shown) ~ label,
+.cf-float select:focus ~ label,
+.cf-float select:valid ~ label,
+.cf-float textarea:focus ~ label,
+.cf-float textarea:not(:placeholder-shown) ~ label {
+  top: 6px; transform: none;
+  font-size: 11px; font-weight: 600; color: var(--primary);
+  background: var(--bg); padding: 0 4px; border-radius: 2px;
+}
+.cf-float input:focus,
+.cf-float select:focus,
+.cf-float textarea:focus {
   outline: none; border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 99,102,241), .15);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 99,102,241), .12);
 }
-.contact-field textarea { resize: vertical; min-height: 120px; }
-.contact-submit { width: 100%; margin-top: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.contact-submit .btn-icon { width: 18px; height: 18px; }
+.cf-float textarea { resize: vertical; min-height: 130px; }
+
+/* Select arrow */
+.cf-select { position: relative; }
+.cf-select::after {
+  content: ''; position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  width: 0; height: 0; border-right: 5px solid transparent; border-left: 5px solid transparent;
+  border-top: 6px solid var(--text-muted); pointer-events: none;
+}
+.cf-select select { padding-left: 40px; cursor: pointer; }
+/* Force label up when a real option is selected (not the empty placeholder) */
+.cf-select select:not([value=""]):valid ~ label { top: 6px; transform: none; font-size: 11px; font-weight: 600; color: var(--primary); background: var(--bg); padding: 0 4px; }
+
+.contact-submit {
+  width: 100%; margin-top: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 16px; padding: 16px 24px; border-radius: 14px;
+}
+.contact-submit .btn-icon { width: 20px; height: 20px; }
+.contact-alt {
+  text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-muted);
+}
+.contact-alt a { color: var(--primary); font-weight: 600; text-decoration: none; }
+.contact-alt a:hover { text-decoration: underline; }
 .contact-success {
   display: flex; align-items: center; gap: 10px; margin-top: 16px;
-  padding: 14px 18px; border-radius: 10px;
+  padding: 14px 18px; border-radius: 12px;
   background: var(--green-50, #ecfdf5); border: 1px solid var(--green-200, #a7f3d0);
   color: var(--green-700, #047857); font-weight: 500; font-size: 15px;
 }
 .contact-success svg { width: 22px; height: 22px; flex-shrink: 0; color: var(--green-500, #10b981); }
 [data-theme="dark"] .contact-success { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.25); color: #6ee7b7; }
 @media (max-width: 640px) {
-  .contact-form { padding: 24px 18px; }
+  .contact-form { padding: 28px 20px; border-radius: 16px; }
   .contact-form-row { grid-template-columns: 1fr; }
 }
 
@@ -884,74 +928,45 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 }
 
 /* ===== PWA Install Section (landing page, mobile only) ===== */
-/* Hidden on desktop */
 @media (min-width: 769px) { .pwa-section { display: none !important; } }
-.pwa-guide-cards {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 640px; margin: 0 auto;
+.pwa-platform {
+  max-width: 500px; margin: 0 auto 28px;
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px;
+  padding: 24px 20px; box-shadow: 0 2px 12px rgba(0,0,0,.05);
 }
-@media (max-width: 600px) { .pwa-guide-cards { grid-template-columns: 1fr; } }
-.pwa-guide-card {
-  background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px;
-  padding: 20px 16px; text-align: center;
+.pwa-platform-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 10px;
+  padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--text-1);
+  margin-bottom: 20px;
 }
-.pwa-guide-card-title {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  font-size: 16px; font-weight: 700; color: var(--text-1); margin-bottom: 16px;
+.pwa-steps-strip { display: flex; align-items: flex-start; justify-content: center; gap: 6px; }
+.pwa-step-card {
+  flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 6px; min-width: 0;
 }
-.pwa-guide-steps { display: flex; flex-direction: column; gap: 18px; }
-.pwa-guide-step { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-
-/* Mini phone mockups */
-.pwa-phone-frame {
-  width: 130px; height: 180px; border: 2px solid var(--border); border-radius: 16px;
-  background: var(--bg); overflow: hidden; display: flex; flex-direction: column;
-  font-size: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+.pwa-step-num-lg {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--primary); color: #fff;
+  font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
 }
-.pwa-phone-bar, .pwa-phone-top-bar {
-  background: var(--bg-subtle); padding: 6px 8px; font-size: 8px; color: var(--text-muted);
-  border-bottom: 1px solid var(--border); text-align: center;
-  display: flex; align-items: center; justify-content: center; gap: 4px;
+.pwa-step-icon-box {
+  width: 72px; height: 72px; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(var(--primary-rgb,99,102,241),.08), rgba(var(--primary-rgb,99,102,241),.04));
+  border: 1.5px solid rgba(var(--primary-rgb,99,102,241),.15);
+  display: flex; align-items: center; justify-content: center;
 }
-.pwa-phone-top-bar { justify-content: space-between; padding: 6px 10px; }
-.pwa-phone-content { flex: 1; display: flex; align-items: center; justify-content: center; }
-.pwa-phone-logo { font-weight: 800; font-size: 13px; color: var(--primary); }
-.pwa-phone-bottom-bar {
-  background: var(--bg-subtle); padding: 8px; border-top: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-around;
+.pwa-step-done {
+  background: linear-gradient(135deg, rgba(16,185,129,.1), rgba(16,185,129,.04));
+  border-color: rgba(16,185,129,.2);
 }
-.pwa-highlight-icon {
-  color: var(--primary); background: rgba(var(--primary-rgb, 99,102,241), .12);
-  border-radius: 6px; padding: 3px; display: inline-flex;
-  animation: pwa-pulse 1.5s ease-in-out infinite;
+.pwa-step-card strong { font-size: 12px; color: var(--text-1); line-height: 1.3; }
+.pwa-step-card p { font-size: 11px; color: var(--text-muted); margin: 0; line-height: 1.3; }
+.pwa-step-arrow {
+  display: flex; align-items: center; padding-top: 38px; flex-shrink: 0; opacity: .5;
 }
-@keyframes pwa-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
-.pwa-phone-menu {
-  padding: 10px; display: flex; flex-direction: column; gap: 1px; height: 100%;
-  justify-content: center;
-}
-.pwa-menu-item {
-  padding: 8px 10px; border-radius: 6px; font-size: 10px; color: var(--text-2);
-  display: flex; align-items: center; gap: 6px;
-}
-.pwa-menu-highlight {
-  background: rgba(var(--primary-rgb, 99,102,241), .1); color: var(--primary); font-weight: 600;
-  border: 1px solid rgba(var(--primary-rgb, 99,102,241), .2);
-}
-.pwa-phone-dialog {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 20px 16px; height: 100%; justify-content: center;
-}
-.pwa-phone-dialog div:first-of-type { font-weight: 700; font-size: 12px; color: var(--text-1); }
-.pwa-dialog-btn {
-  background: var(--primary); color: #fff; border-radius: 8px;
-  padding: 6px 20px; font-size: 11px; font-weight: 600;
-}
-.pwa-guide-step-label { font-size: 13px; font-weight: 500; color: var(--text-2); }
-.pwa-step-badge {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 50%; background: var(--primary);
-  color: #fff; font-size: 11px; font-weight: 700; margin-inline-end: 4px;
-}
+/* RTL: flip the arrows */
+[dir="rtl"] .pwa-step-arrow svg { transform: scaleX(-1); }
 
 /* ===== Cookie Consent Banner ===== */
 .cookie-banner {
@@ -2002,17 +2017,22 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
   .reviews-mobile {
     display: block;
     margin-top: 12px;
+    overflow: hidden;
+    touch-action: pan-y;
+    -webkit-user-select: none; user-select: none;
   }
   .rm-stage {
-    position: relative;
-    min-height: 240px;
+    display: flex;
+    transition: transform .4s cubic-bezier(.25,.8,.25,1);
+    will-change: transform;
   }
   .rm-stage .review-card {
+    flex: 0 0 100%;
+    width: 100%;
     margin: 0;
-    opacity: 0;
-    transform: translateY(8px);
-    animation: rm-fade-in 600ms cubic-bezier(.22, .61, .36, 1) forwards;
+    box-sizing: border-box;
   }
+  .rm-stage.is-dragging { transition: none; }
   .rm-dots {
     display: flex;
     justify-content: center;
@@ -2038,11 +2058,6 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
     width: 22px;
     border-radius: 4px;
   }
-}
-
-@keyframes rm-fade-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* =====================================================
