@@ -1986,18 +1986,23 @@ function showUploadPdfModal(courseId) {
             <label for="up-name">שם המבחן *</label>
             <input type="text" id="up-name" placeholder="למשל: מבחן מועד א 2024" maxlength="100" />
           </div>
-          <div class="field">
-            <label>קובץ מבחן (PDF) *</label>
-            <input type="file" id="up-exam" accept=".pdf" />
+          <div class="upload-drop-zone" id="up-drop-exam">
+            <input type="file" id="up-exam" accept=".pdf" style="display:none" />
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--brand-400)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <strong>קובץ מבחן (PDF) *</strong>
+            <span class="drop-hint">גרור לכאן או לחץ לבחירה</span>
+            <span class="drop-file-name" id="up-exam-name"></span>
           </div>
-          <div class="field">
-            <label>קובץ פתרון (PDF, אופציונלי)</label>
-            <input type="file" id="up-solution" accept=".pdf" />
+          <div class="upload-drop-zone upload-drop-zone-sm" id="up-drop-sol">
+            <input type="file" id="up-solution" accept=".pdf" style="display:none" />
+            <strong>קובץ פתרון (אופציונלי)</strong>
+            <span class="drop-hint">גרור לכאן או לחץ לבחירה</span>
+            <span class="drop-file-name" id="up-sol-name"></span>
           </div>
           <p class="auth-error" id="up-error"></p>
           <div id="up-progress" style="display:none">
             <div class="phb-track"><div class="phb-fill" id="up-progress-fill" style="width:0%"></div></div>
-            <p class="muted" id="up-status">מעלה...</p>
+            <p class="muted" id="up-status">מעלה ומעבד שאלות...</p>
           </div>
           <button class="btn btn-primary btn-block" id="up-submit">העלה מבחן</button>
         </div>
@@ -2012,13 +2017,65 @@ function showUploadPdfModal(courseId) {
   document.getElementById('up-close').addEventListener('click', close);
   modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
 
+  // --- Drag & drop wiring ---
+  function wireDropZone(zoneId, inputId, nameId) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const nameEl = document.getElementById(nameId);
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'application/pdf') {
+        const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+        input.dispatchEvent(new Event('change'));
+      }
+    });
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      if (file) {
+        nameEl.textContent = file.name;
+        zone.classList.add('has-file');
+      } else {
+        nameEl.textContent = '';
+        zone.classList.remove('has-file');
+      }
+    });
+    return input;
+  }
+  const examInput = wireDropZone('up-drop-exam', 'up-exam', 'up-exam-name');
+  wireDropZone('up-drop-sol', 'up-solution', 'up-sol-name');
+
+  // Auto-suggest name from filename
+  function smartName(filename) {
+    let n = filename.replace(/\.pdf$/i, '').replace(/[_\-]+/g, ' ').trim();
+    // Clean up common patterns to make name clearer
+    n = n.replace(/\b(exam|test|quiz|solution|sol|ans|answer|pdf)\b/gi, '').trim();
+    return n || filename.replace(/\.pdf$/i, '');
+  }
+  examInput.addEventListener('change', () => {
+    const nameInput = document.getElementById('up-name');
+    const file = examInput.files[0];
+    if (file && !nameInput.value.trim()) {
+      nameInput.value = smartName(file.name);
+    }
+  });
+
   document.getElementById('up-submit').addEventListener('click', async () => {
-    const name = document.getElementById('up-name').value.trim();
+    const nameInput = document.getElementById('up-name');
+    let name = nameInput.value.trim();
     const examFile = document.getElementById('up-exam').files[0];
     const solFile = document.getElementById('up-solution').files[0];
     const errEl = document.getElementById('up-error');
     errEl.textContent = '';
 
+    // Auto-fill name from filename if empty
+    if ((!name || name.length < 2) && examFile) {
+      name = smartName(examFile.name);
+      nameInput.value = name;
+    }
     if (!name || name.length < 2) { errEl.textContent = 'שם המבחן חייב להיות לפחות 2 תווים'; return; }
     if (!examFile) { errEl.textContent = 'חסר קובץ PDF של המבחן'; return; }
 
@@ -2039,8 +2096,17 @@ function showUploadPdfModal(courseId) {
 
     const btn = document.getElementById('up-submit');
     btn.disabled = true;
-    btn.textContent = 'מעלה...';
+    btn.textContent = 'מעלה ומעבד...';
     document.getElementById('up-progress').style.display = '';
+    // Animate progress bar
+    const fill = document.getElementById('up-progress-fill');
+    const statusEl = document.getElementById('up-status');
+    let pct = 0;
+    const progressInterval = setInterval(() => {
+      if (pct < 90) { pct += Math.random() * 8; fill.style.width = Math.min(pct, 90) + '%'; }
+      if (pct > 20 && pct < 50) statusEl.textContent = 'מחלץ טקסט מהקובץ...';
+      else if (pct >= 50) statusEl.textContent = 'מזהה שאלות ותשובות...';
+    }, 500);
 
     try {
       const token = await Auth.getToken();
@@ -2069,10 +2135,11 @@ function showUploadPdfModal(courseId) {
         throw new Error(err.error || 'שגיאה בהעלאה');
       }
 
+      clearInterval(progressInterval);
       const result = await res.json().catch(() => ({}));
-      document.getElementById('up-status').textContent = 'הושלם!';
-      document.getElementById('up-progress-fill').style.width = '100%';
-      toast('המבחן הועלה בהצלחה! עיבוד השאלות מתחיל...', 'success');
+      statusEl.textContent = 'הושלם!';
+      fill.style.width = '100%';
+      toast(result.question_count ? `המבחן הועלה בהצלחה! ${result.question_count} שאלות זוהו.` : 'המבחן הועלה בהצלחה!', 'success');
       if (result.warning) {
         setTimeout(() => toast(result.warning, 'warning'), 1500);
       }
@@ -2083,6 +2150,7 @@ function showUploadPdfModal(courseId) {
       CourseRegistry.invalidate();
       navigate(`/course/${courseId}`);
     } catch (err) {
+      clearInterval(progressInterval);
       errEl.textContent = err.message;
     } finally {
       btn.disabled = false;
