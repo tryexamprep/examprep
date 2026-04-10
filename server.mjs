@@ -214,6 +214,86 @@ function rateLimitMiddleware(maxPerMinute) {
   };
 }
 
+// ===== IP-based abuse throttle (anti token-burning) =====
+// Burst rate-limit above only catches floods over a 60s window. This layer
+// adds rolling daily + weekly caps per source IP, backed by Postgres so it
+// survives Vercel cold starts. Defense against the sock-puppet attack:
+// attacker signs up new accounts to keep burning the 2-free-pack lifetime
+// quota. Per-account quotas can't see across accounts; per-IP can.
+//
+// Privacy: we hash the IP with a server salt so the table never holds raw
+// PII. The salt should be set via IP_HASH_SALT env on every server replica
+// (must be the same value across replicas, or hashes won't match).
+const IP_HASH_SALT = process.env.IP_HASH_SALT || '';
+if (!IP_HASH_SALT) {
+  console.warn('[abuse] IP_HASH_SALT env not set — using empty salt. Set it in production for stronger hashing.');
+}
+function hashClientIp(req) {
+  const ip = clientKey(req);
+  if (!ip || ip === 'unknown') return null;
+  return crypto.createHash('sha256').update(IP_HASH_SALT + ':' + ip).digest('hex');
+}
+
+// Per-bucket caps. Tuned so a normal household (≈2 users sharing one IP)
+// stays well under the cap, while a sock-puppet farmer hits the wall fast.
+const IP_THROTTLE_BUCKETS = {
+  // Smart Study from summary → Gemini call. Free quota is 2/account; this
+  // caps a single IP at 4/day, 8/week regardless of how many accounts they
+  // make. Trip → 24h cooldown.
+  study_gen: { day: 4, week: 8, blockHours: 24 },
+  // Lab AI generation → Gemini call. More tolerant since paid users use it
+  // heavily; still caps obvious abuse.
+  lab_gen:   { day: 20, week: 60, blockHours: 24 },
+};
+
+function ipAbuseGuard(bucket) {
+  const cfg = IP_THROTTLE_BUCKETS[bucket];
+  return async (req, res, next) => {
+    // Fail open on misconfig: better to serve than to lock everyone out.
+    if (!supabaseAdmin || !cfg) return next();
+    const ipHash = hashClientIp(req);
+    if (!ipHash) return next();
+    try {
+      const { data, error } = await supabaseAdmin.rpc('ep_check_ip_throttle', {
+        p_ip_hash: ipHash,
+        p_bucket: bucket,
+        p_max_day: cfg.day,
+        p_max_week: cfg.week,
+        p_block_hours: cfg.blockHours,
+      });
+      if (error && /function .* does not exist/i.test(error.message || '')) {
+        console.warn('[abuse] ep_check_ip_throttle RPC missing — fail open. Run schema.sql.');
+        return next();
+      }
+      if (error) {
+        console.error('[abuse] rpc error:', error.message);
+        return next(); // fail open on infra error
+      }
+      if (data && data.allowed === false) {
+        const blockedUntil = data.blocked_until ? new Date(data.blocked_until) : null;
+        const retrySec = blockedUntil
+          ? Math.max(60, Math.ceil((blockedUntil.getTime() - Date.now()) / 1000))
+          : 3600;
+        console.warn(
+          `[abuse] BLOCK ${bucket} ip-hash=${ipHash.slice(0, 12)}… ` +
+          `today=${data.count_today} week=${data.count_week} ` +
+          `until=${blockedUntil?.toISOString() || '?'} reason=${data.reason || '?'}`
+        );
+        res.setHeader('Retry-After', String(retrySec));
+        return res.status(429).json({
+          error: 'זוהה שימוש חריג מהכתובת הזאת. הגישה לפיצ\'ר הוקפאה זמנית. נסה שוב מאוחר יותר, או צור קשר אם נחסמת בטעות.',
+          blocked_until: blockedUntil ? blockedUntil.toISOString() : null,
+          retry_after_seconds: retrySec,
+        });
+      }
+      next();
+    } catch (e) {
+      console.error('[abuse] guard fatal:', e?.message || e);
+      next(); // fail open
+    }
+  };
+}
+
 // ===== Auth middleware - verifies Supabase JWT =====
 async function authMiddleware(req, res, next) {
   const auth = req.headers['authorization'];
@@ -734,7 +814,7 @@ app.post('/api/ai/generate-similar', authMiddleware, rateLimitMiddleware(AI_RATE
 // the AI provider key is set in the environment.
 // (Internal: currently uses Gemini Flash via GEMINI_API_KEY env, but this
 // is intentionally not exposed in the API responses or client UI.)
-app.post('/api/lab/generate-questions', rateLimitMiddleware(4), async (req, res) => {
+app.post('/api/lab/generate-questions', rateLimitMiddleware(4), ipAbuseGuard('lab_gen'), async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
   const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
   if (!apiKey) {
@@ -1144,7 +1224,7 @@ async function softAuthMiddleware(req, res, next) {
 //  - Without JWT (local-testing phase) → stateless AI call only: validates
 //    input, calls AI, returns { ok, pack_id: null, materials }. The client
 //    tracks quota and persists packs in localStorage.
-app.post('/api/study/generate', softAuthMiddleware, rateLimitMiddleware(3),
+app.post('/api/study/generate', rateLimitMiddleware(3), ipAbuseGuard('study_gen'), softAuthMiddleware,
   studyUpload.single('pdf'),
   async (req, res) => {
     try {

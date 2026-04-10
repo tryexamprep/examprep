@@ -143,20 +143,73 @@ if (badInserts.length > 0) {
   console.log(`  ✓ All ${insertChecks.length} INSERT policies have proper WITH CHECK`);
 }
 
-// ===== Step 4: Verify the atomic-quota RPCs exist =====
-console.log('\n▸ Step 4: Verifying atomic quota RPCs ...');
+// ===== Step 4: Verify the atomic-quota + abuse RPCs exist =====
+console.log('\n▸ Step 4: Verifying atomic quota + abuse RPCs ...');
 const rpcs = await runSql('rpc check', `
   SELECT proname
   FROM pg_proc
   WHERE pronamespace = 'public'::regnamespace
-    AND proname IN ('reset_user_quotas_if_needed', 'ep_reserve_pdf_slot', 'ep_reserve_ai_slots')
+    AND proname IN (
+      'reset_user_quotas_if_needed',
+      'ep_reserve_pdf_slot',
+      'ep_reserve_ai_slots',
+      'ep_reserve_study_pack_slot',
+      'ep_check_ip_throttle'
+    )
   ORDER BY proname;
 `);
 const rpcNames = new Set(rpcs.map(r => r.proname));
-for (const expected of ['reset_user_quotas_if_needed', 'ep_reserve_pdf_slot', 'ep_reserve_ai_slots']) {
+for (const expected of [
+  'reset_user_quotas_if_needed',
+  'ep_reserve_pdf_slot',
+  'ep_reserve_ai_slots',
+  'ep_reserve_study_pack_slot',
+  'ep_check_ip_throttle',
+]) {
   const mark = rpcNames.has(expected) ? '✓ exists' : '✗ MISSING';
   console.log(`  ${(expected + '                              ').slice(0, 32)} | ${mark}`);
 }
+
+// ===== Step 4b: Smoke-test the IP throttle RPC (allow → block → reset) =====
+console.log('\n▸ Step 4b: Smoke-testing ep_check_ip_throttle ...');
+const TEST_IP_HASH = 'verifier-test-' + 'a'.repeat(50); // ≥16 chars, isolated key
+const TEST_BUCKET = 'verifier_smoke';
+// Wipe any prior state from earlier runs.
+await runSql('throttle reset', `
+  DELETE FROM ep_ip_throttle WHERE ip_hash = '${TEST_IP_HASH}' AND bucket = '${TEST_BUCKET}';
+`);
+// Cap = 2/day, 5/week. 3rd call must be blocked.
+const t1 = await runSql('throttle call 1', `
+  SELECT ep_check_ip_throttle('${TEST_IP_HASH}', '${TEST_BUCKET}', 2, 5, 24) AS result;
+`);
+const t2 = await runSql('throttle call 2', `
+  SELECT ep_check_ip_throttle('${TEST_IP_HASH}', '${TEST_BUCKET}', 2, 5, 24) AS result;
+`);
+const t3 = await runSql('throttle call 3', `
+  SELECT ep_check_ip_throttle('${TEST_IP_HASH}', '${TEST_BUCKET}', 2, 5, 24) AS result;
+`);
+function pickResult(rows) {
+  // Supabase management API returns either an array of {result: {...}} or
+  // a {result: {...}} object — handle both shapes.
+  const row = Array.isArray(rows) ? rows[0] : rows;
+  return row?.result || row;
+}
+const a1 = pickResult(t1);
+const a2 = pickResult(t2);
+const a3 = pickResult(t3);
+console.log(`  call 1: allowed=${a1?.allowed}  count_today=${a1?.count_today}`);
+console.log(`  call 2: allowed=${a2?.allowed}  count_today=${a2?.count_today}`);
+console.log(`  call 3: allowed=${a3?.allowed}  reason=${a3?.reason || '?'}  blocked_until=${a3?.blocked_until || '?'}`);
+const throttleOk = a1?.allowed === true && a2?.allowed === true && a3?.allowed === false;
+if (!throttleOk) {
+  console.error('  ✗ throttle smoke test FAILED — RPC not behaving as expected');
+  process.exit(4);
+}
+console.log('  ✓ throttle behaves correctly (2 allowed, 3rd blocked)');
+// Clean up the test row so we don't leave junk in the table.
+await runSql('throttle cleanup', `
+  DELETE FROM ep_ip_throttle WHERE ip_hash = '${TEST_IP_HASH}' AND bucket = '${TEST_BUCKET}';
+`);
 
 // ===== Step 5: Verify ep_questions has the new columns =====
 console.log('\n▸ Step 5: Verifying ep_questions schema ...');

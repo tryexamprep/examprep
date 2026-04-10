@@ -61,6 +61,45 @@ const state = {
   lastBatch: null, // for the mistake review screen
 };
 
+// ===== Theme (light / dark / auto) =====
+// Persists in localStorage; applied to <html data-theme="..."> on boot. Auto
+// mode follows the system color-scheme preference and re-applies on change.
+const Theme = {
+  KEY: 'ep_theme_v1',
+  current() {
+    try { return localStorage.getItem(this.KEY) || 'light'; } catch { return 'light'; }
+  },
+  set(theme) {
+    if (!['light', 'dark', 'auto'].includes(theme)) theme = 'light';
+    try { localStorage.setItem(this.KEY, theme); } catch {}
+    this.apply();
+  },
+  resolved() {
+    const t = this.current();
+    if (t !== 'auto') return t;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  },
+  apply() {
+    const r = this.resolved();
+    document.documentElement.setAttribute('data-theme', r);
+    // Update meta theme-color so the mobile chrome bar matches
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', r === 'dark' ? '#0b1120' : '#1d4ed8');
+    // Notify listeners
+    document.dispatchEvent(new CustomEvent('themechange', { detail: { theme: r, mode: this.current() } }));
+  },
+  init() {
+    this.apply();
+    // Listen to system preference changes for auto mode
+    if (window.matchMedia) {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => { if (this.current() === 'auto') this.apply(); };
+      if (mq.addEventListener) mq.addEventListener('change', handler);
+      else if (mq.addListener) mq.addListener(handler);
+    }
+  },
+};
+
 // ===== Local "auth" (admin testing phase only) =====
 // SECURITY NOTE: This is a localStorage-only mock for the local-files
 // testing phase. There is NO real authentication here. The `plan` and
@@ -100,6 +139,15 @@ const Auth = {
     };
     this.save(u);
     return u;
+  },
+  // Patch the current user record (local-mode only). Used by the settings
+  // page to update name/plan. Phase 2 will route to a Supabase RPC.
+  update(patch) {
+    const cur = this.current();
+    if (!cur) return null;
+    const next = Object.assign({}, cur, patch);
+    this.save(next);
+    return next;
   },
 };
 
@@ -377,6 +425,7 @@ function renderRoute() {
   if (path === '/study') return renderStudyList();
   if (path === '/study/new') return renderStudyCreate();
   if (path.startsWith('/study/')) return renderStudyPack(path.split('/')[2]);
+  if (path === '/settings') return renderSettings(params.get('tab') || 'profile');
   return renderLanding();
 }
 
@@ -768,6 +817,10 @@ function renderAuth(signupMode = false) {
   const forgotLink = document.getElementById('forgot-link');
   const passInput = document.getElementById('auth-pass');
   const togglePass = document.getElementById('toggle-pass');
+  const passConfirmField = document.getElementById('signup-pass-confirm-field');
+  const passConfirmInput = document.getElementById('auth-pass-confirm');
+  const togglePassConfirm = document.getElementById('toggle-pass-confirm');
+  const passMatchEl = document.getElementById('pass-match');
 
   let mode = signupMode ? 'signup' : 'login';
 
@@ -793,6 +846,16 @@ function renderAuth(signupMode = false) {
     if (passwordRules) passwordRules.style.display = mode === 'signup' ? 'flex' : 'none';
     if (loginOptions) loginOptions.style.display = mode === 'login' ? 'flex' : 'none';
     if (forgotLink) forgotLink.style.display = mode === 'login' ? '' : 'none';
+    if (passConfirmField) passConfirmField.style.display = mode === 'signup' ? '' : 'none';
+    if (passConfirmInput) {
+      if (mode === 'signup') {
+        passConfirmInput.setAttribute('required', '');
+      } else {
+        passConfirmInput.removeAttribute('required');
+        passConfirmInput.value = '';
+      }
+    }
+    if (passMatchEl) { passMatchEl.style.display = 'none'; passMatchEl.textContent = ''; passMatchEl.className = 'pass-match'; }
     passInput.placeholder = mode === 'signup' ? 'בחר סיסמה חזקה' : 'הזן סיסמה';
     passInput.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
   }
@@ -803,16 +866,36 @@ function renderAuth(signupMode = false) {
     applyMode();
   }));
 
-  // Password show/hide
-  if (togglePass) togglePass.addEventListener('click', () => {
-    if (passInput.type === 'password') {
-      passInput.type = 'text';
-      togglePass.textContent = '🙈';
-    } else {
-      passInput.type = 'password';
-      togglePass.textContent = '👁';
+  // Password show/hide (works for both password fields)
+  function bindEyeToggle(btn, input) {
+    if (!btn || !input) return;
+    btn.addEventListener('click', () => {
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+  }
+  bindEyeToggle(togglePass, passInput);
+  bindEyeToggle(togglePassConfirm, passConfirmInput);
+
+  // Live match indicator for signup confirm field
+  function updateMatchIndicator() {
+    if (mode !== 'signup' || !passMatchEl) return;
+    const a = passInput.value;
+    const b = passConfirmInput.value;
+    if (!b) {
+      passMatchEl.style.display = 'none';
+      passMatchEl.textContent = '';
+      passMatchEl.className = 'pass-match';
+      return;
     }
-  });
+    passMatchEl.style.display = 'flex';
+    if (a === b) {
+      passMatchEl.textContent = '✓ הסיסמאות תואמות';
+      passMatchEl.className = 'pass-match match';
+    } else {
+      passMatchEl.textContent = '✗ הסיסמאות לא תואמות';
+      passMatchEl.className = 'pass-match mismatch';
+    }
+  }
 
   // Password rules live update (only in signup mode)
   passInput.addEventListener('input', () => {
@@ -827,7 +910,9 @@ function renderAuth(signupMode = false) {
     document.querySelectorAll('.password-rules .rule').forEach(r => {
       r.classList.toggle('met', !!rules[r.dataset.rule]);
     });
+    updateMatchIndicator();
   });
+  if (passConfirmInput) passConfirmInput.addEventListener('input', updateMatchIndicator);
 
   // Forgot password (placeholder)
   if (forgotLink) forgotLink.addEventListener('click', (e) => {
@@ -856,6 +941,9 @@ function renderAuth(signupMode = false) {
       if (password.length < 8) { errEl.textContent = 'סיסמה חייבת להיות לפחות 8 תווים'; return; }
       if (!/[A-Za-z]/.test(password)) { errEl.textContent = 'סיסמה חייבת להכיל לפחות אות אחת'; return; }
       if (!/\d/.test(password)) { errEl.textContent = 'סיסמה חייבת להכיל לפחות ספרה אחת'; return; }
+      const passwordConfirm = passConfirmInput ? passConfirmInput.value : '';
+      if (!passwordConfirm) { errEl.textContent = 'נא לאמת את הסיסמה'; return; }
+      if (password !== passwordConfirm) { errEl.textContent = 'הסיסמאות לא תואמות'; return; }
       if (!name) { errEl.textContent = 'נא להזין שם מלא'; return; }
     } else {
       if (password.length < 6) { errEl.textContent = 'סיסמה לא תקינה'; return; }
@@ -881,7 +969,7 @@ function renderAuth(signupMode = false) {
     if (DemoSeed.shouldSeed(user.email)) {
       DemoSeed.build(user.email);
     }
-    toast('ברוך הבא, אדמין! 📊 נטענו נתוני דמו מ-10 ימי תרגול.', 'success');
+    toast('ברוך הבא, אדמין. נטענו נתוני דמו מ-10 ימי תרגול.', 'success');
     setTimeout(() => navigate('/dashboard'), 400);
   });
 }
@@ -903,16 +991,46 @@ async function renderDashboard() {
   $app.appendChild(tmpl('tmpl-dash'));
 
   wireTopbar();
-  document.getElementById('dash-greet-title').textContent = `שלום ${state.user.name}! 👋`;
+  document.getElementById('dash-greet-title').textContent = `שלום ${state.user.name}`;
 
-  // Stats
+  // Stats — clean monochrome metric cards with subtle SVG label icons
   const stats = Progress.stats(state.user.email);
+  const accuracy = stats.unique > 0 ? Math.round((stats.correct / stats.unique) * 100) : 0;
   const sg = document.getElementById('dash-stats');
+  sg.className = 'metric-grid';
   sg.innerHTML = `
-    <div class="stat-card brand"><div class="label">סה"כ ניסיונות</div><div class="value">${stats.total}</div></div>
-    <div class="stat-card success"><div class="label">תשובות נכונות (ייחודיות)</div><div class="value">${stats.correct}</div></div>
-    <div class="stat-card danger"><div class="label">טעיתי / הוצגו</div><div class="value">${stats.wrong}</div></div>
-    <div class="stat-card warn"><div class="label">בתור החזרה</div><div class="value">${stats.reviewCount}</div></div>
+    <div class="metric-card">
+      <div class="metric-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        סך ניסיונות
+      </div>
+      <div class="metric-value">${stats.total}</div>
+      <div class="metric-sub"><strong>${stats.unique}</strong> שאלות ייחודיות</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        תשובות נכונות
+      </div>
+      <div class="metric-value">${stats.correct}</div>
+      <div class="metric-sub">דיוק כללי <strong>${accuracy}%</strong></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        טעיתי / הוצגו
+      </div>
+      <div class="metric-value">${stats.wrong}</div>
+      <div class="metric-sub">שאלות שצריך לחזור עליהן</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+        בתור החזרה
+      </div>
+      <div class="metric-value">${stats.reviewCount}</div>
+      <div class="metric-sub">בהמתנה לתרגול חוזר</div>
+    </div>
   `;
 
   // Courses (currently only "תוכנה 1" for admin)
@@ -920,13 +1038,13 @@ async function renderDashboard() {
   const totalQuestions = Data.allQuestions().length;
   const totalExams = Data.metadata.exams.length;
   cg.innerHTML = `
-    <div class="course-card" style="--course-color:#3933e0" data-course="tohna1">
+    <div class="course-card" style="--course-color:#3b82f6" data-course="tohna1">
       <h3>תוכנה 1</h3>
       <div class="desc">בנק שאלות אמריקאיות מבחינות עבר של תוכנה 1 — אונ' תל אביב. כולל הסברים מפורטים בעברית לכל שאלה.</div>
       <div class="meta">
         <span><strong>${totalQuestions}</strong> שאלות</span>
         <span><strong>${totalExams}</strong> מבחנים</span>
-        <span class="ready-pill">● מוכן לתרגול</span>
+        <span class="ready-pill">מוכן לתרגול</span>
       </div>
     </div>
     <div class="course-card add" id="btn-add-course-card">
@@ -1633,13 +1751,13 @@ async function renderInsights() {
   const examCount = exams.length;
   if (examCount < minRecommended) {
     banner.className = 'insights-banner warn';
-    banner.innerHTML = `⚠️ <strong>הניתוח יעבוד טוב יותר עם יותר מבחנים.</strong> כרגע יש בקורס "${escapeHtml(state.course.name)}" רק <strong>${examCount}</strong> מבחנים. המלצה: לפחות <strong>${minRecommended}</strong> מבחנים שונים כדי שנוכל לזהות דפוסים אמיתיים של מה שחוזר.`;
+    banner.innerHTML = `<strong>הניתוח יעבוד טוב יותר עם יותר מבחנים.</strong> כרגע יש בקורס "${escapeHtml(state.course.name)}" רק <strong>${examCount}</strong> מבחנים. המלצה: לפחות <strong>${minRecommended}</strong> מבחנים שונים כדי שנוכל לזהות דפוסים אמיתיים של מה שחוזר.`;
   } else {
     banner.className = 'insights-banner ok';
-    banner.innerHTML = `✅ <strong>${examCount} מבחנים</strong> בקורס "${escapeHtml(state.course.name)}" — מספיק כדי לזהות דפוסים אמיתיים. ${questions.length} שאלות נותחו · ${analysis.length} נושאי ליבה זוהו.`;
+    banner.innerHTML = `<strong>${examCount} מבחנים</strong> בקורס "${escapeHtml(state.course.name)}" — מספיק כדי לזהות דפוסים אמיתיים. ${questions.length} שאלות נותחו · ${analysis.length} נושאי ליבה זוהו.`;
   }
 
-  // Topic map
+  // Topic map — clean, color dots instead of emoji icons
   const topicMap = document.getElementById('topic-map');
   const maxCount = Math.max(...analysis.map(b => b.count), 1);
   topicMap.innerHTML = analysis.map(b => {
@@ -1648,7 +1766,7 @@ async function renderInsights() {
     return `
       <div class="topic-row" style="--bar-color:${b.color}">
         <div class="topic-row-head">
-          <span class="topic-icon">${b.icon}</span>
+          <span class="color-dot" style="--dot-color:${b.color}"></span>
           <span class="topic-name">${escapeHtml(b.name)}</span>
           <span class="topic-meta">${b.count} שאלות · ${b.examIds.length} מבחנים${accPct != null ? ` · דיוק שלך ${accPct}%` : ' · לא תרגלת'}</span>
         </div>
@@ -1657,7 +1775,7 @@ async function renderInsights() {
     `;
   }).join('');
 
-  // Focus areas — top 5 by focus score
+  // Focus areas — top 5 by focus score (no emoji icons, clean restrained typography)
   const focusList = [...analysis].sort((a, b) => b.focusScore - a.focusScore).slice(0, 5);
   const focusGrid = document.getElementById('focus-grid');
   focusGrid.innerHTML = focusList.map((b, i) => {
@@ -1669,9 +1787,8 @@ async function renderInsights() {
     else reason = 'נושא מרכזי בקורס';
     return `
       <div class="focus-card" style="--accent:${b.color}">
-        <div class="focus-rank">#${i + 1}</div>
-        <div class="focus-icon">${b.icon}</div>
-        <h3>${escapeHtml(b.name)}</h3>
+        <div class="focus-rank">תעדוף #${i + 1}</div>
+        <h3><span class="color-dot" style="--dot-color:${b.color}"></span> ${escapeHtml(b.name)}</h3>
         <p class="focus-reason">${escapeHtml(reason)}</p>
         <div class="focus-stats">
           <span><strong>${b.count}</strong> שאלות</span>
@@ -1705,7 +1822,7 @@ async function renderInsights() {
         <div class="hard-q-info">
           <div class="hard-q-title">${escapeHtml(h.topic || 'שאלה')}</div>
           <div class="hard-q-meta">
-            ${exam ? `<span>📍 ${escapeHtml(exam.label)}</span>` : ''}
+            ${exam ? `<span>${escapeHtml(exam.label)}</span>` : ''}
             <span>${h.numOpts} אופציות</span>
             ${h.reasons.map(r => `<span class="reason-pill">${escapeHtml(r)}</span>`).join('')}
           </div>
@@ -2026,7 +2143,7 @@ async function renderProgress() {
       <span>שיא: <strong>${streak.longestStreak}</strong> ימים</span>
       <span>סה"כ פעיל: <strong>${streak.daysActive}</strong> ימים</span>
     </div>
-    ${streak.currentStreak >= 1 ? '<div class="badge-good">🔥 רצף פעיל</div>' : '<div class="badge-warn">לא תרגלת היום</div>'}
+    ${streak.currentStreak >= 1 ? '<div class="badge-good">רצף פעיל</div>' : '<div class="badge-warn">לא תרגלת היום</div>'}
   `;
 
   // Time
@@ -2054,13 +2171,14 @@ async function renderProgress() {
       <div class="meta-line">
         <span>20 אחרונות לעומת ה-20 שלפניהן: ${trend.trend > 0 ? '+' : ''}${Math.round(trend.trend * 100)}%</span>
       </div>
-      ${trend.trend > 0.1 ? '<div class="badge-good">📈 משתפר</div>' : trend.trend < -0.1 ? '<div class="badge-warn">📉 ירידה</div>' : '<div class="badge-info">יציב</div>'}
+      ${trend.trend > 0.1 ? '<div class="badge-good">משתפר</div>' : trend.trend < -0.1 ? '<div class="badge-warn">ירידה</div>' : '<div class="badge-info">יציב</div>'}
     `;
   }
 
-  // Mastery grid
+  // Mastery — modern data table with inline accuracy bars and status pills
   const masteryEl = document.getElementById('mastery-grid');
-  masteryEl.innerHTML = mastery.map(m => {
+  masteryEl.className = 'data-table-wrap';
+  const masteryRows = mastery.map(m => {
     const pct = m.mastery == null ? null : Math.round(m.mastery * 100);
     const cov = Math.round(m.coverage * 100);
     let level = 'unknown';
@@ -2072,31 +2190,48 @@ async function renderProgress() {
     const levelText = {
       master: 'שולט', good: 'טוב', mid: 'בסדר', weak: 'חלש', unknown: 'לא תרגלת',
     }[level];
+    const barClass = level === 'master' || level === 'good' ? 'bar-good'
+                   : level === 'mid' ? 'bar-mid'
+                   : level === 'weak' ? 'bar-bad' : '';
     return `
-      <div class="mastery-card ${level}" style="--accent:${m.color}">
-        <div class="mastery-head">
-          <span class="mastery-icon">${m.icon}</span>
-          <div class="mastery-title">
-            <h4>${escapeHtml(m.name)}</h4>
-            <small>${m.count} שאלות בבנק · ${m.attemptCount} ניסיונות</small>
+      <tr>
+        <td>
+          <div class="row-title">
+            <span class="color-dot" style="--dot-color:${m.color}"></span>
+            ${escapeHtml(m.name)}
           </div>
-          <span class="mastery-level">${levelText}</span>
-        </div>
-        ${pct != null ? `
-          <div class="mastery-bar">
-            <div class="mastery-bar-fill" style="width:${pct}%"></div>
-            <span class="mastery-bar-label">${pct}% דיוק</span>
-          </div>
-        ` : `
-          <div class="mastery-empty">לא ניסית עדיין שאלה מהנושא הזה</div>
-        `}
-        <div class="mastery-foot">
-          <span>כיסוי: ${cov}%</span>
-          <button class="btn btn-soft btn-sm mastery-practice" data-bucket="${m.id}">תרגל →</button>
-        </div>
-      </div>
+          <div class="row-sub">${m.count} שאלות בבנק · ${m.attemptCount} ניסיונות</div>
+        </td>
+        <td class="num">${cov}%</td>
+        <td>
+          ${pct != null ? `
+            <div class="bar-cell">
+              <div class="bar-track"><div class="bar-fill ${barClass}" style="width:${pct}%"></div></div>
+              <span class="bar-num">${pct}%</span>
+            </div>
+          ` : '<span class="muted">—</span>'}
+        </td>
+        <td><span class="status-pill s-${level}">${levelText}</span></td>
+        <td class="col-action">
+          <button class="btn-row mastery-practice" data-bucket="${m.id}">תרגל</button>
+        </td>
+      </tr>
     `;
   }).join('');
+  masteryEl.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>נושא</th>
+          <th>כיסוי</th>
+          <th>דיוק</th>
+          <th>סטטוס</th>
+          <th class="col-action"></th>
+        </tr>
+      </thead>
+      <tbody>${masteryRows}</tbody>
+    </table>
+  `;
 
   document.querySelectorAll('.mastery-practice').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2109,28 +2244,54 @@ async function renderProgress() {
     });
   });
 
-  // Recent batches
+  // Recent batches — modern data table
   const recent = [...batches].reverse().slice(0, 10);
   const batchEl = document.getElementById('recent-batches');
   if (!recent.length) {
-    batchEl.innerHTML = '<div class="empty-state">עוד לא ביצעת מקבצי תרגול. תתחיל מהדשבורד!</div>';
+    batchEl.className = '';
+    batchEl.innerHTML = '<div class="empty-state">עוד לא ביצעת מקבצי תרגול. תתחיל מהדשבורד.</div>';
   } else {
-    batchEl.innerHTML = recent.map(b => {
+    batchEl.className = 'data-table-wrap';
+    const rows = recent.map(b => {
       const score = Math.round((b.correct / Math.max(1, b.size)) * 100);
       const dt = new Date(b.endedAt || b.startedAt || Date.now());
       const dateStr = dt.toLocaleDateString('he-IL') + ' ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-      const cls = score >= 80 ? 'good' : score >= 60 ? 'mid' : 'bad';
+      const barClass = score >= 80 ? 'bar-good' : score >= 60 ? 'bar-mid' : 'bar-bad';
+      const statusClass = score >= 80 ? 's-good' : score >= 60 ? 's-mid' : 's-weak';
+      const modeLabel = b.examMode ? 'מצב מבחן' : 'מצב למידה';
+      const modePill = b.examMode ? 's-info' : 's-unknown';
       return `
-        <div class="batch-row ${cls}">
-          <div class="batch-score">${score}%</div>
-          <div class="batch-info">
-            <div class="batch-meta">${b.size} שאלות · ${b.correct} נכון · ${b.wrong} שגוי${b.examMode ? ' · 📝 מצב מבחן' : ''}</div>
-            <div class="batch-date">${dateStr}</div>
-          </div>
-          <div class="batch-bar"><div class="batch-bar-fill" style="width:${score}%"></div></div>
-        </div>
+        <tr>
+          <td>
+            <div class="row-title">${dateStr}</div>
+            <div class="row-sub">${b.size} שאלות · ${b.correct} נכון · ${b.wrong} שגוי</div>
+          </td>
+          <td><span class="status-pill ${modePill}">${modeLabel}</span></td>
+          <td class="num">${b.correct}/${b.size}</td>
+          <td>
+            <div class="bar-cell">
+              <div class="bar-track"><div class="bar-fill ${barClass}" style="width:${score}%"></div></div>
+              <span class="bar-num">${score}%</span>
+            </div>
+          </td>
+          <td><span class="status-pill ${statusClass}">${score >= 80 ? 'מעולה' : score >= 60 ? 'בסדר' : 'דורש עבודה'}</span></td>
+        </tr>
       `;
     }).join('');
+    batchEl.innerHTML = `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>תאריך</th>
+            <th>סוג</th>
+            <th>נכון/סך</th>
+            <th>ציון</th>
+            <th>סטטוס</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
   }
 
   // Tips
@@ -2140,7 +2301,7 @@ async function renderProgress() {
   } else {
     tipsEl.innerHTML = tips.map(t => `
       <div class="tip-card tone-${t.tone}">
-        <div class="tip-icon">${t.icon}</div>
+        <div class="tip-icon" aria-hidden="true"></div>
         <div class="tip-body">
           <h4>${escapeHtml(t.title)}</h4>
           <p>${escapeHtml(t.body)}</p>
@@ -2178,12 +2339,11 @@ function wireTopbar() {
     planEl.textContent = state.user.plan;
     if (state.user.plan === 'pro' || state.user.plan === 'education') planEl.classList.add('pro');
   }
+  // The whole .app-user block is now a dropdown trigger; the in-template
+  // logout button moves into the dropdown so we hide its inline copy.
   const logoutBtn = document.getElementById('btn-logout');
-  if (logoutBtn) logoutBtn.addEventListener('click', () => {
-    Auth.clear();
-    state.user = null;
-    navigate('/');
-  });
+  if (logoutBtn) logoutBtn.style.display = 'none';
+  wireUserMenu();
   // Mobile nav toggle
   const toggle = document.getElementById('topbar-mobile-toggle');
   if (toggle) {
@@ -2191,6 +2351,269 @@ function wireTopbar() {
       document.querySelector('.app-topbar').classList.toggle('mobile-open');
     });
   }
+}
+
+// ===== User dropdown menu =====
+// Click on .app-user (the avatar block in the topbar) opens a floating menu
+// with profile info, quick links, theme toggle, and logout. The dropdown is
+// injected on demand and removed on close to keep the DOM clean across
+// route navigations.
+function wireUserMenu() {
+  const userBlock = document.querySelector('.app-user');
+  if (!userBlock || userBlock.dataset.menuWired) return;
+  userBlock.dataset.menuWired = '1';
+  userBlock.classList.add('app-user-clickable');
+  // Add a chevron caret so it visually reads as a button
+  if (!userBlock.querySelector('.app-user-caret')) {
+    const caret = document.createElement('span');
+    caret.className = 'app-user-caret';
+    caret.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+    userBlock.appendChild(caret);
+  }
+  userBlock.addEventListener('click', (e) => {
+    // Avoid opening when clicking the (now-hidden) inline logout button
+    if (e.target.closest('#btn-logout')) return;
+    e.stopPropagation();
+    toggleUserMenu(userBlock);
+  });
+}
+
+function toggleUserMenu(anchor) {
+  const existing = document.getElementById('user-menu-pop');
+  if (existing) { existing.remove(); return; }
+  if (!state.user) return;
+
+  const planLabel = (state.user.plan || 'free').toUpperCase();
+  const themeMode = Theme.current();
+  const themeResolved = Theme.resolved();
+  const themeIcon = themeResolved === 'dark'
+    ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+
+  const pop = document.createElement('div');
+  pop.id = 'user-menu-pop';
+  pop.className = 'user-menu-pop';
+  pop.innerHTML = `
+    <div class="user-menu-head">
+      <div class="user-menu-avatar">${(state.user.name || 'U').slice(0, 1).toUpperCase()}</div>
+      <div class="user-menu-id">
+        <div class="user-menu-name">${escapeHtml(state.user.name || 'משתמש')}</div>
+        <div class="user-menu-email">${escapeHtml(state.user.email || '')}</div>
+      </div>
+      <span class="user-menu-plan ${state.user.plan === 'pro' || state.user.plan === 'education' ? 'is-pro' : ''}">${planLabel}</span>
+    </div>
+    <div class="user-menu-divider"></div>
+    <a class="user-menu-item" href="#/settings" data-menu-route="/settings">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1A2 2 0 1 1 4.3 17l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1A2 2 0 1 1 7 4.3l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      <span>הגדרות חשבון</span>
+    </a>
+    <a class="user-menu-item" href="#/settings?tab=plan" data-menu-route="/settings?tab=plan">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>תוכנית ומנוי</span>
+    </a>
+    <a class="user-menu-item" href="#/progress" data-menu-route="/progress">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span>ההתקדמות שלי</span>
+    </a>
+    <button class="user-menu-item user-menu-theme-toggle" id="user-menu-theme-toggle" type="button">
+      ${themeIcon}
+      <span>${themeResolved === 'dark' ? 'מצב בהיר' : 'מצב כהה'}</span>
+    </button>
+    <div class="user-menu-divider"></div>
+    <button class="user-menu-item user-menu-logout" id="user-menu-logout" type="button">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>יציאה</span>
+    </button>
+  `;
+  anchor.appendChild(pop);
+
+  // Wire menu actions
+  pop.querySelectorAll('[data-menu-route]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      pop.remove();
+      navigate(link.getAttribute('data-menu-route'));
+    });
+  });
+  pop.querySelector('#user-menu-theme-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    Theme.set(Theme.resolved() === 'dark' ? 'light' : 'dark');
+    pop.remove();
+  });
+  pop.querySelector('#user-menu-logout').addEventListener('click', () => {
+    Auth.clear();
+    state.user = null;
+    navigate('/');
+  });
+
+  // Close on outside click / Escape
+  setTimeout(() => {
+    document.addEventListener('click', closeUserMenuOnClickOutside, { once: true });
+  }, 0);
+  document.addEventListener('keydown', closeUserMenuOnEsc);
+}
+
+function closeUserMenuOnClickOutside(e) {
+  const pop = document.getElementById('user-menu-pop');
+  if (!pop) return;
+  if (pop.contains(e.target)) {
+    document.addEventListener('click', closeUserMenuOnClickOutside, { once: true });
+    return;
+  }
+  pop.remove();
+  document.removeEventListener('keydown', closeUserMenuOnEsc);
+}
+function closeUserMenuOnEsc(e) {
+  if (e.key !== 'Escape') return;
+  const pop = document.getElementById('user-menu-pop');
+  if (pop) pop.remove();
+  document.removeEventListener('keydown', closeUserMenuOnEsc);
+}
+
+// ===== Settings page =====
+const PLAN_INFO = {
+  free:      { label: 'FREE',      desc: '2 חבילות לימוד · 5 קבצי PDF · ללא AI' },
+  basic:     { label: 'BASIC',     desc: '30 חבילות · 30 PDFs · 100 שאלות AI · 5 קורסים' },
+  pro:       { label: 'PRO',       desc: '150 PDFs · 500 שאלות AI · קורסים ללא הגבלה' },
+  education: { label: 'EDUCATION', desc: 'הכל מ-Pro + 50 משתמשי משנה + דשבורד מורה' },
+};
+
+function renderSettings(initialTab) {
+  if (!state.user) state.user = Auth.current();
+  if (!state.user) return navigate('/login');
+  const tpl = tmpl('tmpl-settings');
+  $app.innerHTML = '';
+  $app.appendChild(tpl);
+  wireTopbar();
+
+  // Highlight settings tab in topbar nav (no nav link for settings, but we
+  // still want to clear active state on others)
+  document.querySelectorAll('.topbar-nav a').forEach(a => a.classList.remove('active'));
+
+  // Switch panels
+  const tabs = document.querySelectorAll('.settings-nav-item');
+  const panels = document.querySelectorAll('.settings-panel');
+  function showTab(name) {
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    panels.forEach(p => p.toggleAttribute('hidden', p.dataset.panel !== name));
+  }
+  tabs.forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+  showTab(initialTab && document.querySelector(`.settings-nav-item[data-tab="${initialTab}"]`) ? initialTab : 'profile');
+
+  // Profile section
+  const u = state.user;
+  const initial = (u.name || 'U').slice(0, 1).toUpperCase();
+  document.getElementById('settings-avatar').textContent = initial;
+  document.getElementById('settings-name').textContent = u.name || '—';
+  document.getElementById('settings-email').textContent = u.email || '—';
+  document.getElementById('settings-name-input').value = u.name || '';
+  document.getElementById('settings-email-input').value = u.email || '';
+  document.getElementById('settings-save-profile').addEventListener('click', () => {
+    const newName = document.getElementById('settings-name-input').value.trim();
+    if (!newName) return;
+    state.user = Auth.update({ name: newName });
+    document.getElementById('settings-name').textContent = newName;
+    document.getElementById('settings-avatar').textContent = newName.slice(0, 1).toUpperCase();
+    const status = document.getElementById('settings-save-status');
+    status.textContent = 'נשמר ✓';
+    status.classList.add('is-ok');
+    setTimeout(() => { status.textContent = ''; status.classList.remove('is-ok'); }, 2200);
+  });
+
+  // Plan section
+  const planInfo = PLAN_INFO[u.plan] || PLAN_INFO.free;
+  document.getElementById('settings-plan-name').textContent = planInfo.label;
+  document.getElementById('settings-plan-meta').textContent = planInfo.desc;
+  document.querySelectorAll('.settings-plan-tile').forEach(tile => {
+    if (tile.dataset.plan === u.plan) tile.classList.add('is-current');
+    tile.addEventListener('click', () => {
+      const newPlan = tile.dataset.plan;
+      if (newPlan === u.plan) return;
+      if (!confirm(`האם להחליף תוכנית ל-${(PLAN_INFO[newPlan] || {label: newPlan}).label}?\n\n(זהו שינוי מקומי בלבד — חיוב אמיתי יחובר ב-Phase 2)`)) return;
+      state.user = Auth.update({ plan: newPlan });
+      renderSettings('plan');
+    });
+  });
+  document.getElementById('settings-upgrade-btn').addEventListener('click', (e) => {
+    e.preventDefault();
+    location.hash = '#pricing';
+    navigate('/');
+  });
+  document.getElementById('settings-manage-billing').addEventListener('click', () => {
+    alert('ניהול חיוב יתחבר ל-Stripe ב-Phase 2.\nכרגע אין נתוני חיוב אמיתיים.');
+  });
+
+  // Appearance / theme
+  const themePicker = document.getElementById('theme-picker');
+  function highlightTheme() {
+    themePicker.querySelectorAll('.theme-option').forEach(opt => {
+      opt.classList.toggle('is-active', opt.dataset.theme === Theme.current());
+    });
+  }
+  themePicker.querySelectorAll('.theme-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      Theme.set(opt.dataset.theme);
+      highlightTheme();
+    });
+  });
+  highlightTheme();
+
+  // Notifications — persisted to localStorage as a simple JSON object
+  const PREFS_KEY = 'ep_prefs_v1';
+  const prefs = (() => { try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch { return {}; } })();
+  document.querySelectorAll('[data-pref]').forEach(input => {
+    const key = input.getAttribute('data-pref');
+    if (typeof prefs[key] === 'boolean') input.checked = prefs[key];
+    input.addEventListener('change', () => {
+      prefs[key] = input.checked;
+      try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch {}
+    });
+  });
+
+  // Privacy actions
+  document.getElementById('settings-export-data').addEventListener('click', () => {
+    const data = {
+      user: state.user,
+      progress: (typeof Progress !== 'undefined' && Progress.load) ? Progress.load(state.user.email) : null,
+      studyPacks: (typeof StudyStore !== 'undefined' && StudyStore.list) ? StudyStore.list() : null,
+      prefs,
+      exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `examprep-export-${Date.now()}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  });
+  document.getElementById('settings-clear-history').addEventListener('click', () => {
+    if (!confirm('למחוק את כל היסטוריית התרגול שלך? פעולה זו לא ניתנת לביטול.')) return;
+    try {
+      const k = `ep_progress_${state.user.email}`;
+      localStorage.removeItem(k);
+    } catch {}
+    alert('היסטוריית התרגול נמחקה.');
+  });
+
+  // Danger zone
+  document.getElementById('settings-cancel-sub').addEventListener('click', () => {
+    if (!confirm('האם לבטל את המנוי שלך?\nהמנוי יישאר פעיל עד סוף תקופת החיוב הנוכחית.')) return;
+    state.user = Auth.update({ plan: 'free' });
+    alert('המנוי בוטל. החשבון יחזור למצב חינמי.');
+    renderSettings('plan');
+  });
+  document.getElementById('settings-delete-account').addEventListener('click', () => {
+    if (!confirm('למחוק לצמיתות את החשבון שלך וכל הנתונים?\nפעולה זו לא ניתנת לביטול.')) return;
+    if (!confirm('זוהי הזדמנות אחרונה. למחוק לצמיתות?')) return;
+    try {
+      Object.keys(localStorage).filter(k => k.startsWith('ep_')).forEach(k => localStorage.removeItem(k));
+    } catch {}
+    Auth.clear();
+    state.user = null;
+    alert('החשבון נמחק. תועבר לדף הבית.');
+    navigate('/');
+  });
 }
 
 // ===== Keyboard shortcuts (during quiz) =====
@@ -2770,6 +3193,7 @@ function updateSelfTestResult(answers) {
 
 // ===== Boot =====
 (function boot() {
+  Theme.init();
   state.user = Auth.current();
   if (!location.hash) location.hash = '#/';
   renderRoute();

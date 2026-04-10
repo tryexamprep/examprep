@@ -357,12 +357,141 @@ BEGIN
 END;
 $$;
 
+-- ====== EP_IP_THROTTLE (anti-abuse: token-burning defense) ======
+-- Tracks per-IP usage of expensive AI endpoints across rolling daily and
+-- weekly windows. The per-account quota alone (2 free study packs lifetime)
+-- is not enough — an attacker can sock-puppet new accounts and burn the
+-- quota again on each one. This table puts a hard ceiling on how often any
+-- single source IP can trigger Gemini regardless of which (or no) account
+-- is logged in.
+--
+-- Privacy: stores SHA-256(server_salt + ip), not raw IPs, so we don't keep
+-- PII. The salt lives in IP_HASH_SALT env on the app server.
+CREATE TABLE IF NOT EXISTS ep_ip_throttle (
+  ip_hash TEXT NOT NULL,
+  bucket TEXT NOT NULL,
+  count_today INTEGER NOT NULL DEFAULT 0,
+  count_week INTEGER NOT NULL DEFAULT 0,
+  daily_reset_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  weekly_reset_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  blocked_until TIMESTAMPTZ,
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (ip_hash, bucket)
+);
+
+CREATE INDEX IF NOT EXISTS ep_ip_throttle_blocked_idx
+  ON ep_ip_throttle(blocked_until)
+  WHERE blocked_until IS NOT NULL;
+
+-- RLS on with no policies = nothing reachable from anon/user contexts.
+-- Only the service-role server may read/write this table.
+ALTER TABLE ep_ip_throttle ENABLE ROW LEVEL SECURITY;
+
+-- Atomically check + increment IP usage for one bucket.
+-- Returns a JSONB object:
+--   { allowed: bool, blocked_until?: timestamptz,
+--     count_today: int, count_week: int, reason?: text }
+-- Pass p_block_hours to set how long an offending IP stays blocked once
+-- it trips a daily or weekly cap.
+CREATE OR REPLACE FUNCTION ep_check_ip_throttle(
+  p_ip_hash TEXT,
+  p_bucket TEXT,
+  p_max_day INTEGER,
+  p_max_week INTEGER,
+  p_block_hours INTEGER
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+DECLARE
+  v_row ep_ip_throttle%ROWTYPE;
+  v_now TIMESTAMPTZ := NOW();
+  v_blocked_until TIMESTAMPTZ;
+BEGIN
+  IF p_ip_hash IS NULL OR length(p_ip_hash) < 16 THEN
+    RETURN jsonb_build_object('allowed', true, 'reason', 'no_ip');
+  END IF;
+
+  -- Insert-or-fetch the row.
+  INSERT INTO ep_ip_throttle (ip_hash, bucket)
+  VALUES (p_ip_hash, p_bucket)
+  ON CONFLICT (ip_hash, bucket) DO NOTHING;
+
+  -- Lock the row so concurrent requests serialize on it.
+  SELECT * INTO v_row
+  FROM ep_ip_throttle
+  WHERE ip_hash = p_ip_hash AND bucket = p_bucket
+  FOR UPDATE;
+
+  -- Currently in a temporary block?
+  IF v_row.blocked_until IS NOT NULL AND v_row.blocked_until > v_now THEN
+    RETURN jsonb_build_object(
+      'allowed', false,
+      'blocked_until', v_row.blocked_until,
+      'count_today', v_row.count_today,
+      'count_week', v_row.count_week,
+      'reason', 'blocked'
+    );
+  END IF;
+
+  -- Roll over windows if expired.
+  IF v_row.daily_reset_at < v_now - INTERVAL '24 hours' THEN
+    v_row.count_today := 0;
+    v_row.daily_reset_at := v_now;
+  END IF;
+  IF v_row.weekly_reset_at < v_now - INTERVAL '7 days' THEN
+    v_row.count_week := 0;
+    v_row.weekly_reset_at := v_now;
+  END IF;
+
+  -- Over the cap? Set a temporary block and refuse.
+  IF v_row.count_today >= p_max_day OR v_row.count_week >= p_max_week THEN
+    v_blocked_until := v_now + (p_block_hours * INTERVAL '1 hour');
+    UPDATE ep_ip_throttle
+    SET blocked_until = v_blocked_until,
+        last_seen_at = v_now,
+        daily_reset_at = v_row.daily_reset_at,
+        weekly_reset_at = v_row.weekly_reset_at,
+        count_today = v_row.count_today,
+        count_week = v_row.count_week
+    WHERE ip_hash = p_ip_hash AND bucket = p_bucket;
+    RETURN jsonb_build_object(
+      'allowed', false,
+      'blocked_until', v_blocked_until,
+      'count_today', v_row.count_today,
+      'count_week', v_row.count_week,
+      'reason', 'limit_exceeded'
+    );
+  END IF;
+
+  -- Allowed: increment counters, clear any stale block.
+  v_row.count_today := v_row.count_today + 1;
+  v_row.count_week := v_row.count_week + 1;
+  UPDATE ep_ip_throttle
+  SET count_today = v_row.count_today,
+      count_week = v_row.count_week,
+      daily_reset_at = v_row.daily_reset_at,
+      weekly_reset_at = v_row.weekly_reset_at,
+      blocked_until = NULL,
+      last_seen_at = v_now
+  WHERE ip_hash = p_ip_hash AND bucket = p_bucket;
+
+  RETURN jsonb_build_object(
+    'allowed', true,
+    'count_today', v_row.count_today,
+    'count_week', v_row.count_week
+  );
+END;
+$$;
+
 -- Lock these RPCs so only the service role + the owner can call them.
 REVOKE ALL ON FUNCTION reset_user_quotas_if_needed(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ep_reserve_pdf_slot(UUID, INTEGER, INTEGER, INTEGER, BIGINT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ep_reserve_ai_slots(UUID, INTEGER, INTEGER, INTEGER) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ep_reserve_study_pack_slot(UUID, INTEGER, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ep_check_ip_throttle(TEXT, TEXT, INTEGER, INTEGER, INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION reset_user_quotas_if_needed(UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION ep_reserve_pdf_slot(UUID, INTEGER, INTEGER, INTEGER, BIGINT) TO service_role;
 GRANT EXECUTE ON FUNCTION ep_reserve_ai_slots(UUID, INTEGER, INTEGER, INTEGER) TO service_role;
 GRANT EXECUTE ON FUNCTION ep_reserve_study_pack_slot(UUID, INTEGER, INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION ep_check_ip_throttle(TEXT, TEXT, INTEGER, INTEGER, INTEGER) TO service_role;
