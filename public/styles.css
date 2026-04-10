@@ -593,10 +593,8 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
   background: var(--border-soft);
   flex-shrink: 0;
 }
-@media (max-width: 640px) {
-  .stat-divider { display: none; }
-  .stats-grid { gap: 8px; }
-  .stat-item { padding: 12px 16px; }
+@media (max-width: 768px) {
+  .stats-strip { display: none; }
 }
 
 /* ===== Benefit cards ===== */
@@ -824,6 +822,46 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 .cta-trust span { display: inline-flex; align-items: center; gap: 8px; }
 .cta-trust .trust-check { color: rgba(255, 255, 255, .95); }
 
+/* ===== Contact Section ===== */
+.contact-section { background: var(--bg-subtle); }
+.contact-form {
+  max-width: 640px; margin: 0 auto;
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 16px; padding: 36px 32px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+.contact-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.contact-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.contact-field label { font-size: 14px; font-weight: 600; color: var(--text-1); }
+.contact-field input,
+.contact-field select,
+.contact-field textarea {
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+  font-size: 15px; background: var(--bg); color: var(--text-1);
+  font-family: inherit; transition: border-color .2s, box-shadow .2s;
+}
+.contact-field input:focus,
+.contact-field select:focus,
+.contact-field textarea:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 99,102,241), .15);
+}
+.contact-field textarea { resize: vertical; min-height: 120px; }
+.contact-submit { width: 100%; margin-top: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.contact-submit .btn-icon { width: 18px; height: 18px; }
+.contact-success {
+  display: flex; align-items: center; gap: 10px; margin-top: 16px;
+  padding: 14px 18px; border-radius: 10px;
+  background: var(--green-50, #ecfdf5); border: 1px solid var(--green-200, #a7f3d0);
+  color: var(--green-700, #047857); font-weight: 500; font-size: 15px;
+}
+.contact-success svg { width: 22px; height: 22px; flex-shrink: 0; color: var(--green-500, #10b981); }
+[data-theme="dark"] .contact-success { background: rgba(16,185,129,.1); border-color: rgba(16,185,129,.25); color: #6ee7b7; }
+@media (max-width: 640px) {
+  .contact-form { padding: 24px 18px; }
+  .contact-form-row { grid-template-columns: 1fr; }
+}
+
 /* ===== Footer ===== */
 .footer { background: var(--gray-950); color: var(--gray-400); padding: 60px 0 30px; }
 .footer-grid {
@@ -843,6 +881,85 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 }
 @media (max-width: 760px) {
   .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* ===== PWA Install Banner ===== */
+.pwa-install-banner {
+  margin-bottom: 20px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--primary-50, #eef2ff), var(--primary-100, #e0e7ff));
+  border: 1px solid var(--primary-200, #c7d2fe);
+  overflow: hidden;
+}
+[data-theme="dark"] .pwa-install-banner {
+  background: linear-gradient(135deg, rgba(99,102,241,.1), rgba(99,102,241,.05));
+  border-color: rgba(99,102,241,.25);
+}
+.pwa-install-inner {
+  display: flex; align-items: center; gap: 14px; padding: 16px 18px;
+}
+.pwa-install-icon img { border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+.pwa-install-text { flex: 1; }
+.pwa-install-text strong { font-size: 15px; display: block; color: var(--text-1); }
+.pwa-install-text p { font-size: 13px; color: var(--text-muted); margin: 2px 0 0; }
+.pwa-install-dismiss {
+  background: none; border: none; color: var(--text-muted); font-size: 18px;
+  cursor: pointer; padding: 4px; line-height: 1;
+}
+/* Hide PWA banner on desktop */
+@media (min-width: 769px) { .pwa-install-banner { display: none !important; } }
+
+/* ===== PWA Guide Modal ===== */
+.pwa-guide-modal { z-index: 10000; }
+.pwa-guide {
+  max-width: 500px; width: 92vw; max-height: 90vh; overflow-y: auto;
+  padding: 28px 24px;
+}
+.pwa-guide-header { text-align: center; margin-bottom: 24px; }
+.pwa-guide-header h2 { font-size: 22px; margin: 12px 0 6px; }
+.pwa-guide-header p { font-size: 14px; color: var(--text-muted); }
+.pwa-guide-section { margin-bottom: 24px; }
+.pwa-guide-section h3 {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 16px; font-weight: 700; color: var(--text-1);
+  margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.pwa-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+.pwa-steps li { display: flex; gap: 14px; align-items: flex-start; }
+.pwa-step-num {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  background: var(--primary); color: #fff; font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.pwa-step-content strong { font-size: 15px; display: block; margin-bottom: 2px; }
+.pwa-step-content p { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+.pwa-step-visual {
+  margin-top: 8px; padding: 10px 16px;
+  background: var(--bg-subtle); border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pwa-guide-footer {
+  text-align: center; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.pwa-guide-footer p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+/* ===== Cookie Consent Banner ===== */
+.cookie-banner {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+  background: var(--gray-900); border-top: 1px solid var(--gray-700);
+  padding: 16px 0;
+  animation: slideUpBanner .3s ease-out;
+}
+@keyframes slideUpBanner { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.cookie-banner-inner {
+  max-width: 1100px; margin: 0 auto; padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+}
+.cookie-banner p { color: var(--gray-300); font-size: 14px; margin: 0; line-height: 1.5; }
+.cookie-banner a { color: var(--primary-300, #a5b4fc); text-decoration: underline; }
+.cookie-banner .btn { flex-shrink: 0; }
+@media (max-width: 640px) {
+  .cookie-banner-inner { flex-direction: column; text-align: center; }
 }
 
 /* ===================== AUTH (split-screen) ===================== */
@@ -1189,13 +1306,8 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 
 @media (max-width: 920px) {
   .auth-split { grid-template-columns: 1fr; }
-  .auth-left { padding: 28px 24px 24px; min-height: auto; }
-  .auth-left-content { padding: 16px 0 6px; }
-  .auth-headline { font-size: clamp(26px, 6vw, 34px); margin-bottom: 10px; }
-  .auth-tagline { font-size: 14px; margin-bottom: 18px; }
-  .auth-features { gap: 10px; }
-  .auth-features li { padding: 12px; }
-  .auth-right { padding: 24px 22px 40px; }
+  .auth-left { display: none; }
+  .auth-right { padding: 32px 20px 40px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
 }
 @media (max-width: 540px) {
   .auth-left { padding: 22px 18px; }
@@ -4348,24 +4460,6 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
    readability and navigation on small screens.
    ===================================================== */
 
-/* ── Auth page: hide the blue marketing panel entirely on phones ── */
-@media (max-width: 920px) {
-  .auth-left {
-    display: none !important;
-  }
-  .auth-split {
-    grid-template-columns: 1fr !important;
-    min-height: 100vh;
-  }
-  .auth-right {
-    padding: 32px 20px 40px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-}
-
 /* ── Hero: tighter on phone, smaller badge ── */
 @media (max-width: 640px) {
   .hero { padding: 32px 0 40px; }
@@ -4474,8 +4568,10 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 
 /* ── Final CTA: tighter ── */
 @media (max-width: 640px) {
+  .final-cta { padding: 50px 0; }
   .final-cta h2 { font-size: clamp(22px, 6vw, 28px); }
   .final-cta p { font-size: 14px; }
+  .final-cta .btn-primary { padding: 14px 28px; font-size: 15px; width: 100%; }
   .cta-trust { gap: 8px; font-size: 12px; flex-wrap: wrap; justify-content: center; }
 }
 

@@ -795,6 +795,40 @@ function renderLanding() {
 
   // Mobile reviews carousel — must run AFTER template is in the DOM
   initReviewsCarousel();
+
+  // Contact form
+  const contactForm = document.getElementById('contact-form');
+  if (contactForm) {
+    contactForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = contactForm.querySelector('.contact-submit');
+      const orig = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = 'שולח...';
+      const data = {
+        name: contactForm.name.value.trim(),
+        email: contactForm.email.value.trim(),
+        subject: contactForm.subject.value,
+        message: contactForm.message.value.trim(),
+      };
+      try {
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error('send failed');
+        contactForm.reset();
+        const success = document.getElementById('contact-success');
+        if (success) success.hidden = false;
+      } catch {
+        alert('שגיאה בשליחה. אפשר לשלוח ישירות ל-hi@examprep.app');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      }
+    });
+  }
 }
 
 function initReviewsCarousel() {
@@ -840,6 +874,60 @@ function initReviewsCarousel() {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) stopTimer(); else startTimer();
   });
+}
+
+// ===== PWA Install =====
+function initPwaInstall() {
+  const banner = document.getElementById('pwa-install-banner');
+  if (!banner) return;
+
+  // Only show on mobile
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const dismissed = localStorage.getItem('pwa-install-dismissed');
+
+  if (!isMobile || isStandalone || dismissed) return;
+  banner.hidden = false;
+
+  const installBtn = document.getElementById('pwa-install-btn');
+  const dismissBtn = document.getElementById('pwa-install-dismiss');
+
+  installBtn.addEventListener('click', () => {
+    // If browser supports native prompt (Chrome/Edge Android)
+    if (window.__pwaPrompt) {
+      window.__pwaPrompt.prompt();
+      window.__pwaPrompt.userChoice.then((r) => {
+        if (r.outcome === 'accepted') banner.hidden = true;
+        window.__pwaPrompt = null;
+      });
+    } else {
+      // Show manual install guide (iOS Safari or other browsers)
+      showPwaGuide();
+    }
+  });
+
+  dismissBtn.addEventListener('click', () => {
+    banner.hidden = true;
+    localStorage.setItem('pwa-install-dismissed', '1');
+  });
+}
+
+function showPwaGuide() {
+  const modal = document.getElementById('pwa-guide-modal');
+  if (!modal) return;
+  modal.hidden = false;
+
+  // Show the right section based on platform
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const iosSection = document.getElementById('pwa-guide-ios');
+  const androidSection = document.getElementById('pwa-guide-android');
+  if (iosSection) iosSection.style.display = isIOS ? 'block' : 'none';
+  if (androidSection) androidSection.style.display = isIOS ? 'none' : 'block';
+
+  const closeBtn = document.getElementById('pwa-guide-close');
+  const handleClose = () => { modal.hidden = true; closeBtn.removeEventListener('click', handleClose); };
+  closeBtn.addEventListener('click', handleClose);
+  modal.addEventListener('click', (e) => { if (e.target === modal) handleClose(); });
 }
 
 // ===== Render: Auth (split-screen, with all auth UX features) =====
@@ -1040,6 +1128,9 @@ async function renderDashboard() {
 
   wireTopbar();
   document.getElementById('dash-greet-title').textContent = `שלום ${state.user.name}`;
+
+  // PWA install banner — mobile only
+  initPwaInstall();
 
   // Stats — clean monochrome metric cards with subtle SVG label icons
   const stats = Progress.stats(state.user.email);

@@ -377,6 +377,24 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ===== Contact form =====
+app.post('/api/contact', rateLimitMiddleware(3), async (req, res) => {
+  const { name, email, subject, message } = req.body || {};
+  if (!name || !email || !message) return res.status(400).json({ error: 'missing fields' });
+  if (message.length > 5000) return res.status(400).json({ error: 'message too long' });
+  // Store in DB for later review
+  if (supabaseAdmin) {
+    await supabaseAdmin.from('ep_contact_messages').insert({
+      name: name.slice(0, 200),
+      email: email.slice(0, 320),
+      subject: (subject || 'general').slice(0, 100),
+      message: message.slice(0, 5000),
+    });
+  }
+  console.log(`[CONTACT] from=${email} subject=${subject} name=${name}`);
+  res.json({ ok: true });
+});
+
 // ===== User stats =====
 app.get('/api/me', authMiddleware, async (req, res) => {
   const profile = await getUserProfile(req.userId);

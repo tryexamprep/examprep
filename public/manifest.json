@@ -1,0 +1,22 @@
+{
+  "name": "ExamPrep - תרגול שאלות אמריקאיות",
+  "short_name": "ExamPrep",
+  "description": "פלטפורמה ישראלית לתרגול שאלות אמריקאיות. העלה PDF וקבל אפליקציית תרגול אוטומטית.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "dir": "rtl",
+  "lang": "he",
+  "icons": [
+    {
+      "src": "/public/images/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education"],
+  "scope": "/"
+}
