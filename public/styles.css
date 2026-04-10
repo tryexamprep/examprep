@@ -1951,20 +1951,23 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 .focus-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .focus-rank {
   position: absolute; top: 12px; left: 14px;
-  font-size: 11px; font-weight: 800;
-  color: var(--accent, var(--brand-500));
-  background: rgba(255,255,255,.9);
-  padding: 3px 9px; border-radius: 100px;
-  border: 1.5px solid currentColor;
+  font-size: 12px; font-weight: 800;
+  color: #fff;
+  background: var(--accent, var(--brand-500));
+  padding: 4px 10px; border-radius: 100px;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
 }
 .focus-icon { font-size: 30px; margin-top: 8px; }
-.focus-card h3 { font-size: 17px; color: var(--gray-900); }
-.focus-reason { font-size: 13px; color: var(--text-soft); line-height: 1.5; margin-bottom: 6px; }
+.focus-card h3 { font-size: 18px; color: var(--gray-900); font-weight: 800; }
+.focus-reason { font-size: 14px; color: var(--gray-600); line-height: 1.5; margin-bottom: 8px; }
 .focus-stats {
-  display: flex; gap: 14px; font-size: 12px; color: var(--text-muted);
+  display: flex; gap: 16px; font-size: 13px; color: var(--gray-600);
   flex-wrap: wrap;
+  unicode-bidi: plaintext;
 }
-.focus-stats strong { color: var(--gray-900); font-weight: 700; font-size: 14px; }
+.focus-stats span { unicode-bidi: isolate; }
+.focus-stats strong { color: var(--gray-900); font-weight: 800; font-size: 15px; }
 .focus-card .focus-practice { margin-top: 10px; align-self: flex-start; }
 
 /* Hard questions list */
@@ -3980,10 +3983,10 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 /* Status pills (consistent across all tables) */
 .status-pill {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 11px;
+  padding: 5px 12px;
   border-radius: 100px;
-  font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .04em;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .02em;
   white-space: nowrap;
 }
 .status-pill::before {
@@ -4000,11 +4003,12 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 /* Color dots (replaces emoji topic icons) */
 .color-dot {
   display: inline-block;
-  width: 10px; height: 10px;
+  width: 12px; height: 12px;
   border-radius: 50%;
   background: var(--dot-color, var(--brand-500));
   flex-shrink: 0;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot-color, var(--brand-500)) 18%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot-color, var(--brand-500)) 22%, transparent);
+  vertical-align: middle;
 }
 
 /* Compact ghost button used inside table rows */
@@ -4123,14 +4127,17 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 .focus-card::before { height: 3px; }
 .focus-card .focus-rank {
   position: static;
-  font-size: 11px;
-  background: transparent;
+  font-size: 12px;
+  background: var(--accent, var(--brand-500));
+  color: #fff;
   border: none;
-  padding: 0;
-  color: var(--accent, var(--brand-500));
+  padding: 4px 12px;
+  border-radius: 100px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: .08em;
+  letter-spacing: .06em;
+  width: fit-content;
+  box-shadow: 0 2px 6px rgba(0,0,0,.12);
 }
 .focus-card h3 {
   font-size: 17px;
