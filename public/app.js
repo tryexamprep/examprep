@@ -100,23 +100,61 @@ const Theme = {
   },
 };
 
-// ===== Local "auth" (admin testing phase only) =====
-// SECURITY NOTE: This is a localStorage-only mock for the local-files
-// testing phase. There is NO real authentication here. The `plan` and
-// `isAdmin` fields are not trusted by anything — they're just UI hints.
-// Any user can edit localStorage and set plan='pro'; that's by design
-// for this phase. Phase 2 will replace Auth with supabase.auth.
+// ===== Auth via Supabase =====
+const _sbConfig = window.APP_CONFIG || {};
+const _sbClient = (_sbConfig.SUPABASE_URL && _sbConfig.SUPABASE_ANON_KEY && window.supabase)
+  ? window.supabase.createClient(_sbConfig.SUPABASE_URL, _sbConfig.SUPABASE_ANON_KEY)
+  : null;
+
 const Auth = {
   KEY: 'ep_user',
+  _profileCache: null,
+
   current() {
     try { return JSON.parse(localStorage.getItem(this.KEY)); } catch { return null; }
   },
   save(user) { localStorage.setItem(this.KEY, JSON.stringify(user)); },
-  clear() { localStorage.removeItem(this.KEY); },
-  loginLocal(email, password, name) {
-    // Local-only mock — every account is plan='free'. Any premium
-    // gating must be enforced server-side once phase 2 ships.
+  clear() { localStorage.removeItem(this.KEY); if (_sbClient) _sbClient.auth.signOut(); },
+
+  async login(email, password) {
+    if (!_sbClient) throw new Error('מערכת האימות לא זמינה כרגע');
+    const { data, error } = await _sbClient.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message === 'Invalid login credentials' ? 'אימייל או סיסמה שגויים' : error.message);
+    const profile = await this._fetchProfile(data.user.id);
     const u = {
+      id: data.user.id,
+      email: data.user.email,
+      name: profile?.display_name || data.user.user_metadata?.username || email.split('@')[0],
+      plan: profile?.plan || 'free',
+      isAdmin: profile?.is_admin || false,
+    };
+    this.save(u);
+    return u;
+  },
+
+  async signup(email, password, name) {
+    if (!_sbClient) throw new Error('מערכת האימות לא זמינה כרגע');
+    const { data, error } = await _sbClient.auth.signUp({
+      email,
+      password,
+      options: { data: { username: name } },
+    });
+    if (error) {
+      if (error.message.includes('already registered')) throw new Error('כתובת האימייל כבר רשומה במערכת');
+      throw new Error(error.message);
+    }
+    // Create profile row
+    if (data.user) {
+      await _sbClient.from('profiles').upsert({
+        id: data.user.id,
+        email,
+        display_name: name,
+        plan: 'free',
+        is_admin: false,
+      }, { onConflict: 'id' });
+    }
+    const u = {
+      id: data.user?.id,
       email,
       name: name || email.split('@')[0],
       plan: 'free',
@@ -125,23 +163,39 @@ const Auth = {
     this.save(u);
     return u;
   },
-  loginAdmin() {
-    // Synthetic admin session for the local testing phase. No real credentials
-    // are checked or stored — this is a developer shortcut so the user can
-    // immediately see the dashboard with the תוכנה 1 question bank loaded.
-    // Phase 2 will replace this with a real Supabase Auth call to the actual
-    // admin user that was seeded in the migration step.
+
+  async loginWithGoogle() {
+    if (!_sbClient) throw new Error('מערכת האימות לא זמינה כרגע');
+    const { error } = await _sbClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/#/dashboard' },
+    });
+    if (error) throw new Error(error.message);
+  },
+
+  async _fetchProfile(userId) {
+    if (!_sbClient) return null;
+    const { data } = await _sbClient.from('profiles').select('*').eq('id', userId).single();
+    return data;
+  },
+
+  // Restore session on page load (check Supabase session)
+  async restoreSession() {
+    if (!_sbClient) return this.current();
+    const { data: { session } } = await _sbClient.auth.getSession();
+    if (!session) { this.clear(); return null; }
+    const profile = await this._fetchProfile(session.user.id);
     const u = {
-      email: 'admin@examprep.local',
-      name: 'אדמין',
-      plan: 'pro',
-      isAdmin: true,
+      id: session.user.id,
+      email: session.user.email,
+      name: profile?.display_name || session.user.user_metadata?.username || session.user.email.split('@')[0],
+      plan: profile?.plan || 'free',
+      isAdmin: profile?.is_admin || false,
     };
     this.save(u);
     return u;
   },
-  // Patch the current user record (local-mode only). Used by the settings
-  // page to update name/plan. Phase 2 will route to a Supabase RPC.
+
   update(patch) {
     const cur = this.current();
     if (!cur) return null;
@@ -1043,25 +1097,42 @@ function renderAuth(signupMode = false) {
   });
   if (passConfirmInput) passConfirmInput.addEventListener('input', updateMatchIndicator);
 
-  // Forgot password (placeholder)
-  if (forgotLink) forgotLink.addEventListener('click', (e) => {
+  // Forgot password
+  if (forgotLink) forgotLink.addEventListener('click', async (e) => {
     e.preventDefault();
-    toast('שחזור סיסמה — בקרוב! בינתיים תוכל ליצור חשבון חדש או להיכנס כאדמין.', '');
+    const email = document.getElementById('auth-email').value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast('הזן כתובת אימייל תקינה בשדה למעלה ואז לחץ שוב.', '');
+      return;
+    }
+    if (_sbClient) {
+      const { error } = await _sbClient.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/#/settings?tab=profile',
+      });
+      if (error) { toast('שגיאה: ' + error.message, 'error'); return; }
+    }
+    toast('קישור לאיפוס סיסמה נשלח ל-' + email, 'success');
   });
 
-  // Google OAuth (placeholder for now)
+  // Google OAuth
   const oauthBtn = document.getElementById('oauth-google');
-  if (oauthBtn) oauthBtn.addEventListener('click', () => {
-    toast('כניסה עם Google — בקרוב! בינתיים השתמש באימייל וסיסמה.', '');
+  if (oauthBtn) oauthBtn.addEventListener('click', async () => {
+    try {
+      await Auth.loginWithGoogle();
+    } catch (err) {
+      const errEl = document.getElementById('auth-error');
+      errEl.textContent = err.message || 'שגיאה בכניסה עם Google';
+    }
   });
 
   // Form submit
-  document.getElementById('auth-form').addEventListener('submit', (e) => {
+  document.getElementById('auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('auth-email').value.trim();
     const password = passInput.value;
     const name = document.getElementById('auth-name').value.trim();
     const errEl = document.getElementById('auth-error');
+    const btn = document.getElementById('auth-submit');
     errEl.textContent = '';
     errEl.classList.remove('success');
     if (!email || !password) { errEl.textContent = 'חובה למלא אימייל וסיסמה'; return; }
@@ -1077,29 +1148,32 @@ function renderAuth(signupMode = false) {
     } else {
       if (password.length < 6) { errEl.textContent = 'סיסמה לא תקינה'; return; }
     }
+    btn.disabled = true;
+    btn.textContent = mode === 'signup' ? 'יוצר חשבון...' : 'מתחבר...';
     try {
-      const user = Auth.loginLocal(email, password, name);
+      let user;
+      if (mode === 'signup') {
+        user = await Auth.signup(email, password, name);
+      } else {
+        user = await Auth.login(email, password);
+      }
       state.user = user;
       errEl.classList.add('success');
       errEl.textContent = mode === 'signup' ? 'נרשמת בהצלחה — מעבירים אותך...' : 'התחברת בהצלחה — מעבירים אותך...';
+      // Seed demo data for admin on first login
+      if (user.isAdmin) {
+        await Data.ensureLoaded();
+        if (DemoSeed.shouldSeed(user.email)) {
+          DemoSeed.build(user.email);
+        }
+      }
       setTimeout(() => navigate('/dashboard'), 600);
     } catch (err) {
       errEl.textContent = err.message || 'שגיאה לא ידועה';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = mode === 'signup' ? 'יצירת חשבון' : 'כניסה';
     }
-  });
-
-  // Admin quick-login button
-  const adminBtn = document.getElementById('admin-quick-login');
-  if (adminBtn) adminBtn.addEventListener('click', async () => {
-    const user = Auth.loginAdmin();
-    state.user = user;
-    // Seed demo learning history so the new screens have content immediately.
-    await Data.ensureLoaded();
-    if (DemoSeed.shouldSeed(user.email)) {
-      DemoSeed.build(user.email);
-    }
-    toast('ברוך הבא, אדמין. נטענו נתוני דמו מ-10 ימי תרגול.', 'success');
-    setTimeout(() => navigate('/dashboard'), 400);
   });
 }
 
@@ -3529,9 +3603,45 @@ function updateSelfTestResult(answers) {
 }
 
 // ===== Boot =====
-(function boot() {
+(async function boot() {
   Theme.init();
-  state.user = Auth.current();
+  // Try to restore Supabase session, fall back to localStorage cache
+  state.user = await Auth.restoreSession().catch(() => Auth.current());
   if (!location.hash) location.hash = '#/';
   renderRoute();
+
+  // Listen for Supabase auth state changes (e.g., OAuth redirect back)
+  if (_sbClient) {
+    _sbClient.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const profile = await Auth._fetchProfile(session.user.id);
+        const u = {
+          id: session.user.id,
+          email: session.user.email,
+          name: profile?.display_name || session.user.user_metadata?.username || session.user.email.split('@')[0],
+          plan: profile?.plan || 'free',
+          isAdmin: profile?.is_admin || false,
+        };
+        Auth.save(u);
+        state.user = u;
+        // Create profile if it doesn't exist (first Google login)
+        if (!profile) {
+          await _sbClient.from('profiles').upsert({
+            id: session.user.id,
+            email: session.user.email,
+            display_name: u.name,
+            plan: 'free',
+            is_admin: false,
+          }, { onConflict: 'id' });
+        }
+        if (getRoute() === '/' || getRoute().startsWith('/login')) {
+          navigate('/dashboard');
+        }
+      } else if (event === 'SIGNED_OUT') {
+        Auth.clear();
+        state.user = null;
+        navigate('/');
+      }
+    });
+  }
 })();

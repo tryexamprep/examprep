@@ -14,6 +14,8 @@
   <meta property="og:type" content="website" />
   <link rel="manifest" href="/public/manifest.json" />
   <link rel="stylesheet" href="/public/styles.css?v=20260410-10" />
+  <script src="/public/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -640,12 +642,6 @@
           </form>
 
           <p class="auth-switch" id="auth-switch">אין לך חשבון? <a href="#" id="auth-switch-link">הירשם עכשיו</a></p>
-
-          <div class="admin-shortcut">
-            <strong><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>למפתח / אדמין</strong>
-            <p>היכנס מיד כמנהל וקבל גישה ל-85 השאלות של תוכנה 1</p>
-            <button id="admin-quick-login">כניסה מהירה כאדמין</button>
-          </div>
 
           <p class="auth-legal">בהרשמה אתה מסכים ל<a href="/legal/terms.html">תנאי השימוש</a> ול<a href="/legal/privacy.html">מדיניות הפרטיות</a> שלנו. הסיסמה שלך מוצפנת ולא נשמרת בטקסט גלוי.</p>
         </div>
