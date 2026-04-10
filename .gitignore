@@ -22,3 +22,4 @@ data/app.db-*
 /tmp/
 
 .vercel
+.env.vercel
