@@ -374,6 +374,9 @@ function renderRoute() {
   if (path === '/insights') return renderInsights(params.get('course'));
   if (path === '/lab') return renderLab(params.get('course'));
   if (path === '/progress') return renderProgress(params.get('course'));
+  if (path === '/study') return renderStudyList();
+  if (path === '/study/new') return renderStudyCreate();
+  if (path.startsWith('/study/')) return renderStudyPack(path.split('/')[2]);
   return renderLanding();
 }
 
@@ -967,6 +970,7 @@ function showCourseActionsModal(course) {
       else if (action === 'lab') navigate('/lab');
       else if (action === 'insights') navigate('/insights');
       else if (action === 'progress') navigate('/progress');
+      else if (action === 'study') navigate('/study');
     });
   });
 }
@@ -1828,7 +1832,7 @@ async function renderLab() {
     const btn = document.getElementById('btn-ai-generate');
     const result = document.getElementById('ai-result');
     btn.disabled = true;
-    btn.innerHTML = '<span class="ai-spinner"></span> Gemini עובד... זה לוקח 10-30 שניות';
+    btn.innerHTML = '<span class="ai-spinner"></span> המודל עובד... זה לוקח 10-30 שניות';
     result.innerHTML = '';
     try {
       const res = await fetch('/api/lab/generate-questions', {
@@ -1847,7 +1851,7 @@ async function renderLab() {
         if (data?.reason === 'no_api_key') {
           result.innerHTML = `
             <div class="ai-error">
-              <strong>🔧 מפתח ה-API של Gemini עוד לא מוגדר בשרת.</strong>
+              <strong>🔧 מפתח ה-API של הבינה המלאכותית עוד לא מוגדר בשרת.</strong>
               <p>כדי להפעיל את הפיצ'ר הזה, הוסף <code>GEMINI_API_KEY</code> לקובץ ה-.env של השרת ואז הפעל מחדש. אפשר לקבל מפתח חינמי ב-aistudio.google.com/apikey.</p>
             </div>
           `;
@@ -1873,7 +1877,7 @@ async function renderLab() {
       result.innerHTML = `<div class="ai-error">❌ שגיאת רשת: ${escapeHtml(err.message || String(err))}</div>`;
     } finally {
       btn.disabled = false;
-      btn.innerHTML = '✨ צור שאלות AI';
+      btn.innerHTML = '✨ צור שאלות חכמות';
     }
   });
 }
@@ -2201,6 +2205,568 @@ document.addEventListener('keydown', (e) => {
   else if (e.key === 'ArrowRight') navQuiz(-1);
   else if (e.key === 'ArrowLeft') navQuiz(1);
 });
+
+// =====================================================
+//   SMART STUDY FROM SUMMARY
+// =====================================================
+// Client-side store for study packs in the local-testing phase. Each pack is
+// keyed by id and persisted in localStorage. Free-plan quota (2 lifetime) is
+// also enforced here — server has dev mode that doesn't enforce, so it falls
+// to the client. Once we move to real Supabase auth this will switch to
+// server-backed CRUD via /api/study/packs.
+const StudyStore = {
+  KEY: 'ep_study_packs_v1',
+  USED_KEY: 'ep_study_packs_used_v1',  // lifetime counter for free trial
+  list() {
+    try { return JSON.parse(localStorage.getItem(this.KEY)) || []; }
+    catch { return []; }
+  },
+  get(id) {
+    return this.list().find(p => String(p.id) === String(id)) || null;
+  },
+  save(pack) {
+    const all = this.list();
+    const idx = all.findIndex(p => p.id === pack.id);
+    if (idx >= 0) all[idx] = pack; else all.unshift(pack);
+    localStorage.setItem(this.KEY, JSON.stringify(all));
+  },
+  remove(id) {
+    const all = this.list().filter(p => String(p.id) !== String(id));
+    localStorage.setItem(this.KEY, JSON.stringify(all));
+  },
+  usedTotal() {
+    return parseInt(localStorage.getItem(this.USED_KEY) || '0', 10) || 0;
+  },
+  bumpUsed() {
+    localStorage.setItem(this.USED_KEY, String(this.usedTotal() + 1));
+  },
+  resetUsed() {
+    localStorage.removeItem(this.USED_KEY);
+  },
+  // Free plan quota: 2 lifetime packs. Admins/paid users get unlimited in
+  // local mode (we use the mock plan field).
+  quotaForUser(user) {
+    const plan = (user && user.plan) || 'free';
+    if (plan === 'free') return { lifetime: 2, used: this.usedTotal(), unlimited: false };
+    return { lifetime: -1, used: this.usedTotal(), unlimited: true };
+  },
+};
+
+function showPaywallModal() {
+  const wrap = document.createElement('div');
+  wrap.appendChild(tmpl('tmpl-paywall-modal'));
+  document.body.appendChild(wrap.firstElementChild);
+  const modal = document.getElementById('paywall-modal');
+  const close = () => modal.remove();
+  document.getElementById('paywall-close').addEventListener('click', close);
+  document.getElementById('paywall-cancel').addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.getElementById('paywall-upgrade').addEventListener('click', (e) => {
+    close();
+    setTimeout(() => { location.hash = '#pricing'; navigate('/'); }, 0);
+  });
+}
+
+async function renderStudyList() {
+  if (!state.user) return navigate('/login');
+  const tpl = tmpl('tmpl-study-list');
+  $app.innerHTML = '';
+  $app.appendChild(tpl);
+
+  document.getElementById('user-name').textContent = state.user.name || '';
+  document.getElementById('user-plan').textContent = state.user.plan || 'free';
+  document.getElementById('user-avatar').textContent = (state.user.name || 'U').charAt(0).toUpperCase();
+  document.getElementById('btn-logout')?.addEventListener('click', () => {
+    Auth.clear(); state.user = null; navigate('/');
+  });
+  document.querySelectorAll('[data-route]').forEach(link => {
+    link.addEventListener('click', (e) => { e.preventDefault(); navigate(link.getAttribute('data-route')); });
+  });
+
+  const packs = StudyStore.list();
+  const quota = StudyStore.quotaForUser(state.user);
+  const banner = document.getElementById('study-quota-banner');
+  if (!quota.unlimited) {
+    const left = Math.max(0, quota.lifetime - quota.used);
+    banner.innerHTML = `
+      <div class="quota-pill ${left === 0 ? 'quota-pill-empty' : ''}">
+        <span class="quota-pill-icon">${left === 0 ? '🔒' : '✨'}</span>
+        <div>
+          <strong>נשארו לך ${left} מתוך ${quota.lifetime} חבילות לימוד חינמיות</strong>
+          <small>${left === 0 ? 'שדרג ל-Basic כדי ליצור חבילות נוספות' : 'תשתמש בהן ליצור חומרי לימוד מסיכומים שונים'}</small>
+        </div>
+      </div>`;
+  } else {
+    banner.innerHTML = `<div class="quota-pill quota-pill-unlimited"><span class="quota-pill-icon">⭐</span><div><strong>חבילות לימוד ללא הגבלה</strong><small>מסלול ${state.user.plan}</small></div></div>`;
+  }
+
+  const grid = document.getElementById('study-list-grid');
+  const empty = document.getElementById('study-empty');
+  if (!packs.length) {
+    grid.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.style.display = '';
+  grid.innerHTML = packs.map(p => `
+    <a href="#/study/${p.id}" class="study-pack-card" data-route="/study/${p.id}">
+      <div class="study-pack-card-icon">${p.source_kind === 'pdf' ? '📄' : '📝'}</div>
+      <h3>${escapeHtml(p.title)}</h3>
+      <div class="study-pack-card-meta">
+        <span>${(p.materials?.questions || []).length} שאלות</span>
+        <span>${(p.materials?.flashcards || []).length} כרטיסיות</span>
+        <span>${(p.materials?.glossary || []).length} מושגים</span>
+      </div>
+      <div class="study-pack-card-date">${new Date(p.created_at).toLocaleDateString('he-IL')}</div>
+      <button class="study-pack-card-delete" data-delete="${p.id}" aria-label="מחק">🗑</button>
+    </a>
+  `).join('');
+  grid.querySelectorAll('[data-route]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      if (e.target.dataset.delete) return;
+      e.preventDefault();
+      navigate(link.getAttribute('data-route'));
+    });
+  });
+  grid.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!confirm('למחוק את החבילה?')) return;
+      StudyStore.remove(btn.dataset.delete);
+      renderStudyList();
+    });
+  });
+}
+
+async function renderStudyCreate() {
+  if (!state.user) return navigate('/login');
+  const tpl = tmpl('tmpl-study-create');
+  $app.innerHTML = '';
+  $app.appendChild(tpl);
+
+  document.getElementById('user-name').textContent = state.user.name || '';
+  document.getElementById('user-plan').textContent = state.user.plan || 'free';
+  document.getElementById('user-avatar').textContent = (state.user.name || 'U').charAt(0).toUpperCase();
+  document.getElementById('btn-logout')?.addEventListener('click', () => {
+    Auth.clear(); state.user = null; navigate('/');
+  });
+  document.querySelectorAll('[data-route]').forEach(link => {
+    link.addEventListener('click', (e) => { e.preventDefault(); navigate(link.getAttribute('data-route')); });
+  });
+
+  // Pre-flight quota check
+  const quota = StudyStore.quotaForUser(state.user);
+  if (!quota.unlimited && quota.used >= quota.lifetime) {
+    document.getElementById('study-create-quota-hint').innerHTML = `
+      <div class="quota-blocked">
+        🔒 סיימת את ${quota.lifetime} החבילות החינמיות שלך. <a href="#pricing" id="quota-upgrade-link">שדרג ל-Basic</a> כדי להמשיך.
+      </div>`;
+    document.getElementById('study-create-submit').disabled = true;
+  } else if (!quota.unlimited) {
+    const left = quota.lifetime - quota.used;
+    document.getElementById('study-create-quota-hint').innerHTML = `
+      <small>נשארו לך ${left} מתוך ${quota.lifetime} חבילות חינמיות</small>`;
+  }
+
+  // Tab switching (paste / pdf)
+  let activeTab = 'paste';
+  document.querySelectorAll('.study-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      activeTab = tab.dataset.tab;
+      document.querySelectorAll('.study-tab').forEach(t => t.classList.toggle('active', t === tab));
+      document.getElementById('study-tab-paste').style.display = activeTab === 'paste' ? '' : 'none';
+      document.getElementById('study-tab-pdf').style.display = activeTab === 'pdf' ? '' : 'none';
+    });
+  });
+
+  // Live char counter on the textarea
+  const textarea = document.getElementById('study-text');
+  const counter = document.getElementById('study-text-count');
+  textarea.addEventListener('input', () => {
+    counter.textContent = textarea.value.length.toLocaleString('he-IL');
+  });
+
+  // PDF picker
+  const fileInput = document.getElementById('study-pdf-file');
+  const drop = document.getElementById('study-pdf-drop');
+  const dropInner = drop.querySelector('.study-pdf-drop-inner');
+  const dropSelected = document.getElementById('study-pdf-selected');
+  const dropName = document.getElementById('study-pdf-name');
+  document.getElementById('study-pdf-pick').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files?.[0]) {
+      dropName.textContent = fileInput.files[0].name;
+      dropInner.style.display = 'none';
+      dropSelected.style.display = '';
+    }
+  });
+  document.getElementById('study-pdf-clear').addEventListener('click', (e) => {
+    e.preventDefault();
+    fileInput.value = '';
+    dropInner.style.display = '';
+    dropSelected.style.display = 'none';
+  });
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag-over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+  drop.addEventListener('drop', (e) => {
+    e.preventDefault();
+    drop.classList.remove('drag-over');
+    const f = e.dataTransfer.files?.[0];
+    if (f && f.type === 'application/pdf') {
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      fileInput.files = dt.files;
+      dropName.textContent = f.name;
+      dropInner.style.display = 'none';
+      dropSelected.style.display = '';
+    }
+  });
+
+  // Submit
+  const submit = document.getElementById('study-create-submit');
+  const errBox = document.getElementById('study-create-error');
+  const btnLabel = submit.querySelector('.btn-label');
+  const btnSpinner = submit.querySelector('.btn-spinner');
+  submit.addEventListener('click', async () => {
+    errBox.textContent = '';
+    // Re-check quota right before submit
+    const q = StudyStore.quotaForUser(state.user);
+    if (!q.unlimited && q.used >= q.lifetime) {
+      showPaywallModal();
+      return;
+    }
+
+    let body, headers = {};
+    if (activeTab === 'paste') {
+      const text = textarea.value.trim();
+      const title = document.getElementById('study-title-paste').value.trim() || 'סיכום ללא שם';
+      if (text.length < 300) {
+        errBox.textContent = 'הסיכום קצר מדי — צריך לפחות 300 תווים.';
+        return;
+      }
+      if (text.length > 60000) {
+        errBox.textContent = 'הסיכום ארוך מדי — מקסימום 60,000 תווים.';
+        return;
+      }
+      body = JSON.stringify({ kind: 'paste', text, title });
+      headers['Content-Type'] = 'application/json';
+    } else {
+      const file = fileInput.files?.[0];
+      if (!file) {
+        errBox.textContent = 'בחר קובץ PDF להעלאה.';
+        return;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        errBox.textContent = 'הקובץ גדול מדי (מקסימום 15MB).';
+        return;
+      }
+      const fd = new FormData();
+      fd.append('pdf', file);
+      const t = document.getElementById('study-title-pdf').value.trim();
+      if (t) fd.append('title', t);
+      body = fd;
+    }
+
+    submit.disabled = true;
+    btnLabel.style.display = 'none';
+    btnSpinner.style.display = '';
+    btnSpinner.textContent = '⏳ יוצר חבילת לימוד... זה לוקח כ-30 שניות';
+
+    try {
+      const res = await fetch('/api/study/generate', { method: 'POST', headers, body });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 402 && data.needs_upgrade) {
+          showPaywallModal();
+          return;
+        }
+        errBox.textContent = data.error || 'שגיאה ביצירת חבילת הלימוד.';
+        return;
+      }
+
+      // Persist locally and bump quota
+      const pack = {
+        id: 'local_' + Date.now(),
+        title: data.title || (activeTab === 'paste'
+          ? (document.getElementById('study-title-paste').value.trim() || 'סיכום ללא שם')
+          : (fileInput.files[0].name.replace(/\.pdf$/i, '') || 'סיכום ללא שם')),
+        source_kind: data.source_kind || activeTab,
+        materials: data.materials || {},
+        created_at: new Date().toISOString(),
+      };
+      StudyStore.save(pack);
+      StudyStore.bumpUsed();
+      navigate('/study/' + pack.id);
+    } catch (err) {
+      console.error('[study create]', err);
+      errBox.textContent = 'שגיאת רשת. נסה שוב.';
+    } finally {
+      submit.disabled = false;
+      btnLabel.style.display = '';
+      btnSpinner.style.display = 'none';
+    }
+  });
+}
+
+async function renderStudyPack(packId) {
+  if (!state.user) return navigate('/login');
+  const pack = StudyStore.get(packId);
+  if (!pack) {
+    toast('חבילת הלימוד לא נמצאה', 'error');
+    return navigate('/study');
+  }
+  const tpl = tmpl('tmpl-study-pack');
+  $app.innerHTML = '';
+  $app.appendChild(tpl);
+
+  document.getElementById('user-name').textContent = state.user.name || '';
+  document.getElementById('user-plan').textContent = state.user.plan || 'free';
+  document.getElementById('user-avatar').textContent = (state.user.name || 'U').charAt(0).toUpperCase();
+  document.getElementById('btn-logout')?.addEventListener('click', () => {
+    Auth.clear(); state.user = null; navigate('/');
+  });
+  document.querySelectorAll('[data-route]').forEach(link => {
+    link.addEventListener('click', (e) => { e.preventDefault(); navigate(link.getAttribute('data-route')); });
+  });
+
+  document.getElementById('pack-title').textContent = pack.title;
+  document.getElementById('pack-summary').textContent = pack.materials?.summary || '';
+
+  const m = pack.materials || {};
+  document.getElementById('pack-panel-questions').innerHTML = renderStudyQuestions(m.questions || []);
+  document.getElementById('pack-panel-flashcards').innerHTML = renderStudyFlashcards(m.flashcards || []);
+  document.getElementById('pack-panel-outline').innerHTML = renderStudyOutline(m.outline || []);
+  document.getElementById('pack-panel-glossary').innerHTML = renderStudyGlossary(m.glossary || []);
+  document.getElementById('pack-panel-open').innerHTML = renderStudyOpenQuestions(m.openQuestions || []);
+  document.getElementById('pack-panel-selftest').innerHTML = renderStudySelfTest(m.selfTest || []);
+
+  // Tab switching
+  document.querySelectorAll('.pack-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      document.querySelectorAll('.pack-tab').forEach(t => t.classList.toggle('active', t === tab));
+      document.querySelectorAll('.pack-panel').forEach(p => {
+        p.style.display = p.dataset.panel === target ? '' : 'none';
+      });
+    });
+  });
+
+  // Wire up flashcard flip behavior
+  document.querySelectorAll('.flashcard').forEach(card => {
+    card.addEventListener('click', () => card.classList.toggle('flipped'));
+  });
+
+  // Wire up MCQ "show answer" buttons
+  document.querySelectorAll('[data-show-answer]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wrap = btn.closest('.study-question');
+      wrap.classList.add('revealed');
+    });
+  });
+
+  // Wire up open-question "show model answer"
+  document.querySelectorAll('[data-show-model]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wrap = btn.closest('.study-open-q');
+      wrap.classList.add('revealed');
+    });
+  });
+
+  // Self-test scoring (basic)
+  initSelfTest();
+}
+
+function renderStudyQuestions(questions) {
+  if (!questions.length) return '<div class="empty-state">אין שאלות בחבילה זו.</div>';
+  return questions.map((q, i) => `
+    <div class="study-question">
+      <div class="study-question-num">שאלה ${i + 1}</div>
+      <div class="study-question-stem">${escapeHtml(q.stem)}</div>
+      <ol class="study-question-options">
+        ${q.options.map((opt, idx) => `
+          <li class="${idx + 1 === q.correctIdx ? 'is-correct' : ''}">${escapeHtml(opt)}</li>
+        `).join('')}
+      </ol>
+      <button type="button" class="btn btn-soft btn-sm" data-show-answer>הצג תשובה והסבר</button>
+      <div class="study-question-explain">
+        <strong>התשובה הנכונה: ${q.correctIdx}</strong>
+        <p>${escapeHtml(q.explanation || '')}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderStudyFlashcards(cards) {
+  if (!cards.length) return '<div class="empty-state">אין כרטיסיות בחבילה זו.</div>';
+  return `
+    <div class="flashcards-hint">לחץ על כרטיסייה כדי להפוך אותה</div>
+    <div class="flashcards-grid">
+      ${cards.map((c, i) => `
+        <div class="flashcard" tabindex="0">
+          <div class="flashcard-inner">
+            <div class="flashcard-face flashcard-front">
+              <span class="flashcard-num">${i + 1}</span>
+              <div class="flashcard-text">${escapeHtml(c.front)}</div>
+              <small class="flashcard-hint">לחץ להפוך</small>
+            </div>
+            <div class="flashcard-face flashcard-back">
+              <div class="flashcard-text">${escapeHtml(c.back)}</div>
+              <small class="flashcard-hint">לחץ לחזור</small>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+function renderStudyOutline(sections) {
+  if (!sections.length) return '<div class="empty-state">אין מתאר בחבילה זו.</div>';
+  function renderItems(items, depth = 0) {
+    if (!items || !items.length) return '';
+    return `<ul class="study-outline-list depth-${depth}">${items.map(it => {
+      if (typeof it === 'string') return `<li><span class="outline-leaf">${escapeHtml(it)}</span></li>`;
+      const sub = it.items && it.items.length ? renderItems(it.items, depth + 1) : '';
+      return `<li><strong>${escapeHtml(it.title || '')}</strong>${sub}</li>`;
+    }).join('')}</ul>`;
+  }
+  return `<div class="study-outline">
+    ${sections.map((s, i) => `
+      <section class="study-outline-section">
+        <h3><span class="study-outline-num">${i + 1}</span> ${escapeHtml(s.title || '')}</h3>
+        ${renderItems(s.items, 0)}
+      </section>
+    `).join('')}
+  </div>`;
+}
+
+function renderStudyGlossary(items) {
+  if (!items.length) return '<div class="empty-state">אין מושגים בחבילה זו.</div>';
+  return `<dl class="study-glossary">
+    ${items.map(g => `
+      <div class="glossary-item">
+        <dt>${escapeHtml(g.term)}</dt>
+        <dd>${escapeHtml(g.definition)}</dd>
+      </div>
+    `).join('')}
+  </dl>`;
+}
+
+function renderStudyOpenQuestions(items) {
+  if (!items.length) return '<div class="empty-state">אין שאלות פתוחות בחבילה זו.</div>';
+  return items.map((q, i) => `
+    <div class="study-open-q">
+      <div class="study-open-q-num">שאלה ${i + 1}</div>
+      <div class="study-open-q-text">${escapeHtml(q.question)}</div>
+      <button type="button" class="btn btn-soft btn-sm" data-show-model>הצג תשובה מומלצת</button>
+      <div class="study-open-q-answer">
+        <strong>תשובה מומלצת:</strong>
+        <p>${escapeHtml(q.modelAnswer || '')}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderStudySelfTest(items) {
+  if (!items.length) return '<div class="empty-state">אין מבחן עצמי בחבילה זו.</div>';
+  return `
+    <div class="self-test-intro">
+      <p>מבחן קצר שמערבב שאלות אמריקאיות וכרטיסיות. ענה על כל הפריטים ובסוף תקבל ציון.</p>
+    </div>
+    <div class="self-test-items">
+      ${items.map((it, i) => {
+        if (it.type === 'mcq') {
+          return `
+            <div class="st-item st-item-mcq" data-idx="${i}" data-correct="${it.correctIdx}">
+              <div class="st-item-num">${i + 1}. שאלה אמריקאית</div>
+              <div class="st-item-stem">${escapeHtml(it.stem)}</div>
+              <div class="st-options">
+                ${it.options.map((o, oi) => `
+                  <button type="button" class="st-option" data-pick="${oi + 1}">${escapeHtml(o)}</button>
+                `).join('')}
+              </div>
+            </div>`;
+        }
+        return `
+          <div class="st-item st-item-flash" data-idx="${i}">
+            <div class="st-item-num">${i + 1}. כרטיסייה</div>
+            <div class="st-item-stem">${escapeHtml(it.front)}</div>
+            <button type="button" class="btn btn-soft btn-sm st-flash-show">הצג תשובה</button>
+            <div class="st-flash-back">${escapeHtml(it.back)}</div>
+            <div class="st-flash-rate">
+              <button type="button" class="btn btn-ghost btn-sm" data-rate="known">ידעתי</button>
+              <button type="button" class="btn btn-ghost btn-sm" data-rate="unknown">לא ידעתי</button>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>
+    <div class="self-test-result" id="self-test-result"></div>
+  `;
+}
+
+function initSelfTest() {
+  const items = document.querySelectorAll('.st-item');
+  if (!items.length) return;
+  const answers = new Array(items.length).fill(null);
+
+  document.querySelectorAll('.st-item-mcq .st-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.st-item');
+      const idx = parseInt(item.dataset.idx, 10);
+      const correctIdx = parseInt(item.dataset.correct, 10);
+      const picked = parseInt(btn.dataset.pick, 10);
+      item.querySelectorAll('.st-option').forEach(b => {
+        b.disabled = true;
+        const p = parseInt(b.dataset.pick, 10);
+        if (p === correctIdx) b.classList.add('is-correct');
+        if (p === picked && p !== correctIdx) b.classList.add('is-wrong');
+      });
+      answers[idx] = picked === correctIdx;
+      updateSelfTestResult(answers);
+    });
+  });
+
+  document.querySelectorAll('.st-flash-show').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.st-item');
+      item.classList.add('revealed');
+    });
+  });
+  document.querySelectorAll('.st-item-flash [data-rate]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.st-item');
+      const idx = parseInt(item.dataset.idx, 10);
+      answers[idx] = btn.dataset.rate === 'known';
+      item.classList.add('rated');
+      item.querySelectorAll('[data-rate]').forEach(b => b.disabled = true);
+      updateSelfTestResult(answers);
+    });
+  });
+}
+
+function updateSelfTestResult(answers) {
+  const total = answers.length;
+  const answered = answers.filter(a => a !== null).length;
+  const correct = answers.filter(a => a === true).length;
+  const result = document.getElementById('self-test-result');
+  if (!result) return;
+  if (answered < total) {
+    result.innerHTML = `<div class="st-progress">ענית על ${answered} מתוך ${total}</div>`;
+  } else {
+    const pct = Math.round((correct / total) * 100);
+    let emoji = '🎉', verdict = 'מצוין!';
+    if (pct < 50) { emoji = '💪'; verdict = 'יש על מה לחזור — נסה שוב.'; }
+    else if (pct < 75) { emoji = '👍'; verdict = 'לא רע! עוד קצת חזרה ותהיה מוכן.'; }
+    else if (pct < 90) { emoji = '🌟'; verdict = 'מצוין — אתה בכיוון הנכון.'; }
+    result.innerHTML = `
+      <div class="st-result-card">
+        <div class="st-result-emoji">${emoji}</div>
+        <div class="st-result-score">${correct} / ${total}</div>
+        <div class="st-result-pct">${pct}%</div>
+        <div class="st-result-verdict">${verdict}</div>
+      </div>`;
+  }
+}
 
 // ===== Boot =====
 (function boot() {

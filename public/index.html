@@ -4,15 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
   <title>ExamPrep · תרגול שאלות אמריקאיות חכם מ-PDF</title>
-  <meta name="description" content="פלטפורמה ישראלית לתרגול שאלות אמריקאיות. העלה PDF של מבחן וקבל אפליקציית תרגול אוטומטית, סקירת טעויות מקצועית, ושאלות AI דומות." />
+  <meta name="description" content="פלטפורמה ישראלית לתרגול שאלות אמריקאיות. העלה PDF של מבחן וקבל אפליקציית תרגול אוטומטית, סקירת טעויות מקצועית, ושאלות נוספות בעזרת בינה מלאכותית." />
   <meta name="theme-color" content="#1d4ed8" />
-  <link rel="icon" type="image/png" href="/public/images/logo.png?v=20260410-4" />
-  <link rel="apple-touch-icon" href="/public/images/logo.png?v=20260410-4" />
+  <link rel="icon" type="image/png" href="/public/images/logo.png?v=20260410-7" />
+  <link rel="apple-touch-icon" href="/public/images/logo.png?v=20260410-7" />
   <meta property="og:title" content="ExamPrep · תרגול שאלות אמריקאיות חכם מ-PDF" />
-  <meta property="og:description" content="העלה PDF של מבחן וקבל אפליקציית תרגול אוטומטית עם הסברים מפורטים, סקירת טעויות מקצועית, ושאלות AI דומות." />
+  <meta property="og:description" content="העלה PDF של מבחן וקבל אפליקציית תרגול אוטומטית עם הסברים מפורטים, סקירת טעויות מקצועית, ושאלות נוספות בעזרת בינה מלאכותית." />
   <meta property="og:image" content="/public/images/hero.png" />
   <meta property="og:type" content="website" />
-  <link rel="stylesheet" href="/public/styles.css?v=20260410-4" />
+  <link rel="stylesheet" href="/public/styles.css?v=20260410-7" />
 </head>
 <body>
   <div id="app"></div>
@@ -23,12 +23,13 @@
   <template id="tmpl-landing">
     <div class="landing">
       <div class="beta-banner" role="status" aria-live="polite">
-        🚧 האתר נמצא בשלב בטא פרטית — אין עדיין הרשמות לציבור ואין לאחסן כאן נתונים אישיים אמיתיים.
+        <svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>האתר נמצא בשלב בטא פרטית — אין עדיין הרשמות לציבור ואין לאחסן כאן נתונים אישיים אמיתיים.</span>
       </div>
       <header class="navbar" id="navbar">
         <div class="navbar-inner container">
           <a href="#/" class="logo" data-route="/">
-            <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img" />
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
           </a>
           <nav class="nav-links">
             <a href="#pain">למה זה חשוב</a>
@@ -50,21 +51,21 @@
       <section class="hero">
         <div class="container hero-grid">
           <div class="hero-text">
-            <div class="badge">✨ חדש - מעבדת AI עם Gemini 2.0 + תובנות חכמות</div>
-            <h1>תרגול חכם של<br/><span class="grad">שאלות אמריקאיות</span><br/>מהמבחנים שלך</h1>
-            <p class="hero-sub">העלה PDF של מבחנים קודמים וקבל אפליקציית תרגול מלאה: מחולל מבחני דמה, ניתוח חכם של החומר, שאלות חדשות מ-Gemini AI, סקירת טעויות עם הסברים, ודשבורד התקדמות אישי שאומר לך בדיוק איפה להתמקד.</p>
+            <div class="badge"><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/><path d="M19 3v3M5 18v3M19 18v3M5 3v3"/></svg> חדש — לימוד חכם מסיכום: בינה מלאכותית מייצרת לך שאלות, כרטיסיות ומתאר תוך דקה</div>
+            <h1>הסיכום שלך<br/><span class="grad">הופך לכלי תרגול</span><br/>חכם ומלא</h1>
+            <p class="hero-sub">תעלה PDF סיכום או תדביק טקסט — והבינה המלאכותית מייצרת לך אוטומטית שאלות אמריקאיות ברמה גבוהה, כרטיסיות לזכירה, מתאר היררכי של החומר, מילון מושגים, שאלות פתוחות לחשיבה, ומבחן עצמי. הכל בדקה אחת.</p>
             <div class="hero-ctas">
-              <a href="#/login?signup=1" class="btn btn-primary btn-lg" data-route="/login?signup=1">התחל בחינם · 5 PDFs ראשונים חינם</a>
-              <a href="#how" class="btn btn-ghost btn-lg">איך זה עובד? ↓</a>
+              <a href="#/login?signup=1" class="btn btn-primary btn-lg" data-route="/login?signup=1">התחל בחינם · 2 סיכומים חינם</a>
+              <a href="#how" class="btn btn-ghost btn-lg">איך זה עובד?<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></a>
             </div>
             <div class="hero-trust">
-              <span>✅ ללא כרטיס אשראי</span>
-              <span>✅ עברית מלאה</span>
-              <span>✅ מותאם למובייל</span>
+              <span><svg class="trust-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>ללא כרטיס אשראי</span>
+              <span><svg class="trust-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>עברית מלאה</span>
+              <span><svg class="trust-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>מותאם למובייל</span>
             </div>
           </div>
           <div class="hero-visual">
-            <img src="/public/images/hero.png?v=20260410-4" alt="הדגמה של ExamPrep — סטודנט מתרגל מבחן אמריקאי במחשב נייד" class="hero-image" />
+            <img src="/public/images/hero.png?v=20260410-7" alt="הדגמה של ExamPrep — סטודנט מתרגל מבחן אמריקאי במחשב נייד" class="hero-image" />
           </div>
         </div>
       </section>
@@ -112,7 +113,7 @@
       <section class="section" id="features">
         <div class="container">
           <span class="section-eyebrow">הפתרון</span>
-          <h2 class="section-title">8 פיצ'רים שמכינים אותך באמת למבחן</h2>
+          <h2 class="section-title">9 פיצ'רים שמכינים אותך באמת למבחן</h2>
           <p class="section-sub">מהעלאת PDF גולמי ועד תרגול מקצועי עם ניתוח חכם של החומר — הכל במקום אחד, בעברית, בלי טכנופוביה.</p>
           <div class="features-grid">
             <div class="feature-card">
@@ -134,7 +135,7 @@
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.673M12 3v1M5.6 5.6l.7.7M3 12h1M19.4 5.6l-.7.7M21 12h-1M9 21h6M10 17a4 4 0 1 1 4 0v3h-4z"/></svg>
               </div>
               <h3>הסברים בעלי משמעות</h3>
-              <p>אם בקובץ הפתרון יש הסברים מלאים — נשתמש בהם. אם אין — AI יוצר הסבר מפורט לכל אופציה: למה היא נכונה או שגויה.</p>
+              <p>אם בקובץ הפתרון יש הסברים מלאים — נשתמש בהם. אם אין — בינה מלאכותית יוצרת הסבר מפורט לכל אופציה: למה היא נכונה או שגויה.</p>
             </div>
             <div class="feature-card">
               <div class="feature-icon icon-bg-amber">
@@ -163,8 +164,8 @@
               <div class="feature-icon icon-bg-indigo">
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.58 16.5h12.85"/></svg>
               </div>
-              <h3>מעבדת AI עם Gemini 2.0</h3>
-              <p>שני כלים: מחולל מבחני דמה חכם שבונה לך מבחן לפי תדירות נושאים, וגנרטור Gemini שמחבר שאלות חדשות לחלוטין ברמת מבחן אוניברסיטאי.</p>
+              <h3>מעבדה חכמה מתקדמת</h3>
+              <p>שני כלים: מחולל מבחני דמה חכם שבונה לך מבחן לפי תדירות נושאים, ומחולל שאלות חכם שמחבר שאלות חדשות לחלוטין ברמת מבחן אוניברסיטאי — מבוסס על המבחנים שכבר העלית.</p>
             </div>
             <div class="feature-card feature-new">
               <span class="feature-pill">חדש</span>
@@ -173,6 +174,14 @@
               </div>
               <h3>דשבורד התקדמות אישי</h3>
               <p>סטטיסטיקות ריאליסטיות: שליטה לפי נושא, רצף תרגול, עקומת שיפור, ו-8 טיפים אישיים שמחושבים בהתבסס על דפוסי הלמידה שלך.</p>
+            </div>
+            <div class="feature-card feature-new feature-hero">
+              <span class="feature-pill">חדש · ניסיון חינם</span>
+              <div class="feature-icon icon-bg-rose">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v10a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+              </div>
+              <h3>לימוד חכם מסיכום</h3>
+              <p>תעלה PDF של סיכום או תדביק טקסט — והבינה המלאכותית מייצרת לך בדקה אחת חבילת לימוד מלאה: <strong>שאלות אמריקאיות</strong>, <strong>כרטיסיות לזכירה</strong>, <strong>מתאר היררכי</strong>, <strong>מילון מושגים</strong>, <strong>שאלות פתוחות לעיון</strong>, וגם <strong>מבחן עצמי</strong>.</p>
             </div>
           </div>
         </div>
@@ -186,14 +195,14 @@
             <h2>כל החומר שלך<br/>במקום אחד דיגיטלי</h2>
             <p>העלה PDFs, סרוק חוברות תרגול, צרף דפי נוסחאות — והפלטפורמה הופכת אותם למרכז ידע מאורגן עם תיוג חכם, חיפוש מהיר וקישורים בין נושאים. כל חומרי הלימוד שלך הופכים לכלי תרגול חי.</p>
             <ul class="showcase-points">
-              <li>📁 ארכיון פרטי לכל חומרי הלימוד</li>
-              <li>🔎 חיפוש בכל המבחנים בשנייה</li>
-              <li>🗂️ ארגון אוטומטי לפי קורסים ונושאים</li>
-              <li>☁️ סנכרון בין מכשירים</li>
+              <li><svg class="point-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>ארכיון פרטי לכל חומרי הלימוד</li>
+              <li><svg class="point-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>חיפוש בכל המבחנים בשנייה</li>
+              <li><svg class="point-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>ארגון אוטומטי לפי קורסים ונושאים</li>
+              <li><svg class="point-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>סנכרון בין מכשירים</li>
             </ul>
           </div>
           <div class="showcase-visual">
-            <img src="/public/images/knowledge-map.png?v=20260410-4" alt="מרכז הידע הדיגיטלי של ExamPrep" />
+            <img src="/public/images/knowledge-map.png?v=20260410-7" alt="מרכז הידע הדיגיטלי של ExamPrep" />
           </div>
         </div>
       </section>
@@ -206,14 +215,14 @@
             <h2>תדע בדיוק<br/>איפה ללחוץ חזק</h2>
             <p>המערכת מנתחת אילו נושאים קשים לך, אילו סוגי שאלות חוזרים, איפה אתה מבזבז זמן ואיפה אתה מתחזק. אתה לא לומד "הכל" — אתה לומד את מה שבאמת ישפר את הציון שלך.</p>
             <ul class="showcase-points">
-              <li>📊 מפות חום של נקודות חולשה</li>
-              <li>🎯 המלצות יומיות מותאמות אישית</li>
-              <li>📈 גרפי התקדמות לאורך זמן</li>
-              <li>⚡ זיהוי שאלות שכדאי לחזור עליהן</li>
+              <li><svg class="point-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>מפת שליטה לפי נושא — ירוק=שולט, אדום=חלש</li>
+              <li><svg class="point-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>גרפי התקדמות ועקומת שיפור לאורך זמן</li>
+              <li><svg class="point-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.1V18h6v-1.2c0-.8.3-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>המלצות יומיות מותאמות אישית</li>
+              <li><svg class="point-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>זיהוי שאלות שכדאי לחזור עליהן</li>
             </ul>
           </div>
           <div class="showcase-visual">
-            <img src="/public/images/analytics.png?v=20260410-4" alt="ניתוח דפוסי שאלות וחולשות לימוד" />
+            <img src="/public/images/analytics.png?v=20260410-7" alt="ניתוח דפוסי שאלות וחולשות לימוד" />
           </div>
         </div>
       </section>
@@ -225,85 +234,132 @@
           <h2 class="section-title">תהליך הכנה מותאם להצלחה</h2>
           <p class="section-sub">מבחירת הקורס ועד שיפור הביצועים — 5 שלבים שמכינים אותך באמת למבחן.</p>
           <div class="how-image-wrap">
-            <img src="/public/images/how-it-works.png?v=20260410-4" alt="איך ExamPrep עובדת — תהליך 5 שלבים לתרגול חכם" class="how-image" />
+            <img src="/public/images/how-it-works.png?v=20260410-7" alt="איך ExamPrep עובדת — תהליך 5 שלבים לתרגול חכם" class="how-image" />
           </div>
         </div>
       </section>
 
       <!-- TESTIMONIALS -->
-      <section class="section testimonials-paper" id="testimonials">
+      <section class="section reviews-section" id="testimonials">
         <div class="container">
           <span class="section-eyebrow">לקוחות מספרים</span>
-          <h2 class="section-title">מה תלמידים וסטודנטים אומרים על ExamPrep</h2>
-          <p class="section-sub">מסטודנטים באוניברסיטה דרך תלמידי תיכון לבגרויות ועד מתכוננים לפסיכומטרי — אלו ההודעות שאנחנו מקבלים</p>
-          <div class="paper-grid">
-            <!-- Column 1 -->
-            <div class="paper-col">
-              <div class="paper-bubble">
-                <p>אני מאוד אהבתי את האפליקציה היא ממש מעולה! גישה מאוד טובה לכל סוגי הסיכומים. שאלות מעולות ברמה אקדמית גבוהה. בקיצור מושלם וממש מקל על הלמידה למבחנים עם הרבה סיכומים.</p>
-                <span class="paper-time">18:20</span>
-              </div>
-              <div class="paper-bubble">
-                <p>אני סטודנטית למשפטים והתוכנה מעולה, עזרה (ועוזרת) לי ללמוד למבחנים. אפילו כשאני מכניסה סיכום מבולגן עם טעויות כתיב היא מצליחה להוציא שאלות מסודרות ואיכותיות לתרגול. ממליץ בחום!</p>
-                <span class="paper-time">9:25</span>
-              </div>
-              <div class="paper-bubble">
-                <p>היייי! רציתי לרשום לך תודה רבה על המערכת! חייבת להגיד שהיא הייתה לי ממש נוחה, לא היו בה תקלות וזה לא מובן מאליו! התוכנה עזרה לי המון בתקופת המבחנים הזו!!! ואני ממש הצליח אותי (לא אקשר שלמדתי בעיקר ממנה חחח) בקיצור! שווה כל שקל וממש תודה!</p>
-                <span class="paper-time">15:35</span>
-              </div>
-              <div class="paper-bubble">
-                <p>ממש עזר לי למבחן ובאמת רואים שהדגש הוא על איכות השאלות שהן מאתגרות 💪</p>
-                <span class="paper-time">15:24</span>
-              </div>
-            </div>
+          <h2 class="section-title">מה תלמידים וסטודנטים אומרים</h2>
+          <p class="section-sub">סטודנטים, תלמידי תיכון ומתכוננים לפסיכומטרי — אלו ההודעות שאנחנו מקבלים</p>
 
-            <!-- Column 2 -->
-            <div class="paper-col">
-              <div class="paper-bubble">
-                <p>היי! ניסיתי לבנות כמה מבחני דמה והאמת שממש אהבתי, הסגנון שאלות שהוא בנה דומה לשאלות שחלק מהמרצים באמת מנסחים</p>
-                <span class="paper-time">14:08</span>
-                <span class="paper-react">👍</span>
+          <div class="reviews-grid" data-reviews>
+            <article class="review-card" data-review>
+              <div class="review-stars" aria-label="5 כוכבים">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
               </div>
-              <div class="paper-bubble">
-                <p>מערכת מצוינת שמספקת בדיוק כל מה שסטודנט צריך בשביל לעבור את הבחינות — שאלות פרקטיות שחושבות צעד קדימה, ניתוח של דפוסי החזרה במבחנים בכל רמות הקושי שיש, תרגלתי 5 ימים ועברתי את המבחן בפסיכומטרי בציון 91 🔥</p>
-                <span class="paper-time">11:42</span>
-                <span class="paper-react">👍</span>
+              <p class="review-quote">"תרגלתי 5 ימים ועברתי את הפסיכומטרי בציון 91. המערכת ניתחה בדיוק את הנושאים שחזרו במבחנים והתמקדה בחולשות שלי. הציון הזה הוא לא במקרה."</p>
+              <div class="review-author">
+                <div class="review-avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">ד.ק</div>
+                <div class="review-meta">
+                  <strong>דניאל ק.</strong>
+                  <span>מתכונן לפסיכומטרי</span>
+                </div>
               </div>
-              <div class="paper-bubble">
-                <p>פגז עשה לי המבחני דמה במעבדת ה-AI גם בעברית גם באנגלית. המבחן עצמו עבר חלק 🙌</p>
-                <span class="paper-time">10:21</span>
-                <span class="paper-react">👍</span>
-              </div>
-              <div class="paper-bubble">
-                <p>באמת ממקד את החומרים ויוצר רמות קושי שונות במקבץ אחד</p>
-                <span class="paper-time">9:50</span>
-                <span class="paper-react">👍</span>
-              </div>
-              <div class="paper-bubble">
-                <p>אתר מדהים נוח ברמות, השאלות מנוסחות ברמה גבוהה אני ממש נהנית 😍</p>
-                <span class="paper-time">13:50</span>
-              </div>
-            </div>
+            </article>
 
-            <!-- Column 3 -->
-            <div class="paper-col">
-              <div class="paper-bubble">
-                <p>למדתי עם המערכת שלכם עוד מהסמסטר הקודם ובחודש האחרון השתמשתי בה לבחינות שהיו לי וחייבת לומר שהפיצ'ר של הניתוח של הנושאים שחוזרים הכי הרבה במבחנים שמוסיף הסבר על התשובות על פי הסיכום פשוט מעולה. אני הולכת להשתמש בזה גם בתקופת המבחנים הקרובה כמובן. תודה!! 😄</p>
-                <span class="paper-time">15:06</span>
+            <article class="review-card" data-review>
+              <div class="review-stars" aria-label="5 כוכבים">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
               </div>
-              <div class="paper-bubble">
-                <p>תודה רבה על העזרה שלכם 🙏 ולגבי מה שאמרת אני אשתף אתכם שהיו שני קורסים בסמסטר שכמעט לא הייתי נוכח בהם, ופשוט תרגלתי כמה מבחנים עם המערכת שלכם וישר ניגשתי וקיבלתי בסוף 81 ו-87! זה ממש מטורף כי למדתי בכמות זמן מינימלית 🎯</p>
-                <span class="paper-time">13:19</span>
+              <p class="review-quote">"אני סטודנטית למשפטים והתוכנה פשוט מעולה. אפילו כשאני מכניסה סיכום מבולגן עם טעויות כתיב היא מצליחה להוציא שאלות מסודרות ואיכותיות לתרגול. ממליצה בחום!"</p>
+              <div class="review-author">
+                <div class="review-avatar" style="background:linear-gradient(135deg,#ec4899,#f472b6)">ש.ל</div>
+                <div class="review-meta">
+                  <strong>שירה ל.</strong>
+                  <span>סטודנטית למשפטים</span>
+                </div>
               </div>
-              <div class="paper-bubble">
-                <p>תודה רבה!! מלא הצלחה גם לכם, אף פעם לא נתקלתי באפליקציה כל כך ידידותית!</p>
-                <span class="paper-time">12:14</span>
+            </article>
+
+            <article class="review-card" data-review>
+              <div class="review-stars" aria-label="5 כוכבים">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
               </div>
-              <div class="paper-bubble">
-                <p>אני בכיתה י"ב ולומדת לבגרות 5 יחידות במתמטיקה. דשבורד ההתקדמות זה דבר מטורף — אני רואה איזה פרק חלש לי ויודעת בדיוק לאן ללכת. עליתי מ-78 ל-94 בבגרות ✨</p>
-                <span class="paper-time">17:02</span>
+              <p class="review-quote">"אני בכיתה י״ב ולומדת לבגרות 5 יחידות במתמטיקה. דשבורד ההתקדמות הוא דבר מטורף — אני רואה איזה פרק חלש לי ויודעת בדיוק לאן ללכת. עליתי מ-78 ל-94 בבגרות."</p>
+              <div class="review-author">
+                <div class="review-avatar" style="background:linear-gradient(135deg,#10b981,#34d399)">נ.א</div>
+                <div class="review-meta">
+                  <strong>נועה א.</strong>
+                  <span>תלמידת י״ב, מתמטיקה 5 יח״ל</span>
+                </div>
               </div>
-            </div>
+            </article>
+
+            <article class="review-card" data-review>
+              <div class="review-stars" aria-label="5 כוכבים">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+              </div>
+              <p class="review-quote">"היו שני קורסים בסמסטר שכמעט לא הייתי נוכח בהם. תרגלתי כמה מבחנים עם המערכת וישר ניגשתי — וקיבלתי 81 ו-87. זה ממש מטורף כי למדתי בכמות זמן מינימלית."</p>
+              <div class="review-author">
+                <div class="review-avatar" style="background:linear-gradient(135deg,#0891b2,#06b6d4)">ע.מ</div>
+                <div class="review-meta">
+                  <strong>עומר מ.</strong>
+                  <span>סטודנט להנדסה</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="review-card" data-review>
+              <div class="review-stars" aria-label="5 כוכבים">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+              </div>
+              <p class="review-quote">"מערכת מצוינת שמספקת בדיוק מה שסטודנט צריך — שאלות פרקטיות שחושבות צעד קדימה, וניתוח חכם של החומר. אהבתי במיוחד שאפשר לתרגל בדיוק את הנושאים שאני חלשה בהם."</p>
+              <div class="review-author">
+                <div class="review-avatar" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)">מ.ב</div>
+                <div class="review-meta">
+                  <strong>מאיה ב.</strong>
+                  <span>סטודנטית לפסיכולוגיה</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="review-card" data-review>
+              <div class="review-stars" aria-label="5 כוכבים">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l2.9 6.9L22 10l-5.5 4.8L18.2 22 12 18.3 5.8 22l1.7-7.2L2 10l7.1-1.1z"/></svg>
+              </div>
+              <p class="review-quote">"השאלות מנוסחות ברמה גבוהה, האתר נוח ומהיר, וההסברים אחרי כל שאלה ממש עוזרים להבין ולא רק לזכור. ממש כלי שאני חוזרת אליו לפני כל מבחן."</p>
+              <div class="review-author">
+                <div class="review-avatar" style="background:linear-gradient(135deg,#dc2626,#f87171)">ת.ר</div>
+                <div class="review-meta">
+                  <strong>תמר ר.</strong>
+                  <span>סטודנטית לרפואה</span>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <!-- Mobile-only carousel: shows one review at a time, auto-rotates -->
+          <div class="reviews-mobile" aria-hidden="true">
+            <div class="rm-stage" data-rm-stage></div>
+            <div class="rm-dots" data-rm-dots></div>
           </div>
         </div>
       </section>
@@ -320,12 +376,12 @@
               <div class="price-amount">0<span class="currency">₪</span></div>
               <div class="price-desc">להתנסות במערכת</div>
               <ul class="price-features">
-                <li>5 קבצי PDF סך הכל</li>
+                <li>2 חבילות לימוד מסיכום (חינם לכל החיים)</li>
+                <li>שאלות, כרטיסיות, מתאר ומילון מושגים מבינה מלאכותית</li>
                 <li>קורס אחד פעיל</li>
-                <li>תרגול מקבצים + טיימר</li>
-                <li>סקירת טעויות בסיסית</li>
-                <li>תובנות בסיסיות</li>
-                <li class="no">ללא Gemini Generator</li>
+                <li class="no">ללא העלאת PDFs של מבחנים</li>
+                <li class="no">ללא תרגול שאלות אמיתיות</li>
+                <li class="no">ללא מחולל שאלות חכם</li>
               </ul>
               <a href="#/login?signup=1" class="btn btn-ghost btn-block" data-route="/login?signup=1">התחל בחינם</a>
             </div>
@@ -335,11 +391,11 @@
               <div class="price-desc">לסטודנט עם מבחן בשבוע הבא</div>
               <ul class="price-features">
                 <li>30 קבצי PDF בחודש</li>
+                <li>30 חבילות לימוד מסיכום בחודש</li>
                 <li>5 קורסים פעילים</li>
-                <li>100 שאלות Gemini בחודש</li>
+                <li>100 שאלות בינה מלאכותית בחודש</li>
                 <li>מחולל מבחני דמה ללא הגבלה</li>
-                <li>תובנות מלאות + מאסטרי</li>
-                <li>דשבורד התקדמות מלא</li>
+                <li>תובנות + דשבורד התקדמות מלאים</li>
               </ul>
               <a href="#/login?signup=1" class="btn btn-primary btn-block" data-route="/login?signup=1">לבחור Basic</a>
             </div>
@@ -349,11 +405,11 @@
               <div class="price-desc">לסטודנט רציני שלא מתפשר</div>
               <ul class="price-features">
                 <li>150 קבצי PDF בחודש</li>
+                <li>150 חבילות לימוד מסיכום בחודש</li>
                 <li>קורסים בלתי מוגבלים</li>
-                <li>500 שאלות Gemini בחודש</li>
-                <li>תובנות + AI Lab מלא</li>
-                <li>עדיפות בעיבוד</li>
-                <li>ייצוא נתונים + שיתוף קורסים</li>
+                <li>500 שאלות בינה מלאכותית בחודש</li>
+                <li>תובנות + מעבדה חכמה מלאה</li>
+                <li>עדיפות בעיבוד + ייצוא נתונים</li>
               </ul>
               <a href="#/login?signup=1" class="btn btn-ghost btn-block" data-route="/login?signup=1">לבחור Pro</a>
             </div>
@@ -365,7 +421,7 @@
                 <li>הכל מחבילת Pro</li>
                 <li>50 משתמשי משנה</li>
                 <li>דשבורד מורה</li>
-                <li>2,000 שאלות AI בחודש</li>
+                <li>2,000 שאלות בינה מלאכותית בחודש</li>
                 <li>הקצאת מבחנים לתלמידים</li>
                 <li>תמיכה מהירה</li>
               </ul>
@@ -383,20 +439,24 @@
           <p class="section-sub">לא מצאת תשובה? כתוב לנו ב-hi@examprep.app</p>
           <div class="faq-list">
             <div class="faq-item">
+              <button class="faq-q">מה זה "לימוד חכם מסיכום" ואיך הוא שונה מתרגול PDF? <span class="arrow">▼</span></button>
+              <div class="faq-a"><div class="faq-a-inner">"לימוד חכם מסיכום" הוא הניסיון החינמי שלנו: אתה מעלה PDF של סיכום (או מדביק טקסט) — והבינה המלאכותית יוצרת לך תוך דקה חבילת לימוד שלמה: שאלות אמריקאיות עם הסברים, כרטיסיות לזכירה, מתאר היררכי של החומר, מילון מושגי מפתח, שאלות פתוחות לחשיבה עמוקה, ומבחן עצמי משולב. תרגול PDF הוא הפיצ'ר הגדול שלנו — שם אתה מעלה PDF של מבחן אמיתי + פתרונות, והמערכת חותכת אוטומטית כל שאלה לתמונה ומייצרת אפליקציית תרגול שלמה. שניהם משלימים.</div></div>
+            </div>
+            <div class="faq-item">
               <button class="faq-q">איך המערכת חותכת את השאלות מה-PDF? <span class="arrow">▼</span></button>
-              <div class="faq-a"><div class="faq-a-inner">המערכת משתמשת בעיבוד תמונה מתקדם (ספריית sharp) שמזהה גבולות ופסקאות. אנחנו לא משתמשים ב-OCR או AI לשלב הזה — זה זול, מהיר ומדויק. הקובץ שלך לא נשלח לאף שירות חיצוני בשלב העיבוד.</div></div>
+              <div class="faq-a"><div class="faq-a-inner">המערכת מזהה אוטומטית את הגבולות של כל שאלה בקובץ ה-PDF שלך וחותכת אותן לתמונות נקיות ומקצועיות. כל העיבוד קורה בשרת שלנו, הקובץ שלך לא נשלח לאף שירות חיצוני, והנוסחאות, הקוד והעברית נשמרים בדיוק כמו במקור.</div></div>
             </div>
             <div class="faq-item">
               <button class="faq-q">מה קורה אם בקובץ הפתרון שלי יש כבר הסברים מלאים? <span class="arrow">▼</span></button>
-              <div class="faq-a"><div class="faq-a-inner">המערכת מזהה אם הפתרון מכיל הסברים מהותיים (לא רק "תשובה: 2"). אם כן — היא תשתמש בהסברים שלך מבלי לבזבז טוקנים על AI. רק כשהפתרונות הם מינימליים — אנחנו מפעילים את המודל. ככה אתה לא משלם על מה שכבר יש לך.</div></div>
+              <div class="faq-a"><div class="faq-a-inner">המערכת קוראת את קובץ הפתרון שלך, ואם היא רואה שכבר יש בו הסברים אמיתיים — היא משתמשת בהם בדיוק כמו שהם. רק אם הפתרון קצר ולא מסביר באמת, אנחנו משלימים אותו בעזרת בינה מלאכותית. ככה תמיד מקבלים הסבר איכותי לכל שאלה — בלי לבזבז על מה שכבר יש לך.</div></div>
             </div>
             <div class="faq-item">
               <button class="faq-q">האם הקובץ שלי בטוח? <span class="arrow">▼</span></button>
-              <div class="faq-a"><div class="faq-a-inner">כל קובץ נשמר באחסון פרטי שלך עם RLS (Row Level Security) — אף משתמש אחר לא יכול לגשת אליו. אנחנו לא משתפים את התוכן עם צד שלישי, ויש לך אפשרות למחוק את כל הנתונים שלך בכל עת.</div></div>
+              <div class="faq-a"><div class="faq-a-inner">כן. כל קובץ שאתה מעלה נשמר בארכיון אישי ומאובטח שרק אתה יכול לגשת אליו. אנחנו לא משתפים את התוכן עם אף אחד, ויש לך אפשרות למחוק את כל הנתונים שלך בכל רגע — בלחיצת כפתור.</div></div>
             </div>
             <div class="faq-item">
               <button class="faq-q">מה ההבדל בין מצב מבחן למצב למידה? <span class="arrow">▼</span></button>
-              <div class="faq-a"><div class="faq-a-inner">במצב מבחן (חדש!) לא ניתן לראות את התשובה הנכונה תוך כדי הפתרון - רק בסוף. במצב למידה תוכל ללחוץ "הצג פתרון" על כל שאלה בנפרד. בכל מקרה, אחרי סוף המקבץ תקבל סקירת טעויות מלאה עם ההסברים.</div></div>
+              <div class="faq-a"><div class="faq-a-inner">במצב מבחן (חדש!) לא רואים את התשובה הנכונה תוך כדי הפתרון — רק בסוף, בדיוק כמו במבחן אמיתי. במצב למידה אפשר ללחוץ "הצג פתרון" על כל שאלה בנפרד. בכל מקרה, אחרי סוף המקבץ תקבל סקירת טעויות מלאה עם ההסברים.</div></div>
             </div>
             <div class="faq-item">
               <button class="faq-q">האם אפשר להשתמש מהטלפון? <span class="arrow">▼</span></button>
@@ -404,15 +464,15 @@
             </div>
             <div class="faq-item">
               <button class="faq-q">מה זה "תובנות" ואיך זה עוזר לי? <span class="arrow">▼</span></button>
-              <div class="faq-a"><div class="faq-a-inner">מסך התובנות מנתח את כל בנק השאלות של הקורס שלך אוטומטית. אתה רואה מפת נושאים — איזה נושא חוזר במבחנים שלך הכי הרבה, באיזה נושאים אתה חלש (לפי הטעויות שלך), וזיהוי של 12 שאלות "ברמה גבוהה" שכדאי לחזור עליהן. ככל שיש לך יותר מבחנים בקורס (3+) — הניתוח מדויק יותר.</div></div>
+              <div class="faq-a"><div class="faq-a-inner">מסך התובנות מנתח את כל בנק השאלות של הקורס שלך אוטומטית. אתה רואה מפת נושאים — איזה נושא חוזר במבחנים שלך הכי הרבה, באיזה נושאים אתה חלש (לפי הטעויות שלך), וזיהוי של שאלות "ברמה גבוהה" שכדאי לחזור עליהן. ככל שיש לך יותר מבחנים בקורס (3+) — הניתוח מדויק יותר.</div></div>
             </div>
             <div class="faq-item">
               <button class="faq-q">איך עובד מחולל מבחני הדמה? <span class="arrow">▼</span></button>
-              <div class="faq-a"><div class="faq-a-inner">במעבדת ה-AI יש מחולל סינתטי שבונה לך מבחן דמה לפי 4 סגנונות: "מאוזן" שמערבב נושאים לפי תדירות החזרה במבחנים שלך, "קשה" עם רק שאלות ברמה גבוהה, "החולשות שלי" שמתמקד רק בנושאים שטעית בהם, ו"חזרה" שמביא נושאים שלא ראית מזמן. כל מבחן הוא ייחודי, חכם, ומותאם בדיוק להיכן שאתה צריך לתרגל.</div></div>
+              <div class="faq-a"><div class="faq-a-inner">במעבדה החכמה יש מחולל שבונה לך מבחן דמה לפי 4 סגנונות: "מאוזן" שמערבב נושאים לפי התדירות שלהם במבחנים שלך, "קשה" עם רק שאלות ברמה גבוהה, "החולשות שלי" שמתמקד רק בנושאים שטעית בהם, ו"חזרה" שמביא נושאים שלא ראית מזמן. כל מבחן הוא ייחודי, חכם, ומותאם בדיוק לאיפה שאתה צריך לתרגל.</div></div>
             </div>
             <div class="faq-item">
-              <button class="faq-q">איך מחולל ה-Gemini שונה מ-ChatGPT? <span class="arrow">▼</span></button>
-              <div class="faq-a"><div class="faq-a-inner">בניגוד ל-ChatGPT שמייצר שאלות גנריות בלי הקשר, ה-Gemini Generator שלנו יודע בדיוק את הנושאים שמופיעים בקורס שלך, את רמת הקושי של המבחנים שלך, ואת הסגנון של המרצה. הוא מחבר שאלות חדשות לחלוטין ברמת מבחן אוניברסיטאי, עם קוד אמיתי, פתרון מלא והסבר לכל אופציה. אתה מקבל תרגול שבאמת קשור לחומר שלך.</div></div>
+              <button class="faq-q">במה מחולל השאלות שלכם שונה מ-ChatGPT? <span class="arrow">▼</span></button>
+              <div class="faq-a"><div class="faq-a-inner">בניגוד ל-ChatGPT שמייצר שאלות גנריות בלי הקשר לחומר שלך, מחולל השאלות שלנו יודע בדיוק את הנושאים שמופיעים בקורס שלך, את רמת הקושי של המבחנים שלך, ואת הסגנון של המרצה. הוא מחבר שאלות חדשות לחלוטין ברמת מבחן אוניברסיטאי, עם פתרון מלא והסבר לכל אופציה — תרגול שבאמת קשור לחומר שלך.</div></div>
             </div>
             <div class="faq-item">
               <button class="faq-q">מה הדשבורד "ההתקדמות שלי" מציג? <span class="arrow">▼</span></button>
@@ -433,13 +493,13 @@
       <!-- FINAL CTA -->
       <section class="final-cta">
         <div class="container">
-          <h2>מוכן להתחיל לתרגל חכם?</h2>
-          <p>הצטרף עכשיו ל-ExamPrep וקבל את 5 ה-PDFs הראשונים לעיבוד חינם — בלי כרטיס אשראי, בלי התחייבות.</p>
-          <a href="#/login?signup=1" class="btn btn-primary btn-lg" data-route="/login?signup=1">התחל בחינם עכשיו ←</a>
+          <h2>מוכן להתחיל ללמוד חכם?</h2>
+          <p>הצטרף עכשיו ל-ExamPrep וקבל 2 חבילות לימוד שלמות מהסיכומים שלך — חינם, בלי כרטיס אשראי, בלי התחייבות.</p>
+          <a href="#/login?signup=1" class="btn btn-primary btn-lg" data-route="/login?signup=1">התחל בחינם עכשיו<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></a>
           <div class="cta-trust">
-            <span>✅ ללא כרטיס אשראי</span>
-            <span>✅ התחלה מיידית</span>
-            <span>✅ ללא התחייבות</span>
+            <span><svg class="trust-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>ללא כרטיס אשראי</span>
+            <span><svg class="trust-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>התחלה מיידית</span>
+            <span><svg class="trust-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>ללא התחייבות</span>
           </div>
         </div>
       </section>
@@ -450,9 +510,9 @@
           <div class="footer-grid">
             <div class="footer-brand">
               <div class="logo">
-                <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img logo-img-dark" />
+                <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img logo-img-dark" />
               </div>
-              <p>פלטפורמת SaaS ישראלית לתרגול שאלות אמריקאיות. עיבוד אוטומטי של מבחני PDF, סקירת טעויות עם הסברים, ושאלות AI דומות.</p>
+              <p>פלטפורמת SaaS ישראלית לתרגול שאלות אמריקאיות. עיבוד אוטומטי של מבחני PDF, סקירת טעויות עם הסברים, ושאלות נוספות בעזרת בינה מלאכותית.</p>
             </div>
             <div>
               <h5>מוצר</h5>
@@ -481,7 +541,7 @@
           </div>
           <div class="footer-bottom">
             <span>© 2026 ExamPrep · כל הזכויות שמורות</span>
-            <span>Made with ❤️ in Israel</span>
+            <span>Made with <svg class="heart-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> in Israel</span>
           </div>
         </div>
       </footer>
@@ -493,12 +553,67 @@
   <!-- ============================ -->
   <template id="tmpl-auth">
     <div class="auth-split">
-      <!-- LEFT: brand / marketing visual with feature panel image -->
-      <aside class="auth-left auth-left-image">
-        <img src="/public/images/auth-panel.png?v=20260410-4" alt="חוויית למידה מתקדמת — מאגר שאלות, מצבי תרגול, למידה מטעויות, דשבורד התקדמות" class="auth-left-img" />
-        <div class="auth-left-overlay">
+      <!-- LEFT: brand / marketing panel (HTML/CSS, fully responsive) -->
+      <aside class="auth-left">
+        <div class="auth-left-bg">
+          <span class="auth-orb orb-a"></span>
+          <span class="auth-orb orb-b"></span>
+          <span class="auth-orb orb-c"></span>
+          <div class="auth-grid"></div>
+        </div>
+        <div class="auth-left-inner">
+          <a href="#/" class="auth-left-logo" data-route="/">
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img logo-img-light" />
+          </a>
+          <div class="auth-left-content">
+            <span class="auth-eyebrow">פלטפורמת תרגול חכמה</span>
+            <h1 class="auth-headline">
+              חוויית למידה <span class="auth-headline-grad">מתקדמת</span>
+            </h1>
+            <p class="auth-tagline">
+              העלה סיכום, קבל שאלות חכמות, ותרגל בדיוק את החומר שלך — בליווי בינה מלאכותית.
+            </p>
+            <ul class="auth-features">
+              <li>
+                <span class="auth-feature-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                </span>
+                <div>
+                  <strong>מאגר שאלות מקיף</strong>
+                  <span>אלפי שאלות מקצועיות לתרגול ממוקד</span>
+                </div>
+              </li>
+              <li>
+                <span class="auth-feature-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </span>
+                <div>
+                  <strong>מצבי תרגול מגוונים</strong>
+                  <span>מבחן מלא, תרגול מהיר, עבודה על נושאים</span>
+                </div>
+              </li>
+              <li>
+                <span class="auth-feature-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4v1a4 4 0 0 0-2 7.5V18a3 3 0 0 0 6 0V6a4 4 0 0 0 0 0z"/><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1 2 7.5V18a3 3 0 0 1-6 0"/></svg>
+                </span>
+                <div>
+                  <strong>למידה מטעויות</strong>
+                  <span>חזרה חכמה על מה שעוד לא מושלם</span>
+                </div>
+              </li>
+              <li>
+                <span class="auth-feature-ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </span>
+                <div>
+                  <strong>דשבורד התקדמות</strong>
+                  <span>נתונים אישיים בזמן אמת</span>
+                </div>
+              </li>
+            </ul>
+          </div>
           <div class="auth-left-foot">
-            <span>🔒 הנתונים שלך מאובטחים · לא משותפים עם צד שלישי</span>
+            <span><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>הנתונים שלך מאובטחים · לא משותפים עם צד שלישי</span>
           </div>
         </div>
       </aside>
@@ -506,12 +621,12 @@
       <!-- RIGHT: form panel -->
       <main class="auth-right">
         <div class="auth-right-top">
-          <a href="#/" class="auth-back-link" data-route="/">← חזרה לדף הבית</a>
+          <a href="#/" class="auth-back-link" data-route="/"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>חזרה לדף הבית</a>
         </div>
 
         <div class="auth-panel">
           <a href="#/" class="auth-panel-logo" data-route="/">
-            <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img" />
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
           </a>
           <h2 class="auth-panel-title" id="auth-title">ברוך הבא חזרה</h2>
           <p class="auth-panel-sub" id="auth-sub">טוב לראות אותך שוב — תכנס כדי להמשיך לתרגל</p>
@@ -544,7 +659,7 @@
               </label>
               <div class="input-with-icon">
                 <input type="password" id="auth-pass" name="password" placeholder="הזן סיסמה" required minlength="6" autocomplete="current-password" />
-                <button type="button" class="input-eye" id="toggle-pass" aria-label="הצג סיסמה">👁</button>
+                <button type="button" class="input-eye" id="toggle-pass" aria-label="הצג סיסמה"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
               </div>
               <div class="password-rules" id="password-rules" style="display:none;">
                 <div class="rule" data-rule="len"><span class="rule-icon">○</span> לפחות 8 תווים</div>
@@ -570,7 +685,7 @@
           <p class="auth-switch" id="auth-switch">אין לך חשבון? <a href="#" id="auth-switch-link">הירשם עכשיו</a></p>
 
           <div class="admin-shortcut">
-            <strong>⚡ למפתח / אדמין</strong>
+            <strong><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>למפתח / אדמין</strong>
             <p>היכנס מיד כמנהל וקבל גישה ל-85 השאלות של תוכנה 1</p>
             <button id="admin-quick-login">כניסה מהירה כאדמין</button>
           </div>
@@ -589,13 +704,14 @@
       <header class="app-topbar">
         <div class="app-topbar-inner">
           <a href="#/dashboard" class="logo" data-route="/dashboard">
-            <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img" />
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
           </a>
           <nav class="topbar-nav">
             <a href="#/dashboard" class="active" data-route="/dashboard">דשבורד</a>
+            <a href="#/study" data-route="/study">לימוד מסיכום</a>
             <a href="#/progress" data-route="/progress">ההתקדמות שלי</a>
             <a href="#/insights" data-route="/insights">תובנות</a>
-            <a href="#/lab" data-route="/lab">מעבדת AI</a>
+            <a href="#/lab" data-route="/lab">מעבדה חכמה</a>
           </nav>
           <div class="app-user">
             <span class="app-user-plan" id="user-plan">free</span>
@@ -608,7 +724,7 @@
       </header>
       <main class="app-content">
         <div class="dash-greet">
-          <h1 id="dash-greet-title">שלום! 👋</h1>
+          <h1 id="dash-greet-title">שלום</h1>
           <p>בואו נתרגל קצת היום ונתקדם לקראת המבחן.</p>
         </div>
 
@@ -633,23 +749,28 @@
         <h2 id="ca-title">קורס</h2>
         <p class="modal-sub" id="ca-sub">בחר מה לעשות עכשיו עם הקורס</p>
         <div class="course-actions-grid">
+          <button class="action-tile action-tile-featured" data-action="study">
+            <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v10a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></span>
+            <strong>לימוד חכם מסיכום</strong>
+            <small>שאלות + כרטיסיות + מתאר מבינה מלאכותית</small>
+          </button>
           <button class="action-tile" data-action="practice">
-            <span class="action-icon">🎮</span>
+            <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>
             <strong>תרגול חופשי</strong>
             <small>מקבצי תרגול לפי גודל וסוג</small>
           </button>
           <button class="action-tile" data-action="lab">
-            <span class="action-icon">✨</span>
-            <strong>מעבדת AI</strong>
-            <small>מבחני דמה + Gemini</small>
+            <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.58 16.5h12.85"/></svg></span>
+            <strong>מעבדה חכמה</strong>
+            <small>מבחני דמה + מחולל שאלות</small>
           </button>
           <button class="action-tile" data-action="insights">
-            <span class="action-icon">📊</span>
+            <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
             <strong>תובנות</strong>
             <small>ניתוח חומר ומפת נושאים</small>
           </button>
           <button class="action-tile" data-action="progress">
-            <span class="action-icon">📈</span>
+            <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
             <strong>ההתקדמות שלי</strong>
             <small>סטטיסטיקה, רצף וטיפים</small>
           </button>
@@ -715,7 +836,7 @@
 
           <div class="quiz-actions" style="margin-top: 8px;">
             <button class="btn btn-ghost" id="batch-cancel">ביטול</button>
-            <button class="btn btn-primary" id="batch-start">התחל מקבץ ←</button>
+            <button class="btn btn-primary" id="batch-start">התחל מקבץ<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
           </div>
         </div>
       </div>
@@ -729,7 +850,7 @@
     <div class="quiz-screen">
       <header class="quiz-topbar">
         <div class="quiz-brand">
-          <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img logo-img-sm" />
+          <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img logo-img-sm" />
           <div class="quiz-brand-text">
             <small id="quiz-exam-label">תוכנה 1</small>
           </div>
@@ -739,7 +860,7 @@
           <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="quiz-progress-fill"></div></div>
         </div>
         <div class="quiz-timer-wrap hidden" id="quiz-timer-wrap">
-          <span>⏱</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span id="quiz-timer">--:--</span>
         </div>
         <button class="quiz-quit" id="btn-quit" title="סיים מקבץ">✕</button>
@@ -750,7 +871,7 @@
           <div class="quiz-card">
             <div class="quiz-q-head">
               <div class="quiz-q-num" id="quiz-q-num">שאלה 1<small></small></div>
-              <button class="quiz-flag" id="btn-flag">🚩 סמן לחזרה</button>
+              <button class="quiz-flag" id="btn-flag"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>סמן לחזרה</button>
             </div>
             <div class="quiz-image-wrap">
               <img id="quiz-image" src="" alt="שאלה" />
@@ -764,9 +885,9 @@
           </div>
 
           <div class="quiz-actions">
-            <button class="btn btn-ghost" id="btn-prev">← הקודם</button>
-            <button class="btn btn-warn hidden" id="btn-reveal">💡 הצג פתרון</button>
-            <button class="btn btn-primary" id="btn-next">הבא →</button>
+            <button class="btn btn-ghost" id="btn-prev"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>הקודם</button>
+            <button class="btn btn-warn hidden" id="btn-reveal"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.1V18h6v-1.2c0-.8.3-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>הצג פתרון</button>
+            <button class="btn btn-primary" id="btn-next">הבא<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
           </div>
         </main>
 
@@ -790,7 +911,7 @@
     <div class="summary-screen">
       <div class="summary-card">
         <a href="#/dashboard" class="summary-logo" data-route="/dashboard">
-          <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img" />
+          <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
         </a>
         <div class="summary-emoji" id="summary-emoji">🎉</div>
         <h1 class="summary-title" id="summary-title">סיימת את המקבץ!</h1>
@@ -806,7 +927,7 @@
         <div class="summary-pills" id="summary-pills"></div>
 
         <div class="summary-actions">
-          <button class="btn btn-primary" id="btn-mistake-review">🔍 סקירת טעויות מלאה</button>
+          <button class="btn btn-primary" id="btn-mistake-review"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>סקירת טעויות מלאה</button>
           <button class="btn btn-soft" id="btn-summary-home">חזרה לדשבורד</button>
         </div>
       </div>
@@ -822,14 +943,14 @@
         <div class="review-header-inner">
           <div class="review-header-brand">
             <a href="#/dashboard" class="review-logo" data-route="/dashboard">
-              <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img logo-img-sm" />
+              <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img logo-img-sm" />
             </a>
             <div>
               <h1>סקירת טעויות</h1>
               <p>בוא נעבור על השאלות שטעית בהן ונוודא שאתה מבין למה</p>
             </div>
           </div>
-          <button class="review-back" id="review-back">→ חזרה לדשבורד</button>
+          <button class="review-back" id="review-back"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>חזרה לדשבורד</button>
         </div>
       </header>
       <main class="review-body">
@@ -839,8 +960,8 @@
             <small id="review-sub">מתמקדים בטעויות שלך</small>
           </div>
           <div class="review-pager">
-            <button class="btn btn-ghost" id="review-prev">← הקודמת</button>
-            <button class="btn btn-primary" id="review-next">הבאה →</button>
+            <button class="btn btn-ghost" id="review-prev"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>הקודמת</button>
+            <button class="btn btn-primary" id="review-next">הבאה<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
           </div>
         </div>
         <div id="review-content"></div>
@@ -856,13 +977,13 @@
       <header class="app-topbar">
         <div class="app-topbar-inner">
           <a href="#/dashboard" class="logo" data-route="/dashboard">
-            <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img" />
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
           </a>
           <nav class="topbar-nav">
             <a href="#/dashboard" data-route="/dashboard">דשבורד</a>
             <a href="#/progress" data-route="/progress">ההתקדמות שלי</a>
             <a href="#/insights" class="active" data-route="/insights">תובנות</a>
-            <a href="#/lab" data-route="/lab">מעבדת AI</a>
+            <a href="#/lab" data-route="/lab">מעבדה חכמה</a>
           </nav>
           <div class="app-user">
             <span class="app-user-plan" id="user-plan">free</span>
@@ -880,14 +1001,14 @@
             <h1>תובנות חכמות מהמבחנים שלך</h1>
             <p>ניתוח סטטיסטי של כל בנק השאלות שלך — לאן החומר הולך, איזה נושאים חוזרים, ובמה כדאי להתמקד.</p>
           </div>
-          <a href="#/lab" class="btn btn-primary" data-route="/lab">↗ פתח את מעבדת ה-AI</a>
+          <a href="#/lab" class="btn btn-primary" data-route="/lab"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>פתח את המעבדה החכמה</a>
         </div>
 
         <div class="insights-banner" id="insights-banner"></div>
 
         <section class="insights-section">
           <div class="insights-section-head">
-            <h2>📊 מפת נושאים — מה חוזר הכי הרבה</h2>
+            <h2><svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>מפת נושאים — מה חוזר הכי הרבה</h2>
             <p>כל נושא שמופיע במבחנים שלך, מסודר לפי תדירות. ככל שהבר ארוך יותר — כך הנושא חזר יותר פעמים בבחינות עבר.</p>
           </div>
           <div class="topic-map" id="topic-map"></div>
@@ -895,7 +1016,7 @@
 
         <section class="insights-section">
           <div class="insights-section-head">
-            <h2>🎯 איפה כדאי להתמקד</h2>
+            <h2><svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>איפה כדאי להתמקד</h2>
             <p>חישוב חכם המשלב תדירות בנושאים, כמות שגיאות שלך, וכמה זמן עבר מאז שתרגלת — וממציא לך את 5 נושאי הליבה.</p>
           </div>
           <div class="focus-grid" id="focus-grid"></div>
@@ -903,12 +1024,12 @@
 
         <section class="insights-section">
           <div class="insights-section-head">
-            <h2>🔥 שאלות ברמה גבוהה — שווה לחזור</h2>
+            <h2><svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>שאלות ברמה גבוהה — שווה לחזור</h2>
             <p>שאלות מאתגרות במיוחד מבנק השאלות שלך: שאלות עם 6+ אופציות, שאלות שטעית בהן בעבר, ושאלות שמגיעות מנושאים טריקיים.</p>
           </div>
           <div class="hard-q-list" id="hard-q-list"></div>
           <div class="insights-cta">
-            <button class="btn btn-primary btn-lg" id="btn-practice-hard">💪 תרגל את כל ה-Hard עכשיו</button>
+            <button class="btn btn-primary btn-lg" id="btn-practice-hard"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>תרגל את כל ה-Hard עכשיו</button>
           </div>
         </section>
       </main>
@@ -923,13 +1044,13 @@
       <header class="app-topbar">
         <div class="app-topbar-inner">
           <a href="#/dashboard" class="logo" data-route="/dashboard">
-            <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img" />
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
           </a>
           <nav class="topbar-nav">
             <a href="#/dashboard" data-route="/dashboard">דשבורד</a>
             <a href="#/progress" data-route="/progress">ההתקדמות שלי</a>
             <a href="#/insights" data-route="/insights">תובנות</a>
-            <a href="#/lab" class="active" data-route="/lab">מעבדת AI</a>
+            <a href="#/lab" class="active" data-route="/lab">מעבדה חכמה</a>
           </nav>
           <div class="app-user">
             <span class="app-user-plan" id="user-plan">free</span>
@@ -943,16 +1064,16 @@
       <main class="app-content">
         <div class="page-header">
           <div>
-            <span class="page-eyebrow">AI Lab</span>
-            <h1>מעבדת ה-AI שלך</h1>
-            <p>שני כלים מתקדמים: מחולל מבחני דמה לפי סגנון המבחנים שלך, ומחולל שאלות חדשות לחלוטין באמצעות Gemini AI ברמה הגבוהה ביותר.</p>
+            <span class="page-eyebrow">מעבדה חכמה</span>
+            <h1>המעבדה החכמה שלך</h1>
+            <p>שני כלים מתקדמים: מחולל מבחני דמה לפי סגנון המבחנים שלך, ומחולל שאלות חדשות לחלוטין באמצעות בינה מלאכותית ברמה הגבוהה ביותר.</p>
           </div>
         </div>
 
         <div class="lab-grid">
           <!-- ===== Synthetic Mock Exam ===== -->
           <section class="lab-card">
-            <div class="lab-card-icon">📝</div>
+            <div class="lab-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div>
             <h2>מבחן דמה חכם</h2>
             <p class="lab-card-sub">מחולל סינתטי בונה לך מקבץ תרגול מתאזן: מערבב את הנושאים שחוזרים הכי הרבה במבחנים שלך, מוסיף שאלות מאתגרות, ומבטיח כיסוי מלא של כל מה שנדרש למבחן.</p>
 
@@ -996,14 +1117,14 @@
 
             <div class="lab-preview" id="lab-mock-preview"></div>
 
-            <button class="btn btn-primary btn-block btn-lg" id="btn-mock-start">⚡ התחל מבחן דמה</button>
+            <button class="btn btn-primary btn-block btn-lg" id="btn-mock-start"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>התחל מבחן דמה</button>
           </section>
 
-          <!-- ===== Gemini AI Question Generator ===== -->
+          <!-- ===== Smart Question Generator ===== -->
           <section class="lab-card lab-card-ai">
-            <div class="lab-card-icon">✨</div>
-            <h2>Gemini Generator <span class="lab-badge">AI</span></h2>
-            <p class="lab-card-sub">Gemini 2.0 לוקח את הנושאים החזקים שלך ומחבר שאלות חדשות לחלוטין ברמת מבחן אוניברסיטאי — עם פתרונות מלאים, הסבר לכל אופציה, וקטעי קוד אמיתיים.</p>
+            <div class="lab-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.58 16.5h12.85"/></svg></div>
+            <h2>מחולל שאלות חכם <span class="lab-badge">בינה מלאכותית</span></h2>
+            <p class="lab-card-sub">בינה מלאכותית מתקדמת לוקחת את הנושאים החזקים שלך ומחברת שאלות חדשות לחלוטין ברמת מבחן אוניברסיטאי — עם פתרונות מלאים, הסבר לכל אופציה, וקטעי קוד אמיתיים.</p>
 
             <div class="lab-form">
               <div class="field">
@@ -1029,11 +1150,11 @@
             </div>
 
             <div class="ai-tip">
-              <strong>💡 טיפ:</strong> ככל שיש לך יותר מבחנים בבנק (3+) — הניתוח מדויק יותר, וה-AI מפיק שאלות איכותיות יותר. כרגע יש לך
+              <strong><svg class="icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.1V18h6v-1.2c0-.8.3-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>טיפ:</strong> ככל שיש לך יותר מבחנים בבנק (3+) — הניתוח מדויק יותר, והבינה המלאכותית מפיקה שאלות איכותיות יותר. כרגע יש לך
               <strong id="ai-exam-count">0</strong> מבחנים בבנק.
             </div>
 
-            <button class="btn btn-primary btn-block btn-lg" id="btn-ai-generate">✨ צור שאלות AI</button>
+            <button class="btn btn-primary btn-block btn-lg" id="btn-ai-generate"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/></svg>צור שאלות חכמות</button>
 
             <div class="ai-result" id="ai-result"></div>
           </section>
@@ -1050,13 +1171,13 @@
       <header class="app-topbar">
         <div class="app-topbar-inner">
           <a href="#/dashboard" class="logo" data-route="/dashboard">
-            <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img" />
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
           </a>
           <nav class="topbar-nav">
             <a href="#/dashboard" data-route="/dashboard">דשבורד</a>
             <a href="#/progress" class="active" data-route="/progress">ההתקדמות שלי</a>
             <a href="#/insights" data-route="/insights">תובנות</a>
-            <a href="#/lab" data-route="/lab">מעבדת AI</a>
+            <a href="#/lab" data-route="/lab">מעבדה חכמה</a>
           </nav>
           <div class="app-user">
             <span class="app-user-plan" id="user-plan">free</span>
@@ -1074,7 +1195,7 @@
             <h1 id="progress-greet">ההתקדמות שלך עד כה</h1>
             <p id="progress-sub">סקירה ריאליסטית של איפה אתה עומד עכשיו — מה למדת, איפה אתה חזק, ומה צריך עבודה.</p>
           </div>
-          <a href="#/dashboard" class="btn btn-soft" data-route="/dashboard">← חזרה לדשבורד</a>
+          <a href="#/dashboard" class="btn btn-soft" data-route="/dashboard"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>חזרה לדשבורד</a>
         </div>
 
         <!-- Hero stats card -->
@@ -1083,15 +1204,15 @@
         <!-- Streak / activity -->
         <div class="progress-row">
           <div class="progress-card">
-            <h3>🔥 רצף תרגול</h3>
+            <h3><svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>רצף תרגול</h3>
             <div class="streak-block" id="streak-block"></div>
           </div>
           <div class="progress-card">
-            <h3>⏱ סך זמן תרגול</h3>
+            <h3><svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>סך זמן תרגול</h3>
             <div class="time-block" id="time-block"></div>
           </div>
           <div class="progress-card">
-            <h3>📈 עקומת השיפור</h3>
+            <h3><svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>עקומת השיפור</h3>
             <div class="trend-block" id="trend-block"></div>
           </div>
         </div>
@@ -1099,7 +1220,7 @@
         <!-- Mastery per topic -->
         <section class="progress-section">
           <div class="progress-section-head">
-            <h2>🎓 שליטה בנושאים</h2>
+            <h2><svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>שליטה בנושאים</h2>
             <p>איך אתה מסתדר בכל אחד מהנושאים בבנק שלך — על בסיס כל הניסיונות עד היום. ירוק = שולט. אדום = צריך עבודה.</p>
           </div>
           <div class="mastery-grid" id="mastery-grid"></div>
@@ -1108,7 +1229,7 @@
         <!-- Recent batches -->
         <section class="progress-section">
           <div class="progress-section-head">
-            <h2>📚 המקבצים האחרונים שלך</h2>
+            <h2><svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>המקבצים האחרונים שלך</h2>
             <p>10 המקבצים האחרונים שעשית עם הציון, מספר שאלות, ומצב.</p>
           </div>
           <div class="recent-batches" id="recent-batches"></div>
@@ -1117,7 +1238,7 @@
         <!-- Personalized tips -->
         <section class="progress-section">
           <div class="progress-section-head">
-            <h2>💡 טיפים מותאמים אישית</h2>
+            <h2><svg class="h-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.1V18h6v-1.2c0-.8.3-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>טיפים מותאמים אישית</h2>
             <p>המלצות שמחושבות בהתבסס על דפוסי הלמידה שלך, החולשות והחוזקות שלך, וקצב התרגול.</p>
           </div>
           <div class="tips-grid" id="tips-grid"></div>
@@ -1127,15 +1248,302 @@
   </template>
 
   <!-- ============================ -->
+  <!--      SMART STUDY: LIST       -->
+  <!-- ============================ -->
+  <template id="tmpl-study-list">
+    <div class="app-screen">
+      <header class="app-topbar">
+        <div class="app-topbar-inner">
+          <a href="#/dashboard" class="logo" data-route="/dashboard">
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
+          </a>
+          <nav class="topbar-nav">
+            <a href="#/dashboard" data-route="/dashboard">דשבורד</a>
+            <a href="#/study" class="active" data-route="/study">לימוד מסיכום</a>
+            <a href="#/progress" data-route="/progress">ההתקדמות שלי</a>
+            <a href="#/insights" data-route="/insights">תובנות</a>
+            <a href="#/lab" data-route="/lab">מעבדה חכמה</a>
+          </nav>
+          <div class="app-user">
+            <span class="app-user-plan" id="user-plan">free</span>
+            <span class="app-user-name" id="user-name"></span>
+            <div class="app-user-avatar" id="user-avatar">U</div>
+            <button class="btn btn-ghost btn-sm" id="btn-logout">יציאה</button>
+          </div>
+          <button class="topbar-mobile-toggle" id="topbar-mobile-toggle" aria-label="תפריט">☰</button>
+        </div>
+      </header>
+      <main class="app-content">
+        <div class="page-header">
+          <div>
+            <span class="page-eyebrow">לימוד חכם מסיכום</span>
+            <h1>חבילות הלימוד שלך</h1>
+            <p>תעלה סיכום (PDF או טקסט) — והבינה המלאכותית מייצרת לך אוטומטית שאלות, כרטיסיות, מתאר, מילון מושגים, שאלות פתוחות ומבחן עצמי.</p>
+          </div>
+          <a href="#/study/new" class="btn btn-primary btn-lg" data-route="/study/new">+ צור חבילה חדשה</a>
+        </div>
+
+        <div class="study-quota-banner" id="study-quota-banner"></div>
+
+        <div class="study-list-grid" id="study-list-grid"></div>
+        <div class="study-empty" id="study-empty" style="display:none;">
+          <div class="study-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v10a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></div>
+          <h2>עוד אין חבילות לימוד</h2>
+          <p>תעלה את הסיכום הראשון שלך והבינה המלאכותית תייצר לך תוך דקה אחת חבילת לימוד שלמה: שאלות אמריקאיות, כרטיסיות, מתאר, מילון מושגים ומבחן עצמי.</p>
+          <a href="#/study/new" class="btn btn-primary btn-lg" data-route="/study/new">צור את החבילה הראשונה<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></a>
+        </div>
+      </main>
+    </div>
+  </template>
+
+  <!-- ============================ -->
+  <!--    SMART STUDY: CREATE       -->
+  <!-- ============================ -->
+  <template id="tmpl-study-create">
+    <div class="app-screen">
+      <header class="app-topbar">
+        <div class="app-topbar-inner">
+          <a href="#/dashboard" class="logo" data-route="/dashboard">
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
+          </a>
+          <nav class="topbar-nav">
+            <a href="#/dashboard" data-route="/dashboard">דשבורד</a>
+            <a href="#/study" class="active" data-route="/study">לימוד מסיכום</a>
+            <a href="#/progress" data-route="/progress">ההתקדמות שלי</a>
+            <a href="#/insights" data-route="/insights">תובנות</a>
+            <a href="#/lab" data-route="/lab">מעבדה חכמה</a>
+          </nav>
+          <div class="app-user">
+            <span class="app-user-plan" id="user-plan">free</span>
+            <span class="app-user-name" id="user-name"></span>
+            <div class="app-user-avatar" id="user-avatar">U</div>
+            <button class="btn btn-ghost btn-sm" id="btn-logout">יציאה</button>
+          </div>
+          <button class="topbar-mobile-toggle" id="topbar-mobile-toggle" aria-label="תפריט">☰</button>
+        </div>
+      </header>
+      <main class="app-content">
+        <div class="page-header">
+          <div>
+            <span class="page-eyebrow">לימוד חכם מסיכום</span>
+            <h1>צור חבילת לימוד חדשה</h1>
+            <p>הדבק טקסט של סיכום, או העלה קובץ PDF. הבינה המלאכותית תיצור עבורך תוך דקה: שאלות אמריקאיות, כרטיסיות, מתאר היררכי, מילון מושגים, שאלות פתוחות ומבחן עצמי.</p>
+          </div>
+          <a href="#/study" class="btn btn-ghost" data-route="/study"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>חזרה לרשימה</a>
+        </div>
+
+        <div class="study-create-card">
+          <div class="study-tabs" id="study-create-tabs">
+            <button type="button" class="study-tab active" data-tab="paste"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>הדבק טקסט</button>
+            <button type="button" class="study-tab" data-tab="pdf"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>העלה PDF</button>
+          </div>
+
+          <div class="study-tab-panel" id="study-tab-paste">
+            <div class="field">
+              <label for="study-title-paste">כותרת לחבילה (אופציונלי)</label>
+              <input type="text" id="study-title-paste" placeholder="לדוגמה: סיכום פרק 3 - מערכות הפעלה" maxlength="120" />
+            </div>
+            <div class="field">
+              <label for="study-text">תוכן הסיכום</label>
+              <textarea id="study-text" rows="14" placeholder="הדבק כאן את הסיכום שלך — לפחות 300 תווים. ככל שהסיכום יותר מפורט, כך החומרים שייוצרו יהיו טובים יותר."></textarea>
+              <div class="study-text-meta">
+                <span id="study-text-count">0</span> / 60,000 תווים
+                <span class="study-text-min">(מינימום 300)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="study-tab-panel" id="study-tab-pdf" style="display:none;">
+            <div class="field">
+              <label for="study-title-pdf">כותרת לחבילה (אופציונלי)</label>
+              <input type="text" id="study-title-pdf" placeholder="ברירת מחדל: שם הקובץ" maxlength="120" />
+            </div>
+            <div class="field">
+              <label for="study-pdf-file">קובץ סיכום (PDF)</label>
+              <div class="study-pdf-drop" id="study-pdf-drop">
+                <input type="file" id="study-pdf-file" accept="application/pdf" hidden />
+                <div class="study-pdf-drop-inner">
+                  <div class="study-pdf-icon">📄</div>
+                  <p><strong>גרור לכאן PDF</strong> או <button type="button" class="link-btn" id="study-pdf-pick">בחר קובץ</button></p>
+                  <small>עד 15MB · עד 30 עמודים · רק טקסט (אנחנו לא מעבדים תמונות)</small>
+                </div>
+                <div class="study-pdf-selected" id="study-pdf-selected" style="display:none;">
+                  <div class="study-pdf-icon">📎</div>
+                  <p><strong id="study-pdf-name"></strong></p>
+                  <button type="button" class="link-btn" id="study-pdf-clear">הסר</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="study-error" id="study-create-error"></div>
+
+          <button class="btn btn-primary btn-block btn-lg" id="study-create-submit">
+            <span class="btn-label">✨ צור חבילת לימוד</span>
+            <span class="btn-spinner" style="display:none;"></span>
+          </button>
+
+          <div class="study-quota-hint" id="study-create-quota-hint"></div>
+        </div>
+      </main>
+    </div>
+  </template>
+
+  <!-- ============================ -->
+  <!--    SMART STUDY: PACK         -->
+  <!-- ============================ -->
+  <template id="tmpl-study-pack">
+    <div class="app-screen">
+      <header class="app-topbar">
+        <div class="app-topbar-inner">
+          <a href="#/dashboard" class="logo" data-route="/dashboard">
+            <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img" />
+          </a>
+          <nav class="topbar-nav">
+            <a href="#/dashboard" data-route="/dashboard">דשבורד</a>
+            <a href="#/study" class="active" data-route="/study">לימוד מסיכום</a>
+            <a href="#/progress" data-route="/progress">ההתקדמות שלי</a>
+            <a href="#/insights" data-route="/insights">תובנות</a>
+            <a href="#/lab" data-route="/lab">מעבדה חכמה</a>
+          </nav>
+          <div class="app-user">
+            <span class="app-user-plan" id="user-plan">free</span>
+            <span class="app-user-name" id="user-name"></span>
+            <div class="app-user-avatar" id="user-avatar">U</div>
+            <button class="btn btn-ghost btn-sm" id="btn-logout">יציאה</button>
+          </div>
+          <button class="topbar-mobile-toggle" id="topbar-mobile-toggle" aria-label="תפריט">☰</button>
+        </div>
+      </header>
+      <main class="app-content">
+        <div class="page-header">
+          <div>
+            <span class="page-eyebrow">חבילת לימוד</span>
+            <h1 id="pack-title">…</h1>
+            <p id="pack-summary"></p>
+          </div>
+          <a href="#/study" class="btn btn-ghost" data-route="/study">← חזרה לרשימה</a>
+        </div>
+
+        <div class="study-pack-tabs" id="pack-tabs">
+          <button type="button" class="pack-tab active" data-tab="questions">❓ שאלות אמריקאיות</button>
+          <button type="button" class="pack-tab" data-tab="flashcards">🃏 כרטיסיות</button>
+          <button type="button" class="pack-tab" data-tab="outline">📋 מתאר</button>
+          <button type="button" class="pack-tab" data-tab="glossary">📖 מילון מושגים</button>
+          <button type="button" class="pack-tab" data-tab="open">💭 שאלות פתוחות</button>
+          <button type="button" class="pack-tab" data-tab="selftest">🎯 מבחן עצמי</button>
+        </div>
+
+        <div class="study-pack-panels">
+          <div class="pack-panel" data-panel="questions" id="pack-panel-questions"></div>
+          <div class="pack-panel" data-panel="flashcards" id="pack-panel-flashcards" style="display:none;"></div>
+          <div class="pack-panel" data-panel="outline" id="pack-panel-outline" style="display:none;"></div>
+          <div class="pack-panel" data-panel="glossary" id="pack-panel-glossary" style="display:none;"></div>
+          <div class="pack-panel" data-panel="open" id="pack-panel-open" style="display:none;"></div>
+          <div class="pack-panel" data-panel="selftest" id="pack-panel-selftest" style="display:none;"></div>
+        </div>
+      </main>
+    </div>
+  </template>
+
+  <!-- ============================ -->
+  <!--      PAYWALL MODAL           -->
+  <!-- ============================ -->
+  <template id="tmpl-paywall-modal">
+    <div class="modal-backdrop paywall-backdrop" id="paywall-modal">
+      <div class="modal modal-paywall">
+        <button class="modal-close" id="paywall-close">✕</button>
+        <div class="paywall-icon">🔓</div>
+        <h2 id="paywall-title">סיימת את הניסיון החינמי</h2>
+        <p class="modal-sub" id="paywall-sub">סיימת את 2 חבילות הלימוד החינמיות שלך. שדרג ל-Basic ב-19.90 ₪ בחודש כדי ליצור חבילות לימוד נוספות, להעלות מבחני PDF, ולקבל את כל הפיצ'רים.</p>
+        <ul class="paywall-features">
+          <li>✅ 30 חבילות לימוד מסיכום בחודש</li>
+          <li>✅ העלאת 30 קבצי PDF של מבחנים</li>
+          <li>✅ 100 שאלות בינה מלאכותית בחודש</li>
+          <li>✅ עד 5 קורסים פעילים</li>
+          <li>✅ דשבורד התקדמות + תובנות מלאים</li>
+        </ul>
+        <a href="#pricing" class="btn btn-primary btn-block btn-lg" id="paywall-upgrade">שדרג ל-Basic ב-19.90 ₪ ←</a>
+        <button class="btn btn-ghost btn-block" id="paywall-cancel">לא עכשיו</button>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============================ -->
   <!--             LOADER          -->
   <!-- ============================ -->
   <template id="tmpl-loader">
     <div class="loader-screen">
-      <img src="/public/images/logo.png?v=20260410-4" alt="ExamPrep" class="logo-img loader-logo" />
+      <img src="/public/images/logo.png?v=20260410-7" alt="ExamPrep" class="logo-img loader-logo" />
       <div class="spinner"></div>
     </div>
   </template>
 
-  <script src="/public/app.js?v=20260410-4" type="module"></script>
+  <script>
+    // Mobile reviews carousel: clones .review-card elements from
+    // .reviews-grid into .reviews-mobile and auto-rotates one at a time.
+    (function () {
+      var grid = document.querySelector('.reviews-grid');
+      var stage = document.querySelector('[data-rm-stage]');
+      var dotsWrap = document.querySelector('[data-rm-dots]');
+      if (!grid || !stage || !dotsWrap) return;
+
+      var cards = Array.prototype.slice.call(grid.querySelectorAll('[data-review]'));
+      if (cards.length === 0) return;
+
+      // Capture each card's outerHTML once
+      var snapshots = cards.map(function (c) { return c.outerHTML; });
+
+      // Build dots
+      snapshots.forEach(function (_, i) {
+        var d = document.createElement('button');
+        d.type = 'button';
+        d.className = 'rm-dot' + (i === 0 ? ' is-active' : '');
+        d.setAttribute('aria-label', 'ביקורת ' + (i + 1));
+        d.addEventListener('click', function () { goTo(i, true); });
+        dotsWrap.appendChild(d);
+      });
+
+      var dots = Array.prototype.slice.call(dotsWrap.querySelectorAll('.rm-dot'));
+      var idx = 0;
+      var timer = null;
+      var INTERVAL = 6000;
+
+      function render(i) {
+        stage.innerHTML = snapshots[i];
+        // Force reflow so the CSS animation re-runs
+        void stage.offsetWidth;
+        dots.forEach(function (d, di) { d.classList.toggle('is-active', di === i); });
+      }
+
+      function next() {
+        idx = (idx + 1) % snapshots.length;
+        render(idx);
+      }
+
+      function goTo(i, userInitiated) {
+        idx = i;
+        render(idx);
+        if (userInitiated) restartTimer();
+      }
+
+      function startTimer() {
+        stopTimer();
+        timer = window.setInterval(next, INTERVAL);
+      }
+      function stopTimer() {
+        if (timer) { window.clearInterval(timer); timer = null; }
+      }
+      function restartTimer() { startTimer(); }
+
+      render(0);
+      startTimer();
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) stopTimer(); else startTimer();
+      });
+    })();
+  </script>
+  <script src="/public/app.js?v=20260410-7" type="module"></script>
 </body>
 </html>

@@ -25,6 +25,9 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pdfs_uploaded_today INTEGER NOT NU
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS ai_questions_used_today INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS daily_reset_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS monthly_reset_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+-- Smart Study (summary → AI study materials) usage counters
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS study_packs_used_total INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS study_packs_used_this_month INTEGER NOT NULL DEFAULT 0;
 
 -- Make sure RLS is on
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -125,6 +128,13 @@ CREATE TABLE IF NOT EXISTS ep_questions (
 CREATE INDEX IF NOT EXISTS ep_questions_exam_idx ON ep_questions(exam_id);
 CREATE INDEX IF NOT EXISTS ep_questions_course_idx ON ep_questions(course_id);
 
+-- Idempotent column additions for tables that may pre-exist from an older
+-- schema run (e.g. setup-with-sample-data.sql which lacks these columns).
+ALTER TABLE ep_questions ADD COLUMN IF NOT EXISTS is_ai_generated BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE ep_questions ADD COLUMN IF NOT EXISTS source_question_id BIGINT REFERENCES ep_questions(id) ON DELETE SET NULL;
+ALTER TABLE ep_questions ADD COLUMN IF NOT EXISTS general_explanation TEXT;
+ALTER TABLE ep_questions ADD COLUMN IF NOT EXISTS option_explanations JSONB;
+
 ALTER TABLE ep_questions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "ep_questions_select_own" ON ep_questions;
@@ -205,6 +215,7 @@ BEGIN
   UPDATE profiles
   SET pdfs_uploaded_this_month = 0,
       ai_questions_used_this_month = 0,
+      study_packs_used_this_month = 0,
       monthly_reset_at = NOW()
   WHERE id = p_user_id
     AND monthly_reset_at < (NOW() - INTERVAL '30 days');
@@ -272,10 +283,86 @@ BEGIN
 END;
 $$;
 
+-- ====== EP_STUDY_PACKS (Smart Study from Summary feature) ======
+-- A "study pack" is the AI-generated bundle (questions, flashcards, outline,
+-- glossary, open questions, self-test) produced from one summary the user
+-- uploaded — either as PDF (text-extracted, no image processing) or pasted text.
+CREATE TABLE IF NOT EXISTS ep_study_packs (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  source_kind TEXT NOT NULL CHECK (source_kind IN ('pdf', 'paste')),
+  source_text_excerpt TEXT,
+  source_char_count INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'ready', 'failed')),
+  error_message TEXT,
+  materials JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ep_study_packs_user_idx ON ep_study_packs(user_id);
+CREATE INDEX IF NOT EXISTS ep_study_packs_user_created_idx ON ep_study_packs(user_id, created_at DESC);
+
+ALTER TABLE ep_study_packs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "ep_study_packs_select_own" ON ep_study_packs;
+CREATE POLICY "ep_study_packs_select_own" ON ep_study_packs FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "ep_study_packs_insert_own" ON ep_study_packs;
+CREATE POLICY "ep_study_packs_insert_own" ON ep_study_packs FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "ep_study_packs_update_own" ON ep_study_packs;
+CREATE POLICY "ep_study_packs_update_own" ON ep_study_packs FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "ep_study_packs_delete_own" ON ep_study_packs;
+CREATE POLICY "ep_study_packs_delete_own" ON ep_study_packs FOR DELETE USING (auth.uid() = user_id);
+
+-- Atomically reserve one Study Pack slot. Mirrors ep_reserve_pdf_slot.
+-- Pass -1 for any "unlimited" cap to skip that check.
+CREATE OR REPLACE FUNCTION ep_reserve_study_pack_slot(
+  p_user_id UUID,
+  p_max_total INTEGER,
+  p_max_month INTEGER
+) RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+DECLARE
+  v_total_count INTEGER;
+  v_updated INTEGER;
+BEGIN
+  -- Lifetime cap (free plan = 2 packs ever).
+  IF p_max_total <> -1 THEN
+    SELECT study_packs_used_total INTO v_total_count
+    FROM profiles WHERE id = p_user_id;
+    IF v_total_count IS NULL THEN v_total_count := 0; END IF;
+    IF v_total_count >= p_max_total THEN RETURN FALSE; END IF;
+  END IF;
+
+  IF p_max_month <> -1 THEN
+    UPDATE profiles
+    SET study_packs_used_total = study_packs_used_total + 1,
+        study_packs_used_this_month = study_packs_used_this_month + 1
+    WHERE id = p_user_id
+      AND study_packs_used_this_month < p_max_month;
+  ELSE
+    UPDATE profiles
+    SET study_packs_used_total = study_packs_used_total + 1,
+        study_packs_used_this_month = study_packs_used_this_month + 1
+    WHERE id = p_user_id;
+  END IF;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  RETURN v_updated = 1;
+END;
+$$;
+
 -- Lock these RPCs so only the service role + the owner can call them.
 REVOKE ALL ON FUNCTION reset_user_quotas_if_needed(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ep_reserve_pdf_slot(UUID, INTEGER, INTEGER, INTEGER, BIGINT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION ep_reserve_ai_slots(UUID, INTEGER, INTEGER, INTEGER) FROM PUBLIC;
+REVOKE ALL ON FUNCTION ep_reserve_study_pack_slot(UUID, INTEGER, INTEGER) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION reset_user_quotas_if_needed(UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION ep_reserve_pdf_slot(UUID, INTEGER, INTEGER, INTEGER, BIGINT) TO service_role;
 GRANT EXECUTE ON FUNCTION ep_reserve_ai_slots(UUID, INTEGER, INTEGER, INTEGER) TO service_role;
+GRANT EXECUTE ON FUNCTION ep_reserve_study_pack_slot(UUID, INTEGER, INTEGER) TO service_role;

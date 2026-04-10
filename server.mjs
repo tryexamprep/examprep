@@ -82,15 +82,20 @@ function dbError(res, tag, error, status = 500) {
 }
 
 // ===== Quota config =====
+// NOTE: Free plan no longer gets exam-PDF processing (was 5 lifetime). Instead,
+// the free trial is "Smart Study from Summary": 2 lifetime AI-generated study
+// packs. Real PDF practice is gated behind Basic+. See plan: free trial change.
 const QUOTAS = {
   free: {
-    pdfs_total: 5,            // lifetime PDFs
-    pdfs_per_day: 2,
-    pdfs_per_month: 5,
+    pdfs_total: 0,            // ❌ no exam PDF uploads on free
+    pdfs_per_day: 0,
+    pdfs_per_month: 0,
     ai_questions_per_day: 0,
     ai_questions_per_month: 0,
+    study_packs_total: 2,     // ✅ free trial: 2 lifetime Smart Study packs
+    study_packs_per_month: 2,
     courses: 1,
-    storage_mb: 100,
+    storage_mb: 50,
     max_pdf_size_mb: 10,
     max_pages_per_pdf: 25,
   },
@@ -100,6 +105,8 @@ const QUOTAS = {
     pdfs_per_month: 30,
     ai_questions_per_day: 20,
     ai_questions_per_month: 100,
+    study_packs_total: -1,
+    study_packs_per_month: 30,
     courses: 5,
     storage_mb: 1024,
     max_pdf_size_mb: 20,
@@ -111,6 +118,8 @@ const QUOTAS = {
     pdfs_per_month: 150,
     ai_questions_per_day: 80,
     ai_questions_per_month: 500,
+    study_packs_total: -1,
+    study_packs_per_month: 150,
     courses: -1,
     storage_mb: 5120,
     max_pdf_size_mb: 30,
@@ -122,6 +131,8 @@ const QUOTAS = {
     pdfs_per_month: 500,
     ai_questions_per_day: 200,
     ai_questions_per_month: 2000,
+    study_packs_total: -1,
+    study_packs_per_month: -1,
     courses: -1,
     storage_mb: 20480,
     max_pdf_size_mb: 50,
@@ -248,6 +259,8 @@ function publicProfile(profile) {
     pdfs_uploaded_this_month: profile.pdfs_uploaded_this_month,
     ai_questions_used_today: profile.ai_questions_used_today,
     ai_questions_used_this_month: profile.ai_questions_used_this_month,
+    study_packs_used_total: profile.study_packs_used_total || 0,
+    study_packs_used_this_month: profile.study_packs_used_this_month || 0,
     storage_bytes_used: profile.storage_bytes_used,
     created_at: profile.created_at,
   };
@@ -272,6 +285,8 @@ app.get('/courses/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 
 app.get('/insights', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/lab', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/progress', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/study', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/study/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // ===== Health check =====
 app.get('/api/health', (req, res) => {
@@ -391,7 +406,31 @@ function withTimeout(promise, ms, label) {
 }
 
 // ===== Upload exam PDF (and optional solution PDF) =====
+// Early plan gate: free users no longer get any exam-PDF processing — they
+// must use Smart Study from Summary instead. We refuse the request before
+// multer even spools the upload, so they don't waste bandwidth.
+async function blockFreePlanUpload(req, res, next) {
+  try {
+    const profile = await getUserProfile(req.userId);
+    if (!profile) return res.status(404).json({ error: 'profile not found' });
+    const plan = profile.plan || 'free';
+    if (QUOTAS[plan].pdfs_total === 0 && QUOTAS[plan].pdfs_per_month === 0) {
+      return res.status(402).json({
+        error: 'העלאת PDF של מבחנים זמינה למנויי Basic ומעלה. במסלול החינמי תוכל ליצור חומרי לימוד מסיכום (לימוד חכם מסיכום).',
+        needs_upgrade: true,
+        upgrade_to: 'basic',
+        try_instead: '/study/new',
+      });
+    }
+    next();
+  } catch (err) {
+    console.error('[upload-gate] fatal:', err?.message || err);
+    return res.status(500).json({ error: 'שגיאה פנימית' });
+  }
+}
+
 app.post('/api/upload', authMiddleware, rateLimitMiddleware(3),
+  blockFreePlanUpload,
   upload.fields([
     { name: 'examPdf', maxCount: 1 },
     { name: 'solutionPdf', maxCount: 1 },
@@ -688,17 +727,19 @@ app.post('/api/ai/generate-similar', authMiddleware, rateLimitMiddleware(AI_RATE
   });
 });
 
-// ===== Lab: Gemini-powered practice question generation =====
+// ===== Lab: AI-powered practice question generation =====
 // Used by the AI Lab UI in admin/local-files mode. Doesn't go through
 // Supabase auth (the admin testing path uses a localStorage mock user)
 // — instead it's protected by rate-limit only and refuses to run unless
-// GEMINI_API_KEY is set in the environment.
+// the AI provider key is set in the environment.
+// (Internal: currently uses Gemini Flash via GEMINI_API_KEY env, but this
+// is intentionally not exposed in the API responses or client UI.)
 app.post('/api/lab/generate-questions', rateLimitMiddleware(4), async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
   const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
   if (!apiKey) {
     return res.status(503).json({
-      error: 'AI generation unavailable: GEMINI_API_KEY is not configured on the server.',
+      error: 'יצירת AI אינה זמינה כרגע. נסה שוב מאוחר יותר.',
       reason: 'no_api_key',
     });
   }
@@ -788,12 +829,12 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 
     if (!geminiRes.ok) {
       const txt = await geminiRes.text().catch(() => '');
-      console.error('[lab] Gemini HTTP', geminiRes.status, txt.slice(0, 400));
-      return res.status(502).json({ error: 'Gemini API error' });
+      console.error('[lab] AI HTTP', geminiRes.status, txt.slice(0, 400));
+      return res.status(502).json({ error: 'שגיאה במנוע ה-AI. נסה שוב.' });
     }
     const payload = await geminiRes.json();
     const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!text) return res.status(502).json({ error: 'Empty Gemini response' });
+    if (!text) return res.status(502).json({ error: 'תגובה ריקה מ-AI' });
 
     // Strip any accidental markdown fence
     const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
@@ -801,12 +842,12 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
     try { parsed = JSON.parse(cleaned); }
     catch (e) {
       console.error('[lab] JSON parse failed:', e.message, 'text:', cleaned.slice(0, 400));
-      return res.status(502).json({ error: 'Gemini returned invalid JSON' });
+      return res.status(502).json({ error: 'תגובת AI לא תקינה' });
     }
 
     // ---- Validate structure ----
     if (!parsed?.questions || !Array.isArray(parsed.questions)) {
-      return res.status(502).json({ error: 'Malformed response from Gemini' });
+      return res.status(502).json({ error: 'תגובת AI במבנה לא תקין' });
     }
     const safe = parsed.questions
       .filter(q => q && typeof q.stem === 'string' && Array.isArray(q.options) && q.options.length === 4)
@@ -826,17 +867,455 @@ ${topics.map((t, i) => `${i + 1}. ${t}`).join('\n')}
       .slice(0, n);
 
     if (!safe.length) {
-      return res.status(502).json({ error: 'No valid questions generated' });
+      return res.status(502).json({ error: 'לא נוצרו שאלות תקינות' });
     }
 
-    res.json({ ok: true, questions: safe, model });
+    // NOTE: 'model' field is intentionally not returned to the client to avoid
+    // exposing the AI provider name in the UI.
+    res.json({ ok: true, questions: safe });
   } catch (err) {
     if (err?.name === 'AbortError') {
-      return res.status(504).json({ error: 'Gemini request timed out' });
+      return res.status(504).json({ error: 'בקשת ה-AI ארכה זמן רב מדי' });
     }
     console.error('[lab] fatal:', err?.message || err);
-    res.status(500).json({ error: 'AI generation failed' });
+    res.status(500).json({ error: 'יצירת ה-AI נכשלה' });
   }
+});
+
+// =====================================================
+//   SMART STUDY FROM SUMMARY
+// =====================================================
+// New free-trial feature: user uploads a summary (PDF or pasted text) and AI
+// generates a complete study pack — MCQ questions, flashcards, hierarchical
+// outline, glossary, open-ended questions, and a self-test. One AI call per
+// pack, kept cheap (~$0.0023 per pack on Gemini Flash).
+
+// Multer config for the study upload (PDF only, smaller cap than exam upload).
+const studyUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('רק קבצי PDF מותרים'));
+    }
+    cb(null, true);
+  },
+});
+
+// Extract plain text from a PDF buffer using pdfjs-dist (no image processing).
+// Returns { text, pageCount }. Throws on parse errors.
+async function extractPdfText(pdfBuffer, maxPages = 30) {
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    './node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs',
+    import.meta.url
+  ).href;
+  const data = new Uint8Array(pdfBuffer);
+  const loadingTask = pdfjsLib.getDocument({
+    data,
+    disableWorker: true,
+    isEvalSupported: false,
+    useSystemFonts: true,
+  });
+  const pdfDoc = await loadingTask.promise;
+  const pageCount = Math.min(pdfDoc.numPages, maxPages);
+  const chunks = [];
+  for (let i = 1; i <= pageCount; i++) {
+    const page = await pdfDoc.getPage(i);
+    const tc = await page.getTextContent();
+    // pdfjs returns items in visual order; join with spaces and newlines.
+    const lineMap = new Map();
+    for (const it of tc.items) {
+      const y = Math.round(it.transform[5]);
+      const list = lineMap.get(y) || [];
+      list.push({ x: it.transform[4], str: it.str });
+      lineMap.set(y, list);
+    }
+    const sortedYs = [...lineMap.keys()].sort((a, b) => b - a); // top→bottom
+    for (const y of sortedYs) {
+      const line = lineMap.get(y).sort((a, b) => b.x - a.x); // RTL: rightmost first
+      const text = line.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim();
+      if (text) chunks.push(text);
+    }
+    chunks.push(''); // page break marker
+    page.cleanup();
+  }
+  await pdfDoc.cleanup();
+  await pdfDoc.destroy();
+  const text = chunks.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return { text, pageCount };
+}
+
+// Build the prompt that asks the AI to produce one full study pack from
+// the user's summary text. Single call → JSON with all 6 sections.
+function buildStudyPackPrompt(summaryText, title) {
+  // Trim the input so we don't blow the model's context.
+  const safe = summaryText.length > 30000 ? summaryText.slice(0, 30000) + '\n[...truncated]' : summaryText;
+  return `אתה מורה מומחה שיוצר חומרי לימוד איכותיים בעברית מסיכום של סטודנט.
+
+הסיכום (כותרת: "${title}"):
+"""
+${safe}
+"""
+
+צור חבילת לימוד שלמה שעוזרת לסטודנט להבין את החומר ברמה גבוהה. עליך להחזיר אך ורק JSON תקני (ללא markdown, ללא טקסט נוסף, ללא הסברים מחוץ ל-JSON) בפורמט הבא:
+
+{
+  "summary": "סקירה תמציתית של הסיכום ב-2-3 משפטים",
+  "questions": [
+    {
+      "stem": "שאלה אמריקאית ברמת מבחן",
+      "options": ["אופציה 1", "אופציה 2", "אופציה 3", "אופציה 4"],
+      "correctIdx": 1,
+      "explanation": "הסבר קצר למה התשובה הזו נכונה"
+    }
+  ],
+  "flashcards": [
+    { "front": "מושג / שאלה קצרה", "back": "הגדרה / תשובה ברורה" }
+  ],
+  "outline": [
+    {
+      "title": "פרק עליון 1",
+      "items": [
+        { "title": "תת-נושא 1.1", "items": ["נקודה", "נקודה"] },
+        { "title": "תת-נושא 1.2", "items": ["נקודה"] }
+      ]
+    }
+  ],
+  "glossary": [
+    { "term": "מושג מפתח", "definition": "הגדרה ברורה ב-1-2 משפטים" }
+  ],
+  "openQuestions": [
+    { "question": "שאלה פתוחה לחשיבה עמוקה", "modelAnswer": "תשובה מומלצת מפורטת" }
+  ],
+  "selfTest": [
+    { "type": "mcq", "stem": "...", "options": ["..","..","..",".."], "correctIdx": 1 },
+    { "type": "flashcard", "front": "..", "back": ".." }
+  ]
+}
+
+דרישות:
+- 8-12 שאלות אמריקאיות ב-questions, ברמה אקדמית, עם 4 אופציות, הסבר למה הנכונה נכונה.
+- 12-20 כרטיסיות ב-flashcards, מושג→הגדרה.
+- 3-6 פרקים ב-outline, כל אחד עם 2-4 תת-נושאים.
+- 10-20 מושגים ב-glossary.
+- 4-8 שאלות פתוחות ב-openQuestions, עם תשובות מומלצות מפורטות (3-5 משפטים כל אחת).
+- 8-10 פריטים ב-selfTest (ערבוב mcq + flashcard).
+- correctIdx הוא 1-בסיסי (1, 2, 3, או 4).
+- הכל בעברית. אם הסיכום באנגלית - כתוב את כל החומר באנגלית במקום.
+- אסור להמציא עובדות שלא בסיכום. הסתמך על מה שהמשתמש כתב.`;
+}
+
+// Call AI with the study pack prompt and validate the response shape.
+async function generateStudyPackWithAI(summaryText, title) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
+  if (!apiKey) {
+    throw Object.assign(new Error('AI generation unavailable'), { code: 'no_api_key', http: 503 });
+  }
+
+  const prompt = buildStudyPackPrompt(summaryText, title);
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 90_000);
+  let aiRes;
+  try {
+    aiRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.6,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+          responseMimeType: 'application/json',
+        },
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!aiRes.ok) {
+    const txt = await aiRes.text().catch(() => '');
+    console.error('[study] AI HTTP', aiRes.status, txt.slice(0, 400));
+    throw Object.assign(new Error('AI provider error'), { http: 502 });
+  }
+  const payload = await aiRes.json();
+  const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!text) throw Object.assign(new Error('Empty AI response'), { http: 502 });
+
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  let parsed;
+  try { parsed = JSON.parse(cleaned); }
+  catch (e) {
+    console.error('[study] JSON parse failed:', e.message, 'text:', cleaned.slice(0, 400));
+    throw Object.assign(new Error('Invalid AI JSON'), { http: 502 });
+  }
+
+  // Sanitize + clamp every section to safe sizes.
+  const clampStr = (s, n) => String(s || '').slice(0, n);
+  const safe = {
+    summary: clampStr(parsed.summary, 800),
+    questions: Array.isArray(parsed.questions) ? parsed.questions.slice(0, 12)
+      .filter(q => q && typeof q.stem === 'string' && Array.isArray(q.options) && q.options.length === 4)
+      .map(q => ({
+        stem: clampStr(q.stem, 800),
+        options: q.options.slice(0, 4).map(o => clampStr(o, 400)),
+        correctIdx: Math.min(Math.max(parseInt(q.correctIdx, 10) || 1, 1), 4),
+        explanation: clampStr(q.explanation, 1000),
+      })) : [],
+    flashcards: Array.isArray(parsed.flashcards) ? parsed.flashcards.slice(0, 25)
+      .filter(c => c && (c.front || c.back))
+      .map(c => ({ front: clampStr(c.front, 400), back: clampStr(c.back, 800) })) : [],
+    outline: Array.isArray(parsed.outline) ? parsed.outline.slice(0, 8)
+      .map(s => ({
+        title: clampStr(s?.title, 200),
+        items: Array.isArray(s?.items) ? s.items.slice(0, 8).map(it => {
+          if (typeof it === 'string') return { title: clampStr(it, 200), items: [] };
+          return {
+            title: clampStr(it?.title, 200),
+            items: Array.isArray(it?.items) ? it.items.slice(0, 8).map(p => clampStr(p, 300)) : [],
+          };
+        }) : [],
+      })) : [],
+    glossary: Array.isArray(parsed.glossary) ? parsed.glossary.slice(0, 25)
+      .filter(g => g && g.term)
+      .map(g => ({ term: clampStr(g.term, 150), definition: clampStr(g.definition, 600) })) : [],
+    openQuestions: Array.isArray(parsed.openQuestions) ? parsed.openQuestions.slice(0, 10)
+      .filter(q => q && q.question)
+      .map(q => ({ question: clampStr(q.question, 600), modelAnswer: clampStr(q.modelAnswer, 1500) })) : [],
+    selfTest: Array.isArray(parsed.selfTest) ? parsed.selfTest.slice(0, 12)
+      .map(it => {
+        if (it?.type === 'mcq' && Array.isArray(it.options) && it.options.length === 4) {
+          return {
+            type: 'mcq',
+            stem: clampStr(it.stem, 800),
+            options: it.options.slice(0, 4).map(o => clampStr(o, 400)),
+            correctIdx: Math.min(Math.max(parseInt(it.correctIdx, 10) || 1, 1), 4),
+          };
+        }
+        if (it?.type === 'flashcard') {
+          return { type: 'flashcard', front: clampStr(it.front, 400), back: clampStr(it.back, 800) };
+        }
+        return null;
+      }).filter(Boolean) : [],
+  };
+
+  if (!safe.questions.length && !safe.flashcards.length) {
+    throw Object.assign(new Error('AI returned empty study pack'), { http: 502 });
+  }
+  return safe;
+}
+
+// Soft auth: only verifies JWT if present. Sets req.userId/req.db when valid,
+// otherwise lets the request through anonymously. Used by /api/study/generate
+// during the local-testing phase, where a localStorage mock user has no JWT.
+async function softAuthMiddleware(req, res, next) {
+  const auth = req.headers['authorization'];
+  if (!auth || !auth.startsWith('Bearer ')) {
+    req.userId = null;
+    req.db = null;
+    return next();
+  }
+  const token = auth.substring(7);
+  if (!supabaseAdmin) { req.userId = null; req.db = null; return next(); }
+  const { data } = await supabaseAdmin.auth.getUser(token);
+  if (data?.user) {
+    req.userId = data.user.id;
+    req.userJwt = token;
+    req.db = userClient(token);
+  } else {
+    req.userId = null;
+    req.db = null;
+  }
+  next();
+}
+
+// POST /api/study/generate
+// Body: multipart/form-data { pdf: File, title?: string }  OR
+//       application/json { kind: 'paste', text: string, title?: string }
+//
+// Auth modes:
+//  - With Bearer JWT → full path: enforces server-side quota, persists pack
+//    to ep_study_packs, returns { ok, pack_id, materials }.
+//  - Without JWT (local-testing phase) → stateless AI call only: validates
+//    input, calls AI, returns { ok, pack_id: null, materials }. The client
+//    tracks quota and persists packs in localStorage.
+app.post('/api/study/generate', softAuthMiddleware, rateLimitMiddleware(3),
+  studyUpload.single('pdf'),
+  async (req, res) => {
+    try {
+      let profile = null;
+      let plan = 'free';
+      let quota = QUOTAS.free;
+
+      if (req.userId) {
+        profile = await getUserProfile(req.userId);
+        if (!profile) return res.status(404).json({ error: 'profile not found' });
+        plan = profile.plan || 'free';
+        quota = QUOTAS[plan];
+      }
+
+      // ===== Extract text (paste or pdf) =====
+      let summaryText = '';
+      let kind = 'paste';
+      let title = '';
+
+      if (req.file) {
+        kind = 'pdf';
+        if (!isPdfMagic(req.file.buffer)) {
+          return res.status(400).json({ error: 'הקובץ אינו PDF תקני' });
+        }
+        try {
+          const extracted = await withTimeout(
+            extractPdfText(req.file.buffer, quota.max_pages_per_pdf || 25),
+            45_000,
+            'PDF text extraction'
+          );
+          summaryText = extracted.text;
+        } catch (e) {
+          console.error('[study] pdf extract:', e?.message || e);
+          return res.status(400).json({ error: 'לא הצלחנו לקרוא את ה-PDF. נסה להדביק את הטקסט ידנית.' });
+        }
+        title = (typeof req.body?.title === 'string' && req.body.title.trim())
+          || (req.file.originalname || 'סיכום ללא שם').replace(/\.pdf$/i, '').slice(0, 120);
+      } else {
+        // JSON path: client posted { kind: 'paste', text, title }
+        const body = req.body || {};
+        if (typeof body.text !== 'string') {
+          return res.status(400).json({ error: 'חסר טקסט סיכום' });
+        }
+        summaryText = body.text;
+        title = (typeof body.title === 'string' && body.title.trim()) || 'סיכום ללא שם';
+        title = title.slice(0, 120);
+      }
+
+      // ===== Validate text length =====
+      summaryText = String(summaryText || '').trim();
+      if (summaryText.length < 300) {
+        return res.status(400).json({ error: 'הסיכום קצר מדי. צריך לפחות 300 תווים כדי ליצור חומרי לימוד איכותיים.' });
+      }
+      if (summaryText.length > 60000) {
+        return res.status(400).json({ error: 'הסיכום ארוך מדי (מקסימום 60,000 תווים). חתוך אותו לחלקים.' });
+      }
+
+      // ===== Stateless dev mode (no auth header) =====
+      // Skip the DB entirely. Quota is enforced client-side via localStorage
+      // for the local-testing phase. Just call the AI and return materials.
+      if (!req.userId) {
+        try {
+          const materials = await generateStudyPackWithAI(summaryText, title);
+          return res.json({ ok: true, pack_id: null, materials, title, source_kind: kind });
+        } catch (aiErr) {
+          const code = aiErr?.http || 502;
+          console.error('[study/dev] ai error:', aiErr?.message || aiErr);
+          return res.status(code).json({ error: 'יצירת חומרי הלימוד נכשלה. נסה שוב.' });
+        }
+      }
+
+      // ===== Authenticated path: enforce quota + persist =====
+      const { data: granted, error: rpcErr } = await supabaseAdmin.rpc('ep_reserve_study_pack_slot', {
+        p_user_id: req.userId,
+        p_max_total: quota.study_packs_total,
+        p_max_month: quota.study_packs_per_month,
+      });
+      if (rpcErr && /function .* does not exist/i.test(rpcErr.message || '')) {
+        console.warn('[study] ep_reserve_study_pack_slot RPC missing — refusing request');
+        return res.status(503).json({ error: 'הפיצ\'ר בהקמה. נסה שוב בקרוב.' });
+      }
+      if (rpcErr) {
+        console.error('[study] reserve error:', rpcErr.message);
+        return res.status(500).json({ error: 'שגיאה פנימית' });
+      }
+      if (granted !== true) {
+        return res.status(402).json({
+          error: plan === 'free'
+            ? 'סיימת את 2 הניסיונות החינמיים שלך. שדרג ל-Basic כדי להמשיך ליצור חומרי לימוד.'
+            : 'הגעת למכסה החודשית של חומרי לימוד.',
+          needs_upgrade: plan === 'free',
+          upgrade_to: 'basic',
+        });
+      }
+
+      // ===== Insert pack record (status: processing) =====
+      const { data: pack, error: insertErr } = await req.db
+        .from('ep_study_packs')
+        .insert({
+          user_id: req.userId,
+          title,
+          source_kind: kind,
+          source_text_excerpt: summaryText.slice(0, 500),
+          source_char_count: summaryText.length,
+          status: 'processing',
+        })
+        .select()
+        .single();
+      if (insertErr) return dbError(res, 'insert study pack', insertErr);
+
+      // ===== Generate with AI =====
+      try {
+        const materials = await generateStudyPackWithAI(summaryText, title);
+        const { error: updateErr } = await req.db
+          .from('ep_study_packs')
+          .update({
+            status: 'ready',
+            materials,
+            processed_at: new Date().toISOString(),
+          })
+          .eq('id', pack.id);
+        if (updateErr) return dbError(res, 'update study pack', updateErr);
+        return res.json({ ok: true, pack_id: pack.id, materials });
+      } catch (aiErr) {
+        const code = aiErr?.http || 502;
+        await req.db.from('ep_study_packs').update({
+          status: 'failed',
+          error_message: clampString(aiErr?.message, 500),
+        }).eq('id', pack.id);
+        return res.status(code).json({ error: 'יצירת חומרי הלימוד נכשלה. נסה שוב.' });
+      }
+    } catch (err) {
+      console.error('[study] fatal:', err?.message || err);
+      return res.status(500).json({ error: 'שגיאה פנימית' });
+    }
+  });
+
+// Helper for the endpoint above (small util used once).
+function clampString(s, n) { return String(s || '').slice(0, n); }
+
+// GET /api/study/packs — list current user's study packs
+app.get('/api/study/packs', authMiddleware, async (req, res) => {
+  const { data, error } = await req.db
+    .from('ep_study_packs')
+    .select('id, title, source_kind, source_char_count, status, created_at, processed_at')
+    .order('created_at', { ascending: false });
+  if (error) return dbError(res, 'list study packs', error);
+  res.json(data || []);
+});
+
+// GET /api/study/packs/:id — fetch one study pack with full materials
+app.get('/api/study/packs/:id', authMiddleware, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+  const { data, error } = await req.db
+    .from('ep_study_packs')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return dbError(res, 'get study pack', error);
+  if (!data) return res.status(404).json({ error: 'not found' });
+  res.json(data);
+});
+
+// DELETE /api/study/packs/:id — let users remove their own packs
+app.delete('/api/study/packs/:id', authMiddleware, rateLimitMiddleware(10), async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+  const { error } = await req.db.from('ep_study_packs').delete().eq('id', id);
+  if (error) return dbError(res, 'delete study pack', error);
+  res.json({ ok: true });
 });
 
 // ===== Account deletion (GDPR + Israeli amendment 13 right-to-be-forgotten) =====
