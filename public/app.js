@@ -213,9 +213,14 @@ const Theme = {
 
 // ===== Auth via Supabase =====
 const _sbConfig = window.APP_CONFIG || {};
-const _sbClient = (_sbConfig.SUPABASE_URL && _sbConfig.SUPABASE_ANON_KEY && window.supabase)
-  ? window.supabase.createClient(_sbConfig.SUPABASE_URL, _sbConfig.SUPABASE_ANON_KEY)
-  : null;
+let _sbClient = null;
+function getSbClient() {
+  if (_sbClient) return _sbClient;
+  if (_sbConfig.SUPABASE_URL && _sbConfig.SUPABASE_ANON_KEY && window.supabase) {
+    _sbClient = window.supabase.createClient(_sbConfig.SUPABASE_URL, _sbConfig.SUPABASE_ANON_KEY);
+  }
+  return _sbClient;
+}
 
 const Auth = {
   KEY: 'ep_user',
@@ -225,11 +230,12 @@ const Auth = {
     try { return JSON.parse(localStorage.getItem(this.KEY)); } catch { return null; }
   },
   save(user) { localStorage.setItem(this.KEY, JSON.stringify(user)); },
-  clear() { localStorage.removeItem(this.KEY); if (_sbClient) _sbClient.auth.signOut(); },
+  clear() { localStorage.removeItem(this.KEY); const sb = getSbClient(); if (sb) sb.auth.signOut(); },
 
   async login(email, password) {
-    if (!_sbClient) throw new Error('מערכת האימות לא זמינה כרגע');
-    const { data, error } = await _sbClient.auth.signInWithPassword({ email, password });
+    const sb = getSbClient();
+    if (!sb) throw new Error('מערכת האימות לא זמינה כרגע');
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message === 'Invalid login credentials' ? 'אימייל או סיסמה שגויים' : error.message);
     const profile = await this._fetchProfile(data.user.id);
     const u = {
@@ -244,8 +250,9 @@ const Auth = {
   },
 
   async signup(email, password, name) {
-    if (!_sbClient) throw new Error('מערכת האימות לא זמינה כרגע');
-    const { data, error } = await _sbClient.auth.signUp({
+    const sb = getSbClient();
+    if (!sb) throw new Error('מערכת האימות לא זמינה כרגע');
+    const { data, error } = await sb.auth.signUp({
       email,
       password,
       options: { data: { username: name } },
@@ -256,7 +263,7 @@ const Auth = {
     }
     // Create profile row
     if (data.user) {
-      await _sbClient.from('profiles').upsert({
+      await sb.from('profiles').upsert({
         id: data.user.id,
         email,
         display_name: name,
@@ -276,8 +283,9 @@ const Auth = {
   },
 
   async loginWithGoogle() {
-    if (!_sbClient) throw new Error('מערכת האימות לא זמינה כרגע');
-    const { error } = await _sbClient.auth.signInWithOAuth({
+    const sb = getSbClient();
+    if (!sb) throw new Error('מערכת האימות לא זמינה כרגע');
+    const { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin + '/#/dashboard' },
     });
@@ -285,15 +293,17 @@ const Auth = {
   },
 
   async _fetchProfile(userId) {
-    if (!_sbClient) return null;
-    const { data } = await _sbClient.from('profiles').select('*').eq('id', userId).single();
+    const sb = getSbClient();
+    if (!sb) return null;
+    const { data } = await sb.from('profiles').select('*').eq('id', userId).single();
     return data;
   },
 
   // Restore session on page load (check Supabase session)
   async restoreSession() {
-    if (!_sbClient) return this.current();
-    const { data: { session } } = await _sbClient.auth.getSession();
+    const sb = getSbClient();
+    if (!sb) return this.current();
+    const { data: { session } } = await sb.auth.getSession();
     if (!session) { this.clear(); return null; }
     const profile = await this._fetchProfile(session.user.id);
     const u = {
@@ -308,8 +318,9 @@ const Auth = {
   },
 
   async getToken() {
-    if (!_sbClient) return null;
-    const { data: { session } } = await _sbClient.auth.getSession();
+    const sb = getSbClient();
+    if (!sb) return null;
+    const { data: { session } } = await sb.auth.getSession();
     return session?.access_token || null;
   },
 
@@ -1305,8 +1316,9 @@ function renderAuth(signupMode = false) {
       toast('הזן כתובת אימייל תקינה בשדה למעלה ואז לחץ שוב.', '');
       return;
     }
-    if (_sbClient) {
-      const { error } = await _sbClient.auth.resetPasswordForEmail(email, {
+    const _sb = getSbClient();
+    if (_sb) {
+      const { error } = await _sb.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + '/#/settings?tab=profile',
       });
       if (error) { toast('שגיאה: ' + error.message, 'error'); return; }
@@ -4151,8 +4163,9 @@ function updateSelfTestResult(answers) {
   renderRoute();
 
   // Listen for Supabase auth state changes (e.g., OAuth redirect back)
-  if (_sbClient) {
-    _sbClient.auth.onAuthStateChange(async (event, session) => {
+  const _sbBoot = getSbClient();
+  if (_sbBoot) {
+    _sbBoot.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         const profile = await Auth._fetchProfile(session.user.id);
         const u = {
@@ -4166,7 +4179,7 @@ function updateSelfTestResult(answers) {
         state.user = u;
         // Create profile if it doesn't exist (first Google login)
         if (!profile) {
-          await _sbClient.from('profiles').upsert({
+          await getSbClient().from('profiles').upsert({
             id: session.user.id,
             email: session.user.email,
             display_name: u.name,
