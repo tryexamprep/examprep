@@ -2006,7 +2006,7 @@ async function renderLab() {
   // Lab card 1: Mock exam
   let mockMode = 'learn';
   let mockSource = 'existing';
-  document.querySelectorAll('.mode-pill').forEach(p => {
+  document.querySelectorAll('.mode-pill[data-mode]').forEach(p => {
     p.addEventListener('click', () => {
       mockMode = p.dataset.mode;
       const parent = p.closest('.lab-mode-pills');
@@ -2016,7 +2016,8 @@ async function renderLab() {
   document.querySelectorAll('.source-pill').forEach(p => {
     p.addEventListener('click', () => {
       mockSource = p.dataset.source;
-      document.querySelectorAll('.source-pill').forEach(x => x.classList.toggle('active', x === p));
+      const parent = p.closest('.lab-mode-pills');
+      parent.querySelectorAll('.source-pill').forEach(x => x.classList.toggle('active', x === p));
       refreshMockPreview();
     });
   });
