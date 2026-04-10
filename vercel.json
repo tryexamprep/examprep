@@ -2,6 +2,12 @@
   "framework": null,
   "buildCommand": "node scripts/build-prod.mjs",
   "outputDirectory": ".",
+  "functions": {
+    "api/study/generate.mjs": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
   "rewrites": [
     { "source": "/", "destination": "/public/index.html" },
     { "source": "/login", "destination": "/public/index.html" },
