@@ -2738,6 +2738,36 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 .quota-pill-unlimited { background: linear-gradient(135deg, #fef3c7, #fed7aa); border-color: #fbbf24; }
 
 /* ===== Study create page ===== */
+/* Progress bar animation during study pack creation */
+.study-progress-wrap {
+  margin-top: 16px;
+  text-align: center;
+}
+.study-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--gray-100);
+  border-radius: 100px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.study-progress-fill {
+  height: 100%;
+  background: var(--gradient-brand);
+  border-radius: 100px;
+  transition: width 1.2s cubic-bezier(.22, .61, .36, 1);
+}
+.study-progress-step {
+  font-size: 14px;
+  color: var(--brand-700);
+  font-weight: 600;
+  animation: sp-pulse 2s ease-in-out infinite;
+}
+@keyframes sp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .6; }
+}
+
 .study-create-card {
   background: #fff;
   border: 1px solid var(--gray-200, #e5e7eb);
@@ -3896,6 +3926,8 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
   transition: background var(--transition);
 }
 .data-table tbody tr:hover { background: var(--gray-50); }
+.batch-row-clickable:hover { background: var(--brand-50) !important; }
+.batch-row-clickable:hover .row-title { color: var(--brand-700); }
 .data-table .num {
   font-variant-numeric: tabular-nums;
   font-weight: 700;

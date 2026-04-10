@@ -2278,7 +2278,7 @@ async function renderProgress() {
       const modeLabel = b.examMode ? 'מצב מבחן' : 'מצב למידה';
       const modePill = b.examMode ? 's-info' : 's-unknown';
       return `
-        <tr>
+        <tr class="batch-row-clickable" data-batch-idx="${recent.indexOf(b)}">
           <td>
             <div class="row-title">${dateStr}</div>
             <div class="row-sub">${b.size} שאלות · ${b.correct} נכון · ${b.wrong} שגוי</div>
@@ -2309,6 +2309,17 @@ async function renderProgress() {
         <tbody>${rows}</tbody>
       </table>
     `;
+    // Click on a batch row → open its summary/review
+    batchEl.querySelectorAll('.batch-row-clickable').forEach(row => {
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', () => {
+        const idx = parseInt(row.dataset.batchIdx, 10);
+        const b = recent[idx];
+        if (!b) return;
+        state.lastBatch = b;
+        navigate('/summary');
+      });
+    });
   }
 
   // Tips
@@ -2911,7 +2922,45 @@ async function renderStudyCreate() {
     submit.disabled = true;
     btnLabel.style.display = 'none';
     btnSpinner.style.display = '';
-    btnSpinner.textContent = '⏳ יוצר חבילת לימוד... זה לוקח כ-30 שניות';
+
+    // Animated progress indicator so user knows it's working
+    const steps = [
+      { text: '📤 מעלה את הקובץ...', pct: 10 },
+      { text: '📖 קורא את התוכן...', pct: 25 },
+      { text: '🧠 הבינה המלאכותית מנתחת את החומר...', pct: 40 },
+      { text: '✍️ יוצר שאלות אמריקאיות...', pct: 55 },
+      { text: '🃏 בונה כרטיסיות ומתאר...', pct: 70 },
+      { text: '📝 מכין מבחן עצמי ומילון מושגים...', pct: 85 },
+      { text: '✨ כמעט מוכן...', pct: 95 },
+    ];
+    let stepIdx = 0;
+    const progressBar = document.createElement('div');
+    progressBar.className = 'study-progress-wrap';
+    progressBar.innerHTML = `
+      <div class="study-progress-bar"><div class="study-progress-fill" style="width:5%"></div></div>
+      <div class="study-progress-step">${steps[0].text}</div>
+    `;
+    submit.parentElement.insertBefore(progressBar, submit.nextSibling);
+    const fill = progressBar.querySelector('.study-progress-fill');
+    const stepLabel = progressBar.querySelector('.study-progress-step');
+
+    const progressTimer = setInterval(() => {
+      if (stepIdx < steps.length) {
+        fill.style.width = steps[stepIdx].pct + '%';
+        stepLabel.textContent = steps[stepIdx].text;
+        stepIdx++;
+      }
+    }, stepIdx === 0 ? 1500 : 4000);
+    // First step fires quickly, then every 4s
+    setTimeout(() => {
+      if (stepIdx < steps.length) {
+        fill.style.width = steps[stepIdx].pct + '%';
+        stepLabel.textContent = steps[stepIdx].text;
+        stepIdx++;
+      }
+    }, 1500);
+
+    btnSpinner.textContent = '⏳ יוצר חבילת לימוד...';
 
     try {
       const res = await fetch('/api/study/generate', { method: 'POST', headers, body });
@@ -2942,6 +2991,8 @@ async function renderStudyCreate() {
       console.error('[study create]', err);
       errBox.textContent = 'שגיאת רשת. נסה שוב.';
     } finally {
+      clearInterval(progressTimer);
+      progressBar?.remove();
       submit.disabled = false;
       btnLabel.style.display = '';
       btnSpinner.style.display = 'none';
