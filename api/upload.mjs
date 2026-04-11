@@ -240,7 +240,12 @@ function parseQuestionsFromText(examText, solText) {
         }
       }
 
-      if (opts.length >= 2) {
+      if (opts.length >= 3) { // MCQ needs at least 3 options (usually 4)
+        // Filter out open questions: sub-items like "הוכיחו כי..." aren't MCQ options
+        const openPatterns = /^(הוכיח|הראה|תנו דוגמ|הסביר|בנו מכונ|צייר|כתבו|מצאו|חשבו|הגדיר|תאר)/;
+        const isOpen = opts.some(o => openPatterns.test(o.trim()));
+        if (isOpen) continue; // skip open questions
+
         // Extract question stem (text before first option)
         const firstOptMatch = region.match(/[א-ט]\s*[.)]/);
         const stemEnd = firstOptMatch ? firstOptMatch.index : 200;
@@ -504,28 +509,26 @@ export default async function handler(req, res) {
         }
       }
 
-      // Calculate crop regions: from question start to next question (or page bottom)
-      const allQNums = Object.keys(questionPos).map(Number).sort((a, b) => {
-        const pa = questionPos[a], pb = questionPos[b];
-        return pa.page - pb.page || pa.yFromTop - pb.yFromTop;
-      });
+      // Only keep positions for questions that are actually MCQ (in the questions array)
+      const mcqNums = new Set(questions.map(q => q.n));
+      // Also collect ALL question positions for boundary calculation
+      const allPositions = Object.entries(questionPos)
+        .map(([n, pos]) => ({ n: parseInt(n), ...pos }))
+        .sort((a, b) => a.page - b.page || a.yFromTop - b.yFromTop);
 
-      for (let i = 0; i < allQNums.length; i++) {
-        const qn = allQNums[i];
-        const pos = questionPos[qn];
-        const nextQn = allQNums[i + 1];
-        const nextPos = nextQn ? questionPos[nextQn] : null;
-
-        // Crop from this question's Y to next question's Y (or page bottom)
-        const startPct = Math.max(0, Math.floor((pos.yFromTop / pos.pageHeight) * 100) - 2);
+      // Calculate crop: from this question to next question header (tight crop)
+      for (let i = 0; i < allPositions.length; i++) {
+        const pos = allPositions[i];
+        const next = allPositions[i + 1];
+        const startPct = Math.max(0, Math.floor((pos.yFromTop / pos.pageHeight) * 100) - 1);
         let endPct;
-        if (nextPos && nextPos.page === pos.page) {
-          endPct = Math.floor((nextPos.yFromTop / pos.pageHeight) * 100);
+        if (next && next.page === pos.page) {
+          endPct = Math.floor((next.yFromTop / pos.pageHeight) * 100) - 1;
         } else {
-          endPct = 100; // rest of page
+          endPct = Math.min(startPct + 40, 95); // max 40% of page if last question
         }
-        pos.yPct = startPct;
-        pos.heightPct = Math.min(endPct - startPct, 60); // cap at 60% of page
+        questionPos[pos.n].yPct = startPct;
+        questionPos[pos.n].heightPct = Math.max(endPct - startPct, 15); // min 15%
       }
 
       console.log(`[upload] matched ${Object.keys(questionPos).length}/${questions.length} questions:`,
