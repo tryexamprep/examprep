@@ -588,6 +588,36 @@ function tmpl(id) {
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+// Upload with real XHR byte-level progress tracking.
+// Returns { ok, status, data } where data is parsed JSON.
+function uploadWithProgress({ url, headers, body, onUploadProgress, onUploadDone, timeoutMs = 180000 }) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    for (const [k, v] of Object.entries(headers || {})) {
+      // Don't set Content-Type for FormData — browser adds boundary automatically
+      if (k.toLowerCase() === 'content-type' && body instanceof FormData) continue;
+      xhr.setRequestHeader(k, v);
+    }
+    let uploadFinished = false;
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable && onUploadProgress) onUploadProgress(e.loaded, e.total);
+    });
+    xhr.upload.addEventListener('load', () => {
+      if (!uploadFinished) { uploadFinished = true; if (onUploadDone) onUploadDone(); }
+    });
+    xhr.addEventListener('load', () => {
+      let json;
+      try { json = JSON.parse(xhr.responseText); } catch { json = {}; }
+      resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, data: json });
+    });
+    xhr.addEventListener('error', () => reject(new Error('שגיאת רשת')));
+    xhr.addEventListener('timeout', () => reject(new Error('ההעלאה נמשכה יותר מדי זמן')));
+    xhr.timeout = timeoutMs;
+    xhr.send(body);
+  });
+}
+
 function pickRandom(arr, n) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -2109,22 +2139,26 @@ function showUploadPdfModal(courseId) {
     btn.disabled = true;
     btn.textContent = 'מעלה ומעבד...';
     document.getElementById('up-progress').style.display = '';
-    // Animate progress bar — slow, decaying curve so it never feels stuck
     const fill = document.getElementById('up-progress-fill');
     const statusEl = document.getElementById('up-status');
-    let pct = 0;
-    const startTime = Date.now();
-    const progressInterval = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000; // seconds
-      // Logarithmic curve: fast start, slows to a crawl near 90%
-      // Reaches ~30% at 5s, ~50% at 15s, ~70% at 40s, ~85% at 80s
-      pct = Math.min(90, 90 * (1 - Math.exp(-elapsed / 30)));
-      fill.style.width = pct + '%';
-      if (elapsed < 8) statusEl.textContent = 'מעלה ומעבד שאלות...';
-      else if (elapsed < 20) statusEl.textContent = 'מחלץ טקסט מהקובץ...';
-      else if (elapsed < 45) statusEl.textContent = 'מזהה שאלות ותשובות...';
-      else statusEl.textContent = 'כמעט סיימנו, עוד רגע...';
-    }, 800);
+
+    // Phase 2 animation: smooth curve for server-side processing (50-95%)
+    let processingInterval = null;
+    let processingStart = null;
+    function startProcessingPhase() {
+      processingStart = Date.now();
+      fill.style.width = '50%';
+      statusEl.textContent = 'מחלץ טקסט מהקובץ...';
+      processingInterval = setInterval(() => {
+        const elapsed = (Date.now() - processingStart) / 1000;
+        const procPct = 50 + Math.min(45, 45 * (1 - Math.exp(-elapsed / 25)));
+        fill.style.width = procPct + '%';
+        if (elapsed < 8) statusEl.textContent = 'מחלץ טקסט מהקובץ...';
+        else if (elapsed < 20) statusEl.textContent = 'מזהה שאלות ותשובות...';
+        else if (elapsed < 40) statusEl.textContent = 'חותך שאלות ומעבד תמונות...';
+        else statusEl.textContent = 'כמעט סיימנו, עוד רגע...';
+      }, 500);
+    }
 
     try {
       const token = await Auth.getToken();
@@ -2133,43 +2167,53 @@ function showUploadPdfModal(courseId) {
       form.append('name', name);
       form.append('examPdf', examFile);
       if (solFile) form.append('solutionPdf', solFile);
+      const totalSize = examFile.size + (solFile?.size || 0);
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
+      // Phase 1: Real XHR upload progress (0-50%)
+      const res = await uploadWithProgress({
+        url: '/api/upload',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: form,
+        timeoutMs: 180000,
+        onUploadProgress(loaded, total) {
+          const uploadPct = (loaded / total) * 50;
+          fill.style.width = uploadPct + '%';
+          const mbLoaded = (loaded / (1024 * 1024)).toFixed(1);
+          const mbTotal = (total / (1024 * 1024)).toFixed(1);
+          statusEl.textContent = `מעלה ${mbLoaded}MB מתוך ${mbTotal}MB...`;
+        },
+        onUploadDone() {
+          startProcessingPhase();
+        },
       });
 
+      if (processingInterval) clearInterval(processingInterval);
+
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        if (res.status === 422 && err.guidance) {
-          errEl.textContent = err.error;
+        if (res.status === 422 && res.data.guidance) {
+          errEl.textContent = res.data.error;
           const guide = document.createElement('p');
           guide.className = 'upload-guidance';
-          guide.textContent = err.guidance;
+          guide.textContent = res.data.guidance;
           errEl.insertAdjacentElement('afterend', guide);
-          throw new Error(err.error);
+          throw new Error(res.data.error);
         }
-        throw new Error(err.error || 'שגיאה בהעלאה');
+        throw new Error(res.data.error || 'שגיאה בהעלאה');
       }
 
-      clearInterval(progressInterval);
-      const result = await res.json().catch(() => ({}));
       statusEl.textContent = 'הושלם!';
       fill.style.width = '100%';
-      toast(result.question_count ? `המבחן הועלה בהצלחה! ${result.question_count} שאלות זוהו.` : 'המבחן הועלה בהצלחה!', 'success');
-      // Show file validation warnings
-      if (result.warnings && result.warnings.length) {
-        result.warnings.forEach((w, i) => setTimeout(() => toast(w, 'warning', 8000), 1500 + i * 2000));
+      toast(res.data.question_count ? `המבחן הועלה בהצלחה! ${res.data.question_count} שאלות זוהו.` : 'המבחן הועלה בהצלחה!', 'success');
+      if (res.data.warnings && res.data.warnings.length) {
+        res.data.warnings.forEach((w, i) => setTimeout(() => toast(w, 'warning', 8000), 1500 + i * 2000));
       }
       close();
 
-      // Reload course data to show the new exam
       Data._loadedSet.delete(courseId);
       CourseRegistry.invalidate();
       navigate(`/course/${courseId}`);
     } catch (err) {
-      clearInterval(progressInterval);
+      if (processingInterval) clearInterval(processingInterval);
       errEl.textContent = err.message;
     } finally {
       btn.disabled = false;
@@ -4260,58 +4304,90 @@ async function renderStudyCreate() {
     btnLabel.style.display = 'none';
     btnSpinner.style.display = '';
 
-    // Animated progress indicator so user knows it's working
-    const steps = [
-      { text: '📤 מעלה את הקובץ...', pct: 10 },
-      { text: '📖 קורא את התוכן...', pct: 25 },
-      { text: '🧠 הבינה המלאכותית מנתחת את החומר...', pct: 40 },
-      { text: '✍️ יוצר שאלות אמריקאיות...', pct: 55 },
-      { text: '🃏 בונה כרטיסיות ומתאר...', pct: 70 },
-      { text: '📝 מכין מבחן עצמי ומילון מושגים...', pct: 85 },
-      { text: '✨ כמעט מוכן...', pct: 95 },
-    ];
-    let stepIdx = 0;
+    // Progress bar with real upload tracking
     const progressBar = document.createElement('div');
     progressBar.className = 'study-progress-wrap';
     progressBar.innerHTML = `
-      <div class="study-progress-bar"><div class="study-progress-fill" style="width:5%"></div></div>
-      <div class="study-progress-step">${steps[0].text}</div>
+      <div class="study-progress-bar"><div class="study-progress-fill" style="width:0%"></div></div>
+      <div class="study-progress-step">מתחיל...</div>
     `;
     submit.parentElement.insertBefore(progressBar, submit.nextSibling);
     const fill = progressBar.querySelector('.study-progress-fill');
     const stepLabel = progressBar.querySelector('.study-progress-step');
 
-    const progressTimer = setInterval(() => {
-      if (stepIdx < steps.length) {
-        fill.style.width = steps[stepIdx].pct + '%';
-        stepLabel.textContent = steps[stepIdx].text;
-        stepIdx++;
-      }
-    }, stepIdx === 0 ? 1500 : 4000);
-    // First step fires quickly, then every 4s
-    setTimeout(() => {
-      if (stepIdx < steps.length) {
-        fill.style.width = steps[stepIdx].pct + '%';
-        stepLabel.textContent = steps[stepIdx].text;
-        stepIdx++;
-      }
-    }, 1500);
+    // AI processing phase animation (runs after upload completes or for paste mode)
+    let aiInterval = null;
+    let aiStart = null;
+    const aiSteps = [
+      { at: 0, text: '📖 קורא את התוכן...' },
+      { at: 8, text: '🧠 הבינה המלאכותית מנתחת את החומר...' },
+      { at: 18, text: '✍️ יוצר שאלות אמריקאיות...' },
+      { at: 30, text: '🃏 בונה כרטיסיות ומתאר...' },
+      { at: 45, text: '📝 מכין מבחן עצמי ומילון מושגים...' },
+      { at: 60, text: '✨ כמעט מוכן...' },
+    ];
+    function startAiPhase(fromPct) {
+      aiStart = Date.now();
+      aiInterval = setInterval(() => {
+        const elapsed = (Date.now() - aiStart) / 1000;
+        const aiPct = fromPct + Math.min(95 - fromPct, (95 - fromPct) * (1 - Math.exp(-elapsed / 25)));
+        fill.style.width = aiPct + '%';
+        const step = [...aiSteps].reverse().find(s => elapsed >= s.at);
+        if (step) stepLabel.textContent = step.text;
+      }, 500);
+    }
 
     btnSpinner.textContent = '⏳ יוצר חבילת לימוד...';
+    const isPdf = activeTab !== 'paste';
 
     try {
-      const res = await fetch('/api/study/generate', { method: 'POST', headers, body });
-      const data = await res.json();
-      if (!res.ok) {
-        if (res.status === 402 && data.needs_upgrade) {
-          showPaywallModal('study_pack');
+      let res;
+      if (isPdf) {
+        // PDF mode: real upload progress via XHR (0-40%), then AI processing (40-95%)
+        const token = await Auth.getToken();
+        const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+        res = await uploadWithProgress({
+          url: '/api/study/generate',
+          headers: authHeaders,
+          body,
+          timeoutMs: 180000,
+          onUploadProgress(loaded, total) {
+            const uploadPct = (loaded / total) * 40;
+            fill.style.width = uploadPct + '%';
+            const mbLoaded = (loaded / (1024 * 1024)).toFixed(1);
+            const mbTotal = (total / (1024 * 1024)).toFixed(1);
+            stepLabel.textContent = `📤 מעלה ${mbLoaded}MB מתוך ${mbTotal}MB...`;
+          },
+          onUploadDone() { startAiPhase(40); },
+        });
+        if (!res.ok) {
+          if (res.status === 402 && res.data.needs_upgrade) { showPaywallModal('study_pack'); return; }
+          errBox.textContent = res.data.error || 'שגיאה ביצירת חבילת הלימוד.';
           return;
         }
-        errBox.textContent = data.error || 'שגיאה ביצירת חבילת הלימוד.';
-        return;
+      } else {
+        // Paste mode: no file to upload, go straight to AI processing
+        startAiPhase(5);
+        fill.style.width = '5%';
+        const token = await Auth.getToken();
+        const fetchRes = await fetch('/api/study/generate', {
+          method: 'POST',
+          headers: { ...headers, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body,
+        });
+        const data = await fetchRes.json();
+        res = { ok: fetchRes.ok, status: fetchRes.status, data };
+        if (!fetchRes.ok) {
+          if (fetchRes.status === 402 && data.needs_upgrade) { showPaywallModal('study_pack'); return; }
+          errBox.textContent = data.error || 'שגיאה ביצירת חבילת הלימוד.';
+          return;
+        }
       }
+      if (aiInterval) clearInterval(aiInterval);
+      fill.style.width = '100%';
+      stepLabel.textContent = '✅ הושלם!';
 
-      // Persist locally and bump quota
+      const data = res.data;
       const packTitle = data.title || (activeTab === 'paste'
         ? (document.getElementById('study-title-paste').value.trim() || 'סיכום ללא שם')
         : (fileInput.files[0].name.replace(/\.pdf$/i, '') || 'סיכום ללא שם'));
@@ -4330,7 +4406,7 @@ async function renderStudyCreate() {
       console.error('[study create]', err);
       errBox.textContent = 'שגיאת רשת. נסה שוב.';
     } finally {
-      clearInterval(progressTimer);
+      if (aiInterval) clearInterval(aiInterval);
       progressBar?.remove();
       submit.disabled = false;
       btnLabel.style.display = '';
