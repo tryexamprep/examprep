@@ -1832,14 +1832,31 @@ async function renderCourseDashboard() {
     });
   }
 
-  // PDF & questions section — show for non-builtin courses
-  if (!state.course.isBuiltin) {
-    document.getElementById('cd-pdfs-header').style.display = '';
-
-    // Load and display exams (PDFs) for this course
+  // Exams & materials section — always visible for all courses
+  const pdfsTitle = document.getElementById('cd-pdfs-title');
+  if (state.course.isBuiltin) {
+    // Built-in course: show static exams list (read-only)
+    if (pdfsTitle) pdfsTitle.textContent = 'מבחנים בקורס';
+    const pdfsEl = document.getElementById('cd-pdfs');
+    if (pdfsEl && Data.metadata?.exams?.length) {
+      pdfsEl.innerHTML = Data.metadata.exams.map(ex => `
+        <div class="exam-row">
+          <div class="batch-row">
+            <div class="batch-score" style="font-size:14px;">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="batch-info" style="flex:1;">
+              <div class="batch-summary">${escapeHtml(ex.label)}</div>
+              <div class="batch-date">${ex.questions.length} שאלות</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+  } else {
+    // User course: show uploaded PDFs with management
+    if (pdfsTitle) pdfsTitle.textContent = 'מבחנים שהעליתי';
     loadCourseExams(cid);
-
-    // Upload is now in the quick actions grid above
   }
 }
 
