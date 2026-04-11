@@ -2237,8 +2237,15 @@ function showExamManagementModal(courseId) {
           grid.innerHTML = '<p class="muted" style="grid-column:1/-1;text-align:center;">טוען שאלות...</p>';
 
           try {
-            const qRes = await fetch(`/api/courses/${courseId}/questions`, { headers: tk ? { Authorization: `Bearer ${tk}` } : {} });
-            if (!qRes.ok) { grid.innerHTML = '<p class="muted" style="grid-column:1/-1;">שגיאה.</p>'; return; }
+            // Fresh token for each expand (token from renderUserExams may be stale)
+            const freshTk = await Auth.getToken();
+            const qRes = await fetch(`/api/courses/${courseId}/questions`, { headers: freshTk ? { Authorization: `Bearer ${freshTk}` } : {} });
+            if (!qRes.ok) {
+              const errBody = await qRes.text().catch(() => '');
+              console.error(`[expand] questions fetch failed: ${qRes.status}`, errBody);
+              grid.innerHTML = `<p class="muted" style="grid-column:1/-1;">שגיאה בטעינת שאלות (${qRes.status}). נסה לרענן.</p>`;
+              return;
+            }
             const allQs = await qRes.json();
             const examQs = (Array.isArray(allQs) ? allQs : []).filter(q => String(q.exam_id) === String(examId));
             if (!examQs.length) { grid.innerHTML = '<p class="muted" style="grid-column:1/-1;">אין שאלות.</p>'; return; }

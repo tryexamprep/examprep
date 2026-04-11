@@ -179,10 +179,12 @@ export default async function handler(req, res) {
       return res.json(data || []);
     }
     case 'list-questions': {
+      console.log(`[list-questions] courseId=${m.cid} (${typeof m.cid})`);
       const { data, error } = await auth.db.from('ep_questions').select('*')
         .eq('course_id', m.cid).is('deleted_at', null)
         .order('exam_id', { ascending: true }).order('question_number', { ascending: true });
-      if (error) return dbErr(res, 'list questions', error);
+      if (error) { console.error('[list-questions] error:', error.message); return dbErr(res, 'list questions', error); }
+      console.log(`[list-questions] returned ${(data || []).length} questions`);
       return res.json(data || []);
     }
     case 'review-queue': {
