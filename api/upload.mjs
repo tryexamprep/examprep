@@ -409,18 +409,15 @@ export default async function handler(req, res) {
       }
     }
 
-    // Extract questions: try regex parser first, then Gemini AI as enrichment
+    // Extract questions: regex parser + optional Gemini AI enrichment
     let questions = [];
     let extractionMode = 'none';
     if (combinedText.length > 100) {
-      // Step 1: Regex-based extraction (always available, no API needed)
       questions = parseQuestionsFromText(examText, solText || '');
       if (questions.length > 0) {
         extractionMode = 'regex';
         console.log(`[upload] regex parser found ${questions.length} questions`);
       }
-
-      // Step 2: Try Gemini AI for better extraction (if available and regex found few/no questions)
       if (questions.length < 2) {
         const aiResponse = await callGemini(buildExtractionPrompt(combinedText, !!solFile));
         if (aiResponse) {
@@ -437,20 +434,89 @@ export default async function handler(req, res) {
       }
     }
 
-    // Store questions in DB
+    // Render PDF pages as images and upload to Supabase Storage
+    const admin = getAdmin();
+    let pageImages = {}; // pageNum → public URL
+    try {
+      const { renderPageAsImage, getMeta } = await import('unpdf');
+      const pdfData = new Uint8Array(examFile.data);
+      const meta = await getMeta(pdfData);
+      const totalPages = meta.info?.pages || 0;
+      console.log(`[upload] rendering ${totalPages} PDF pages as images`);
+
+      // Find which pages have questions (from text extraction, find page breaks)
+      // For simplicity, render ALL pages (most exams are <30 pages)
+      const maxPagesToRender = Math.min(totalPages, 30);
+      for (let p = 1; p <= maxPagesToRender; p++) {
+        try {
+          const imgBuf = await renderPageAsImage(pdfData, p, { scale: 2 });
+          if (imgBuf && admin) {
+            const storagePath = `exams/${auth.userId}/${exam.id}/page-${p}.png`;
+            const { error: upErr } = await admin.storage
+              .from('exam-pages')
+              .upload(storagePath, imgBuf, { contentType: 'image/png', upsert: true });
+            if (!upErr) {
+              const { data: urlData } = admin.storage.from('exam-pages').getPublicUrl(storagePath);
+              pageImages[p] = urlData.publicUrl;
+            } else {
+              console.warn(`[upload] storage upload failed page ${p}:`, upErr.message);
+            }
+          }
+        } catch (pageErr) {
+          console.warn(`[upload] render page ${p} failed:`, pageErr.message);
+        }
+      }
+      console.log(`[upload] rendered ${Object.keys(pageImages).length} page images`);
+    } catch (renderErr) {
+      console.warn('[upload] page rendering skipped:', renderErr.message);
+    }
+
+    // Match questions to pages using text position analysis
+    let questionPages = {};
+    if (Object.keys(pageImages).length > 0) {
+      try {
+        const { extractText: extractPerPage } = await import('unpdf');
+        // Extract text per page to find which page each question is on
+        const perPageResult = await extractPerPage(new Uint8Array(examFile.data), { mergePages: false });
+        const pages = perPageResult?.pages || perPageResult?.text?.split?.('\f') || [];
+        for (const q of questions) {
+          const qNum = q.n;
+          // Find page containing "שאלה X"
+          for (let i = 0; i < pages.length; i++) {
+            const pageText = typeof pages[i] === 'string' ? pages[i] : (pages[i]?.text || '');
+            if (pageText.includes(`שאלה ${qNum}`) || pageText.includes(`שאלה  ${qNum}`)) {
+              questionPages[qNum] = i + 1; // 1-based
+              break;
+            }
+          }
+          // Fallback: assign sequentially
+          if (!questionPages[qNum]) {
+            questionPages[qNum] = Math.min(qNum, Object.keys(pageImages).length) || 1;
+          }
+        }
+      } catch (e) {
+        console.warn('[upload] page matching failed:', e.message);
+      }
+    }
+
+    // Store questions in DB — with page image URLs when available
     if (questions.length > 0) {
-      const qRecords = questions.map((q, i) => ({
-        exam_id: exam.id,
-        course_id: courseIdInt,
-        user_id: auth.userId,
-        question_number: q.n || (i + 1),
-        image_path: 'text-only',
-        num_options: q.opts?.length || 4,
-        correct_idx: q.correct || 1,
-        option_labels: q.opts || null,
-        general_explanation: q.q || null,
-        is_ai_generated: true,
-      }));
+      const qRecords = questions.map((q, i) => {
+        const pageNum = questionPages[q.n] || (i + 1);
+        const imgUrl = pageImages[pageNum];
+        return {
+          exam_id: exam.id,
+          course_id: courseIdInt,
+          user_id: auth.userId,
+          question_number: q.n || (i + 1),
+          image_path: imgUrl || 'text-only',
+          num_options: q.opts?.length || 4,
+          correct_idx: q.correct || 1,
+          option_labels: q.opts || null,
+          general_explanation: q.q || null,
+          is_ai_generated: true,
+        };
+      });
 
       const { error: qErr } = await auth.db.from('ep_questions').insert(qRecords);
       if (qErr) console.error('[upload] insert questions:', qErr.message);
