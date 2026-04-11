@@ -10,6 +10,9 @@ export default async function handler(req, res) {
   if (!cloud || !key || !secret) {
     return res.json({ error: 'Missing CLOUDINARY env vars', cloud: !!cloud, key: !!key, secret: !!secret });
   }
+  // Debug: show cleaned key info
+  const rawKey = process.env.CLOUDINARY_API_KEY || '';
+  const keyInfo = { raw_length: rawKey.length, clean_length: key.length, clean_key: key, last3_raw: JSON.stringify(rawKey.slice(-3)) };
 
   // Create a tiny 1-page PDF for testing
   const pdfContent = `%PDF-1.0
@@ -43,6 +46,7 @@ startxref
     });
     const body = await cloudRes.text();
     res.json({
+      keyInfo,
       status: cloudRes.status,
       ok: cloudRes.ok,
       response: body.slice(0, 500),
