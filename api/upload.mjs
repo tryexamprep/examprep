@@ -477,16 +477,28 @@ export default async function handler(req, res) {
         const pageHeight = viewport.height;
         const tc = await page.getTextContent();
 
-        // Find "שאלה X:" headers (strict: must be a standalone header, not part of instructions)
+        // Build text lines from items (items with similar Y → same line)
+        const lines = [];
         for (const item of tc.items) {
-          const text = item.str.trim();
-          // Match "שאלה X:" or "שאלה X " at beginning — skip mentions in running text
-          const m = text.match(/^שאלה\s*(\d+)\s*[:.]?$/);
+          if (!item.str?.trim()) continue;
+          const y = Math.round(item.transform[5]);
+          const existing = lines.find(l => Math.abs(l.y - y) < 5);
+          if (existing) {
+            existing.texts.push(item.str);
+          } else {
+            lines.push({ y, yFromTop: pageHeight - y, texts: [item.str] });
+          }
+        }
+        // Find lines containing "שאלה X" headers
+        for (const line of lines) {
+          const lineText = line.texts.join(' ');
+          const m = lineText.match(/שאלה\s*(\d+)/);
           if (m) {
             const qNum = parseInt(m[1]);
-            const yFromTop = pageHeight - item.transform[5];
-            if (!questionPos[qNum]) {
-              questionPos[qNum] = { page: p, yFromTop, pageHeight };
+            // Skip if this looks like instructions text (has many words around it)
+            const isHeader = lineText.length < 80; // real headers are short lines
+            if (isHeader && !questionPos[qNum]) {
+              questionPos[qNum] = { page: p, yFromTop: line.yFromTop, pageHeight };
             }
           }
         }
@@ -516,30 +528,8 @@ export default async function handler(req, res) {
         pos.heightPct = Math.min(endPct - startPct, 60); // cap at 60% of page
       }
 
-      // Fallback: if strict matching found too few, try broader match
-      if (Object.keys(questionPos).length < questions.length) {
-        const doc2 = await getDocumentProxy(new Uint8Array(examFile.data));
-        for (let p = 1; p <= doc2.numPages; p++) {
-          const page = await doc2.getPage(p);
-          const viewport = page.getViewport({ scale: 1 });
-          const tc = await page.getTextContent();
-          const pageText = tc.items.map(it => it.str).join(' ');
-          for (const q of questions) {
-            if (questionPos[q.n]) continue;
-            if (pageText.match(new RegExp(`שאלה\\s*${q.n}\\s*[:.)]`))) {
-              // Find the Y position of the match
-              for (const item of tc.items) {
-                if (item.str.match(new RegExp(`שאלה\\s*${q.n}`))) {
-                  questionPos[q.n] = { page: p, yFromTop: viewport.height - item.transform[5], pageHeight: viewport.height };
-                  break;
-                }
-              }
-            }
-          }
-        }
-      }
-
-      console.log(`[upload] matched ${Object.keys(questionPos).length}/${questions.length} questions with positions`);
+      console.log(`[upload] matched ${Object.keys(questionPos).length}/${questions.length} questions:`,
+        Object.entries(questionPos).map(([k,v]) => `q${k}→p${v.page}@${Math.round(v.yFromTop)}`).join(', '));
     } catch (e) {
       console.warn('[upload] page matching failed:', e.message);
     }
