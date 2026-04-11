@@ -3076,7 +3076,11 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
 }
 
 /* Exam management */
-.exam-row { border-bottom: 1px solid var(--border-soft); }
+@keyframes slideInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.exam-row { border-bottom: 1px solid var(--border-soft); transition: background 0.5s ease; }
 .exam-row:last-child { border-bottom: none; }
 .exam-row .batch-row { border-bottom: none; }
 .exam-actions { display: flex; gap: 6px; align-items: center; }

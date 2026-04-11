@@ -2235,23 +2235,47 @@ function showUploadPdfModal(courseId) {
         throw new Error(res.data.error || 'שגיאה בהעלאה');
       }
 
-      statusEl.textContent = 'הושלם!';
+      statusEl.textContent = '✅ הושלם!';
       fill.style.width = '100%';
       toast(res.data.question_count ? `המבחן הועלה בהצלחה! ${res.data.question_count} שאלות זוהו.` : 'המבחן הועלה בהצלחה!', 'success');
       if (res.data.warnings && res.data.warnings.length) {
         res.data.warnings.forEach((w, i) => setTimeout(() => toast(w, 'warning', 8000), 1500 + i * 2000));
       }
+
+      // Brief pause so user sees "הושלם" before modal closes
+      await new Promise(r => setTimeout(r, 600));
       close();
 
-      // Force full data reload and page re-render
+      // Refresh the exam list directly (simpler + more reliable than full re-render)
       Data._loadedSet.delete(courseId);
-      CourseRegistry.invalidate();
-      // If already on the course page, navigate won't trigger hashchange,
-      // so we must re-render directly.
-      if (getRoute() === `/course/${courseId}` || getRoute() === `/course/${courseId}/dashboard`) {
-        await Data.ensureLoaded(courseId);
-        renderCourseDashboard();
+      const newExamId = res.data.exam_id;
+
+      // If already on course page, just refresh the exam list in-place
+      if (document.getElementById('cd-pdfs')) {
+        await loadCourseExams(courseId);
+        // Animate the new exam row sliding in
+        const newRow = document.querySelector(`[data-exam-id="${newExamId}"]`);
+        if (newRow) {
+          newRow.style.animation = 'slideInDown 0.4s ease-out';
+          newRow.style.background = 'var(--brand-50, #eff6ff)';
+          setTimeout(() => { newRow.style.background = ''; }, 2000);
+          newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        // Also update the stats counters
+        try {
+          await Data.ensureLoaded(courseId);
+          const qs = questionsForCourse(courseId);
+          const exs = examsForCourse(courseId);
+          const statsEl = document.getElementById('cd-stats');
+          if (statsEl) {
+            const metricValues = statsEl.querySelectorAll('.metric-value');
+            const metricSubs = statsEl.querySelectorAll('.metric-sub');
+            if (metricValues[0]) metricValues[0].textContent = qs.length;
+            if (metricSubs[0]) metricSubs[0].textContent = `${exs.length} מבחנים`;
+          }
+        } catch {}
       } else {
+        // Not on course page — navigate to it
         navigate(`/course/${courseId}`);
       }
     } catch (err) {
