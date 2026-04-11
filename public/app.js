@@ -4967,7 +4967,8 @@ async function renderStudyCreate() {
         });
         if (!res.ok) {
           if (res.status === 402 && res.data.needs_upgrade) { showPaywallModal('study_pack'); return; }
-          errBox.textContent = res.data.error || 'שגיאה ביצירת חבילת הלימוד.';
+          errBox.textContent = res.data.error || `שגיאה (${res.status})`;
+          console.error('[study] error:', res.status, res.data);
           return;
         }
       } else {
@@ -4984,7 +4985,8 @@ async function renderStudyCreate() {
         res = { ok: fetchRes.ok, status: fetchRes.status, data };
         if (!fetchRes.ok) {
           if (fetchRes.status === 402 && data.needs_upgrade) { showPaywallModal('study_pack'); return; }
-          errBox.textContent = data.error || 'שגיאה ביצירת חבילת הלימוד.';
+          errBox.textContent = data.error || `שגיאה (${fetchRes.status})`;
+          console.error('[study] error:', fetchRes.status, data);
           return;
         }
       }
