@@ -1611,9 +1611,11 @@ async function renderDashboard() {
 
   // Courses — dynamic list from CourseRegistry
   const cg = document.getElementById('dash-courses');
-  const courses = CourseRegistry.list();
-  let coursesHtml = '';
-  for (const c of courses) {
+  const allCourses = CourseRegistry.list();
+  const activeCourses = allCourses.filter(c => !c.archived);
+  const archivedCourses = allCourses.filter(c => c.archived);
+
+  function renderCourseCard(c) {
     let qCount = 0, eCount = 0;
     if (c.id === 'tohna1') {
       qCount = Data.allQuestions().length;
@@ -1622,8 +1624,9 @@ async function renderDashboard() {
       qCount = c.total_questions || 0;
       eCount = c.total_pdfs || 0;
     }
-    coursesHtml += `
+    return `
       <div class="course-card" style="--course-color:${escapeHtml(c.color || '#3b82f6')}" data-course="${escapeHtml(String(c.id))}">
+        ${!c.isBuiltin ? `<button class="course-menu-btn" data-course-id="${c.id}" data-course-name="${escapeHtml(c.name)}" data-archived="${c.archived || false}" title="אפשרויות">⋯</button>` : ''}
         <h3>${escapeHtml(c.name)}</h3>
         <div class="desc">${escapeHtml(c.description || '')}</div>
         <div class="meta">
@@ -1634,6 +1637,8 @@ async function renderDashboard() {
       </div>
     `;
   }
+
+  let coursesHtml = activeCourses.map(renderCourseCard).join('');
   coursesHtml += `
     <div class="course-card add" id="btn-add-course-card">
       <div class="add-card-content">
@@ -1643,19 +1648,104 @@ async function renderDashboard() {
       </div>
     </div>
   `;
+
+  // Archived courses
+  if (archivedCourses.length) {
+    coursesHtml += `
+      <div style="grid-column:1/-1;margin-top:12px;">
+        <button class="btn btn-ghost btn-sm" id="dash-show-archived" style="font-size:13px;color:var(--text-muted);">
+          📦 ארכיון (${archivedCourses.length} קורסים) ▾
+        </button>
+        <div id="dash-archived" style="display:none;margin-top:12px;display:none;">
+          <div class="courses-grid">${archivedCourses.map(renderCourseCard).join('')}</div>
+        </div>
+      </div>
+    `;
+  }
+
   cg.innerHTML = coursesHtml;
 
-  // Course card click → navigate to course dashboard
+  // Toggle archived
+  document.getElementById('dash-show-archived')?.addEventListener('click', () => {
+    const el = document.getElementById('dash-archived');
+    if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+  });
+
+  // Course card click → navigate
   cg.querySelectorAll('.course-card:not(.add)').forEach(card => {
-    card.addEventListener('click', () => {
-      const courseId = card.dataset.course;
-      navigate(`/course/${courseId}`);
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.course-menu-btn')) return;
+      navigate(`/course/${card.dataset.course}`);
     });
   });
-  const addBtn = document.getElementById('btn-add-course-card');
-  if (addBtn) addBtn.addEventListener('click', () => showAddCourseModal());
-  const topAddBtn = document.getElementById('btn-add-course');
-  if (topAddBtn) topAddBtn.addEventListener('click', () => showAddCourseModal());
+
+  // Course menu buttons (archive/delete)
+  cg.querySelectorAll('.course-menu-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const courseId = btn.dataset.courseId;
+      const courseName = btn.dataset.courseName;
+      const isArchived = btn.dataset.archived === 'true';
+
+      // Simple action menu
+      const menu = document.createElement('div');
+      menu.className = 'course-action-menu';
+      menu.innerHTML = `
+        <button class="course-action-item" data-act="${isArchived ? 'unarchive' : 'archive'}">
+          ${isArchived ? '📂 הוצא מארכיון' : '📦 העבר לארכיון'}
+        </button>
+        <button class="course-action-item danger" data-act="delete">🗑️ מחק קורס</button>
+      `;
+      // Position near button
+      menu.style.cssText = 'position:absolute;top:100%;left:8px;z-index:100;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:4px;min-width:160px;';
+      btn.style.position = 'relative';
+      btn.appendChild(menu);
+
+      const closeMenu = () => menu.remove();
+      setTimeout(() => document.addEventListener('click', closeMenu, { once: true }), 10);
+
+      menu.querySelectorAll('.course-action-item').forEach(item => {
+        item.addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          closeMenu();
+          const act = item.dataset.act;
+          const tk = await Auth.getToken();
+          if (act === 'archive' || act === 'unarchive') {
+            const r = await fetch(`/api/courses/${courseId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` },
+              body: JSON.stringify({ archived: act === 'archive' }),
+            });
+            if (r.ok) {
+              const c = state.courses.find(x => String(x.id) === String(courseId));
+              if (c) c.archived = (act === 'archive');
+              toast(act === 'archive' ? 'הקורס הועבר לארכיון' : 'הקורס הוחזר מהארכיון', 'success');
+              renderDashboard();
+            } else toast('שגיאה', 'error');
+          } else if (act === 'delete') {
+            showConfirmModal({
+              title: 'מחיקת קורס',
+              body: `למחוק את "${courseName}"? כל המבחנים, השאלות והנתונים יימחקו לצמיתות. לא ניתן לשחזר.`,
+              confirmLabel: 'מחק לצמיתות', danger: true,
+              onConfirm: async () => {
+                const dr = await fetch(`/api/courses/${courseId}`, {
+                  method: 'DELETE', headers: { Authorization: `Bearer ${tk}` },
+                });
+                if (dr.ok) {
+                  state.courses = state.courses.filter(x => String(x.id) !== String(courseId));
+                  toast('הקורס נמחק', 'success');
+                  renderDashboard();
+                } else toast('שגיאה במחיקה', 'error');
+              },
+            });
+          }
+        });
+      });
+    });
+  });
+
+  document.getElementById('btn-add-course-card')?.addEventListener('click', () => showAddCourseModal());
+  document.getElementById('btn-add-course')?.addEventListener('click', () => showAddCourseModal());
 }
 
 // ===== Course actions modal =====

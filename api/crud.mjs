@@ -94,6 +94,8 @@ function matchRoute(method, url) {
 
   if (s[0] === 'courses' && s.length >= 2) {
     const cid = s[1];
+    if (s.length === 2 && method === 'DELETE') return { r: 'delete-course', cid };
+    if (s.length === 2 && method === 'PATCH') return { r: 'update-course', cid };
     if (s.length === 3 && s[2] === 'exams' && method === 'GET') return { r: 'list-exams', cid };
     if (s.length === 3 && s[2] === 'questions' && method === 'GET') return { r: 'list-questions', cid };
     if (s.length === 3 && s[2] === 'review-queue' && method === 'GET') return { r: 'review-queue', cid };
@@ -207,6 +209,30 @@ export default async function handler(req, res) {
         console.error('[delete exam]', err?.message || err);
         return res.status(500).json({ error: 'שגיאה במחיקת המבחן' });
       }
+    }
+    case 'delete-course': {
+      try {
+        const { data: course, error: fe } = await auth.db.from('ep_courses').select('id').eq('id', m.cid).maybeSingle();
+        if (fe) return dbErr(res, 'fetch course', fe);
+        if (!course) return res.status(404).json({ error: 'קורס לא נמצא' });
+        // Delete all exams (CASCADE deletes questions, attempts, review_queue)
+        await auth.db.from('ep_exams').delete().eq('course_id', m.cid);
+        const { error: de } = await auth.db.from('ep_courses').delete().eq('id', m.cid);
+        if (de) return dbErr(res, 'delete course', de);
+        return res.json({ ok: true });
+      } catch (err) {
+        console.error('[delete course]', err?.message || err);
+        return res.status(500).json({ error: 'שגיאה במחיקת הקורס' });
+      }
+    }
+    case 'update-course': {
+      const { archived } = req.body || {};
+      const update = {};
+      if (typeof archived === 'boolean') update.archived = archived;
+      if (!Object.keys(update).length) return res.status(400).json({ error: 'אין שדות לעדכון' });
+      const { error } = await auth.db.from('ep_courses').update(update).eq('id', m.cid);
+      if (error) return dbErr(res, 'update course', error);
+      return res.json({ ok: true });
     }
     case 'delete-question': {
       const { error } = await auth.db.from('ep_questions')

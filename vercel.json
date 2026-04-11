@@ -11,6 +11,7 @@
   "rewrites": [
     { "source": "/api/me", "destination": "/api/crud" },
     { "source": "/api/courses", "destination": "/api/crud" },
+    { "source": "/api/courses/:courseId", "destination": "/api/crud" },
     { "source": "/api/courses/:courseId/exams", "destination": "/api/crud" },
     { "source": "/api/courses/:courseId/questions", "destination": "/api/crud" },
     { "source": "/api/courses/:courseId/review-queue", "destination": "/api/crud" },

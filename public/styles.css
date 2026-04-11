@@ -1666,6 +1666,22 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
   border: 1px solid var(--border-soft); box-shadow: var(--shadow-sm);
   cursor: pointer; transition: all var(--transition); position: relative; overflow: hidden;
 }
+.course-menu-btn {
+  position: absolute; top: 8px; left: 8px; z-index: 2;
+  width: 32px; height: 32px; border-radius: 8px; border: none;
+  background: transparent; cursor: pointer; font-size: 18px;
+  color: var(--text-muted); display: grid; place-items: center;
+  transition: background .15s;
+}
+.course-menu-btn:hover { background: var(--gray-100); }
+.course-action-item {
+  display: block; width: 100%; text-align: right; padding: 10px 14px;
+  border: none; background: none; cursor: pointer; font-size: 13px;
+  font-family: inherit; border-radius: 8px; transition: background .15s;
+}
+.course-action-item:hover { background: var(--gray-50); }
+.course-action-item.danger { color: var(--red-500); }
+.course-action-item.danger:hover { background: #fef2f2; }
 .course-card::before {
   content: ''; position: absolute; top: 0; right: 0; left: 0; height: 6px;
   background: var(--course-color, var(--brand-500));
