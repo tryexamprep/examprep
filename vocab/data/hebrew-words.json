@@ -1,0 +1,1166 @@
+{
+  "version": 1,
+  "language": "hebrew",
+  "levels": [
+    {
+      "level": 1,
+      "name": "בסיסי",
+      "description": "מילים עבריות שכיחות לרמה ראשונה",
+      "words": [
+        {
+          "id": "he_0101",
+          "word": "אמיץ",
+          "translation": "brave, courageous",
+          "definition": "מי שאינו מפחד מפני סכנות ומוכן להתמודד עמן",
+          "partOfSpeech": "תואר",
+          "example": "החייל האמיץ הציל את חבריו תחת אש.",
+          "exampleTranslation": "The brave soldier saved his friends under fire.",
+          "associations": [
+            { "text": "אמיץ — אמן+יץ. מי שאומן (trained) וניתץ (smashed) את פחדיו = אמיץ!", "lang": "he" },
+            { "text": "AMITZ — sounds like 'emit' — he emits courage! Strong emission of bravery", "lang": "en" }
+          ],
+          "synonyms": ["גיבור", "נועז", "אמיץ לב"],
+          "antonyms": ["פחדן", "רך לב", "מוג לב"]
+        },
+        {
+          "id": "he_0102",
+          "word": "בהיר",
+          "translation": "clear, bright, lucid",
+          "definition": "מואר, ברור לעין או לשכל",
+          "partOfSpeech": "תואר",
+          "example": "ניסוח בהיר של הרעיון עוזר לקוראים להבינו.",
+          "exampleTranslation": "A clear formulation of an idea helps readers understand it.",
+          "associations": [
+            { "text": "בהיר — בית+היר. כשהבית (house) נקי = הכל בהיר וברור", "lang": "he" },
+            { "text": "BAHIR sounds like 'bare' — when something is bare (uncovered), it is CLEAR and bright", "lang": "en" }
+          ],
+          "synonyms": ["ברור", "צלול", "מואר"],
+          "antonyms": ["עכור", "מטושטש", "אפלולי"]
+        },
+        {
+          "id": "he_0103",
+          "word": "גלוי",
+          "translation": "open, revealed, overt",
+          "definition": "שאינו מוסתר, גלוי לעיני כול",
+          "partOfSpeech": "תואר",
+          "example": "ביקורת גלויה על הממשלה היא זכות דמוקרטית.",
+          "exampleTranslation": "Open criticism of the government is a democratic right.",
+          "associations": [
+            { "text": "גלוי — מלשון גילוי, לגלות. מה שגולה (discovered) = גלוי לכל", "lang": "he" },
+            { "text": "GALUY — 'GALL' + 'YOU'. It's ALL in front of YOU, nothing hidden", "lang": "en" }
+          ],
+          "synonyms": ["פתוח", "מפורש", "גלוי לב"],
+          "antonyms": ["מוסתר", "סמוי", "חשוי"]
+        },
+        {
+          "id": "he_0104",
+          "word": "דחוף",
+          "translation": "urgent, pressing",
+          "definition": "הדורש טיפול מיידי ואינו יכול להמתין",
+          "partOfSpeech": "תואר",
+          "example": "ישנה בעיה דחופה שצריך לפתור עכשיו.",
+          "exampleTranslation": "There is an urgent problem that needs to be solved now.",
+          "associations": [
+            { "text": "דחוף — כמו לדחוף. מישהו דוחף אותך בגב ואומר: 'זה דחוף, תזוז!'", "lang": "he" },
+            { "text": "DACHUF — when someone DACHes (pushes) you, you know it's URGENT!", "lang": "en" }
+          ],
+          "synonyms": ["נחוץ", "חיוני", "חסר דיחוי"],
+          "antonyms": ["רגיל", "ניתן לדחייה", "לא דחוף"]
+        },
+        {
+          "id": "he_0105",
+          "word": "הדרגתי",
+          "translation": "gradual, step-by-step",
+          "definition": "המתרחש לאט לאט, שלב אחר שלב",
+          "partOfSpeech": "תואר",
+          "example": "השינוי בתרבות הוא תמיד הדרגתי.",
+          "exampleTranslation": "Cultural change is always gradual.",
+          "associations": [
+            { "text": "הדרגתי — מדרגות. כמו לעלות מדרגות, צעד אחרי צעד, בלי קפיצות", "lang": "he" },
+            { "text": "HADRAGATI — HADRAG sounds like 'a drag' — it's a slow drag up the stairs, step by step", "lang": "en" }
+          ],
+          "synonyms": ["אטי", "שלב-שלב", "ממושך"],
+          "antonyms": ["פתאומי", "חד", "מיידי"]
+        },
+        {
+          "id": "he_0106",
+          "word": "ודאי",
+          "translation": "certain, sure, definite",
+          "definition": "שאין עליו ספק, מוחלט",
+          "partOfSpeech": "תואר/תואר פועל",
+          "example": "ודאי שהפרויקט יצליח אם נעבוד קשה.",
+          "exampleTranslation": "It is certain the project will succeed if we work hard.",
+          "associations": [
+            { "text": "ודאי — ודא. לוודא = לבדוק. כשוודאת = אין ספק = ודאי!", "lang": "he" },
+            { "text": "VADAI — like 'va-DAY' — by the end of the day, we'll know for SURE", "lang": "en" }
+          ],
+          "synonyms": ["בטוח", "מובטח", "מוחלט"],
+          "antonyms": ["ספק", "אולי", "לא בטוח"]
+        },
+        {
+          "id": "he_0107",
+          "word": "זמני",
+          "translation": "temporary, provisional",
+          "definition": "שאינו קבוע, מיועד לתקופה מוגבלת",
+          "partOfSpeech": "תואר",
+          "example": "הפתרון הזמני לבעיה עבד רק לכמה ימים.",
+          "exampleTranslation": "The temporary solution to the problem worked for only a few days.",
+          "associations": [
+            { "text": "זמני — מלשון זמן. מה ש'זמנו' מוגבל = זמני. מה ש'עובר בזמן' = זמני", "lang": "he" },
+            { "text": "ZMANI — ZMaN = time in Hebrew. ZMANi = time-limited = TEMPORARY", "lang": "en" }
+          ],
+          "synonyms": ["ארעי", "חולף", "מוגבל בזמן"],
+          "antonyms": ["קבוע", "צמיתי", "עולמי"]
+        },
+        {
+          "id": "he_0108",
+          "word": "חיוני",
+          "translation": "vital, essential, lively",
+          "definition": "נחוץ מאוד לקיום; מלא חיוניות",
+          "partOfSpeech": "תואר",
+          "example": "שינה מספקת היא חיונית לבריאות.",
+          "exampleTranslation": "Adequate sleep is vital to health.",
+          "associations": [
+            { "text": "חיוני — מלשון חיים. מה שנחוץ לחיים = חיוני. ללא חיים = אין קיום", "lang": "he" },
+            { "text": "CHIYUNI — CHAY = life in Hebrew. CHIYUNI = full of life = VITAL, essential", "lang": "en" }
+          ],
+          "synonyms": ["הכרחי", "נחוץ", "עיקרי"],
+          "antonyms": ["מיותר", "שולי", "לא הכרחי"]
+        },
+        {
+          "id": "he_0109",
+          "word": "טעון",
+          "translation": "loaded, charged, requiring",
+          "definition": "מכיל מטען רגשי/פוליטי; הדורש טיפול",
+          "partOfSpeech": "תואר",
+          "example": "הנושא טעון ברגשות ודורש עיסוק זהיר.",
+          "exampleTranslation": "The topic is emotionally charged and requires careful handling.",
+          "associations": [
+            { "text": "טעון — כמו לטעון (מטען). נושא 'טעון' = נושא שיש בו מטען רגשי גדול", "lang": "he" },
+            { "text": "TAUN — a TONE that is LOADED with meaning and emotion. Charged tone = taun", "lang": "en" }
+          ],
+          "synonyms": ["עמוס", "מלא", "רגיש"],
+          "antonyms": ["ריק", "נייטרלי", "פשוט"]
+        },
+        {
+          "id": "he_0110",
+          "word": "יסודי",
+          "translation": "thorough, fundamental, basic",
+          "definition": "מקיף ומעמיק; הנוגע ליסודות",
+          "partOfSpeech": "תואר",
+          "example": "דרוש שינוי יסודי בשיטת ההוראה.",
+          "exampleTranslation": "A fundamental change in the teaching method is needed.",
+          "associations": [
+            { "text": "יסודי — מלשון יסוד. בית יסוד = יסוד. ללמוד מהיסודות = יסודי, מקיף", "lang": "he" },
+            { "text": "YESODI — YESOD = foundation in Hebrew. Going to the FOUNDATION = thorough, fundamental", "lang": "en" }
+          ],
+          "synonyms": ["מקיף", "עמוק", "בסיסי"],
+          "antonyms": ["שטחי", "חלקי", "לא מעמיק"]
+        },
+        {
+          "id": "he_0111",
+          "word": "כן",
+          "translation": "honest, sincere",
+          "definition": "מי שאינו מרמה, אמיתי ברגשותיו ובדבריו",
+          "partOfSpeech": "תואר",
+          "example": "חשוב להיות כן עם עצמך ועם אחרים.",
+          "exampleTranslation": "It is important to be honest with yourself and others.",
+          "associations": [
+            { "text": "כן — כמו 'כן' (yes). מי שאומר 'כן' מבלי ספק = כן, ישיר, אמיתי", "lang": "he" },
+            { "text": "KEN — like YES (ken = yes in Hebrew). A KEN person says YES to truth", "lang": "en" }
+          ],
+          "synonyms": ["ישר", "אמיתי", "גלוי לב"],
+          "antonyms": ["מרמה", "שקרן", "צבוע"]
+        },
+        {
+          "id": "he_0112",
+          "word": "לקוי",
+          "translation": "defective, flawed, impaired",
+          "definition": "בעל פגם, חסר שלמות",
+          "partOfSpeech": "תואר",
+          "example": "ראיית הלילה שלו הייתה לקויה.",
+          "exampleTranslation": "His night vision was impaired.",
+          "associations": [
+            { "text": "לקוי — מלשון לקות (eclipse). ירח בלקוי (עם פגם) = לקוי. פגם = לקות", "lang": "he" },
+            { "text": "LAKUY — like LACQUER that is LACKING — when the lacquer (finish) is flawed", "lang": "en" }
+          ],
+          "synonyms": ["פגום", "חסר", "בעל מום"],
+          "antonyms": ["שלם", "תקין", "מושלם"]
+        },
+        {
+          "id": "he_0113",
+          "word": "מרכזי",
+          "translation": "central, main, core",
+          "definition": "הנמצא במרכז; החשוב ביותר",
+          "partOfSpeech": "תואר",
+          "example": "הנושא המרכזי במחקר הוא שינוי האקלים.",
+          "exampleTranslation": "The central topic of the research is climate change.",
+          "associations": [
+            { "text": "מרכזי — מרכז = center. מה שנמצא במרכז הכל = מרכזי, הכי חשוב", "lang": "he" },
+            { "text": "MERKAZI — MERKAZ = center. MERKAZi = of the center = most important/central", "lang": "en" }
+          ],
+          "synonyms": ["עיקרי", "ראשי", "קריטי"],
+          "antonyms": ["שולי", "צדדי", "פריפריאלי"]
+        },
+        {
+          "id": "he_0114",
+          "word": "נלהב",
+          "translation": "enthusiastic, fervent",
+          "definition": "מלא התלהבות וחדווה לגבי משהו",
+          "partOfSpeech": "תואר",
+          "example": "הוא נלהב מאוד לגבי תחביב הצילום שלו.",
+          "exampleTranslation": "He is very enthusiastic about his photography hobby.",
+          "associations": [
+            { "text": "נלהב — מלשון להב (flame). מי שבוער כמו להבה = נלהב, מתלהב", "lang": "he" },
+            { "text": "NILHAV — LAHAV = flame in Hebrew. NILHAVed by flames of passion = enthusiastic", "lang": "en" }
+          ],
+          "synonyms": ["מתלהב", "להוט", "נוקשה"],
+          "antonyms": ["אדיש", "קר", "חסר עניין"]
+        },
+        {
+          "id": "he_0115",
+          "word": "עיקרי",
+          "translation": "main, primary, principal",
+          "definition": "החשוב מכל, הראשי ביותר",
+          "partOfSpeech": "תואר",
+          "example": "הנושא העיקרי של הוויכוח היה השכלה.",
+          "exampleTranslation": "The main subject of the debate was education.",
+          "associations": [
+            { "text": "עיקרי — מלשון עיקר. העיקר = הדבר החשוב ביותר. עיקרי = של העיקר", "lang": "he" },
+            { "text": "IKARI — IKAR = the main thing in Hebrew. IKARi = of the main thing = primary", "lang": "en" }
+          ],
+          "synonyms": ["ראשי", "מרכזי", "דומיננטי"],
+          "antonyms": ["שולי", "משני", "זניח"]
+        }
+      ]
+    },
+    {
+      "level": 2,
+      "name": "בינוני",
+      "description": "מילים עבריות ברמה בינונית — נפוצות בפסיכומטרי",
+      "words": [
+        {
+          "id": "he_0201",
+          "word": "אחיד",
+          "translation": "uniform, consistent, homogeneous",
+          "definition": "שווה בכל חלקיו, ללא הבדלים",
+          "partOfSpeech": "תואר",
+          "example": "רמה אחידה של שירות נדרשת בכל הסניפים.",
+          "exampleTranslation": "A uniform level of service is required in all branches.",
+          "associations": [
+            { "text": "אחיד — אחד + יד. כשהיד אחת = אחיד. כולם נותנים יד אחת = אחידות", "lang": "he" },
+            { "text": "ACHID — ECHAD = one (Hebrew). ACHIDness = one-ness = uniformity, all the same", "lang": "en" }
+          ],
+          "synonyms": ["אחדותי", "אחד-גוני", "הומוגני"],
+          "antonyms": ["מגוון", "שונה", "הטרוגני"]
+        },
+        {
+          "id": "he_0202",
+          "word": "בלתי נמנע",
+          "translation": "inevitable, unavoidable",
+          "definition": "שאי אפשר למנוע אותו, מוכרח לקרות",
+          "partOfSpeech": "תואר",
+          "example": "ההתנגשות בין שתי המדינות נראתה בלתי נמנעת.",
+          "exampleTranslation": "The clash between the two nations seemed inevitable.",
+          "associations": [
+            { "text": "בלתי נמנע — בלי + נמנע. נמנע = אפשר להימנע. בלי-נמנע = אי אפשר להימנע", "lang": "he" },
+            { "text": "BILTI NIMNA — BILTI (without) + NIMNA (avoidable). Without avoidance = inevitable", "lang": "en" }
+          ],
+          "synonyms": ["הכרחי", "מוכרח", "פטאלי"],
+          "antonyms": ["ניתן למניעה", "אפשרי להימנעות", "מותנה"]
+        },
+        {
+          "id": "he_0203",
+          "word": "דחייה",
+          "translation": "rejection, postponement",
+          "definition": "סירוב לקבל; דחיית זמן",
+          "partOfSpeech": "שם עצם",
+          "example": "קיבל דחייה מאוניברסיטה / החלטה בדבר דחיית הבחירות.",
+          "exampleTranslation": "He received a rejection from the university / decision to postpone the elections.",
+          "associations": [
+            { "text": "דחייה — דחפה (to push). דחפה = לדחות. מי שנדחה = מי שנדחפה לצד", "lang": "he" },
+            { "text": "DCHIYA — DACHAF = push. DaCHIYA = pushing away = rejection or postponement", "lang": "en" }
+          ],
+          "synonyms": ["סירוב", "פסילה", "השהייה"],
+          "antonyms": ["קבלה", "אישור", "זרוז"]
+        },
+        {
+          "id": "he_0204",
+          "word": "הגיוני",
+          "translation": "logical, rational, reasonable",
+          "definition": "מבוסס על היגיון ותבונה",
+          "partOfSpeech": "תואר",
+          "example": "הסבר הגיוני לתופעה עוזר להבינה.",
+          "exampleTranslation": "A logical explanation of a phenomenon helps to understand it.",
+          "associations": [
+            { "text": "הגיוני — מלשון הגיון (logic). מה שמתבסס על היגיון = הגיוני. לא רגשי", "lang": "he" },
+            { "text": "HIGYONI — HIGYON = logic in Hebrew. HIGYONi = based on logic = logical", "lang": "en" }
+          ],
+          "synonyms": ["רציונלי", "תבוני", "סביר"],
+          "antonyms": ["לא הגיוני", "אבסורדי", "אירציונלי"]
+        },
+        {
+          "id": "he_0205",
+          "word": "התרחשות",
+          "translation": "occurrence, event, happening",
+          "definition": "מאורע שהתחולל, דבר שקרה",
+          "partOfSpeech": "שם עצם",
+          "example": "התרחשות בלתי צפויה שינתה את כל התוכניות.",
+          "exampleTranslation": "An unexpected occurrence changed all the plans.",
+          "associations": [
+            { "text": "התרחשות — מלשון התרחש. 'רחש' = תנועה עדינה. התרחשות = דברים שזזים/קורים", "lang": "he" },
+            { "text": "HITRACHASHUT — RACHASH = rustling/occurring. Things that RUSTLE into being = occurrence", "lang": "en" }
+          ],
+          "synonyms": ["מאורע", "אירוע", "עטנה"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0206",
+          "word": "זיקה",
+          "translation": "connection, affinity, bond",
+          "definition": "קשר, נטייה, שייכות",
+          "partOfSpeech": "שם עצם",
+          "example": "יש לו זיקה עמוקה לאמנות הקלאסית.",
+          "exampleTranslation": "He has a deep affinity for classical art.",
+          "associations": [
+            { "text": "זיקה — כמו ניצוץ (spark) — זיק. זיקה = ניצוץ חיבור בין שני דברים", "lang": "he" },
+            { "text": "ZIKA — like a ZAP of electricity! A ZAP connecting two things = affinity/bond", "lang": "en" }
+          ],
+          "synonyms": ["קשר", "קרבה", "שייכות"],
+          "antonyms": ["ניתוק", "ריחוק", "ניכור"]
+        },
+        {
+          "id": "he_0207",
+          "word": "חריג",
+          "translation": "exceptional, anomalous, deviant",
+          "definition": "שחורג מהנורמה, לא שגרתי",
+          "partOfSpeech": "תואר",
+          "example": "מקרה חריג אינו ראיה לכלל.",
+          "exampleTranslation": "An exceptional case is not evidence of a rule.",
+          "associations": [
+            { "text": "חריג — מלשון חריגה. לחרוג = לצאת מהגבול. חריג = מי שיצא מהגבול הרגיל", "lang": "he" },
+            { "text": "CHARIG — CHARIGA = deviation. A CHARIG strays from the norm = exceptional/anomalous", "lang": "en" }
+          ],
+          "synonyms": ["יוצא מן הכלל", "אנומלי", "לא שגרתי"],
+          "antonyms": ["שגרתי", "נורמטיבי", "רגיל"]
+        },
+        {
+          "id": "he_0208",
+          "word": "טיפוסי",
+          "translation": "typical, characteristic",
+          "definition": "המאפיין קבוצה או תקופה מסוימת",
+          "partOfSpeech": "תואר",
+          "example": "זוהי תגובה טיפוסית למצב לחץ.",
+          "exampleTranslation": "This is a typical response to a stress situation.",
+          "associations": [
+            { "text": "טיפוסי — מלשון טיפוס (type). כמו טיפוס מסוים. הטיפוסי = האופייני לטיפוס זה", "lang": "he" },
+            { "text": "TIPUSI — TIPE = type (English). TIPUSi = type-ish = typical, characteristic of its type", "lang": "en" }
+          ],
+          "synonyms": ["אופייני", "מאפיין", "נורמלי"],
+          "antonyms": ["לא אופייני", "חריג", "ייחודי"]
+        },
+        {
+          "id": "he_0209",
+          "word": "יסוד",
+          "translation": "foundation, basis, element",
+          "definition": "הבסיס שעליו עומד דבר; אחד מרכיבי יסוד",
+          "partOfSpeech": "שם עצם",
+          "example": "אמון הוא יסוד חיוני לכל מערכת יחסים.",
+          "exampleTranslation": "Trust is a vital foundation for any relationship.",
+          "associations": [
+            { "text": "יסוד — בית יסוד (elementary school) = בסיס הכל. יסוד = הדבר הראשוני", "lang": "he" },
+            { "text": "YESOD — YeSod = foundation of a building. Without it everything FALLS = foundation", "lang": "en" }
+          ],
+          "synonyms": ["בסיס", "תשתית", "עיקרון"],
+          "antonyms": ["גג", "עליה", "תוספת"]
+        },
+        {
+          "id": "he_0210",
+          "word": "כשל",
+          "translation": "failure, flaw, malfunction",
+          "definition": "חוסר הצלחה; תקלה, פגם",
+          "partOfSpeech": "שם עצם",
+          "example": "כשל מנהיגותי גרם לקריסת החברה.",
+          "exampleTranslation": "A leadership failure caused the company to collapse.",
+          "associations": [
+            { "text": "כשל — כישלון (failure). כשלון גדול = כשל. גם בהגיון: כשל לוגי = logical fallacy", "lang": "he" },
+            { "text": "KISHALON — sounds like 'CASH-ALONE'. When you're cash-alone (broke) = you FAILED", "lang": "en" }
+          ],
+          "synonyms": ["כישלון", "תקלה", "מחדל"],
+          "antonyms": ["הצלחה", "תפקוד תקין", "ניצחון"]
+        },
+        {
+          "id": "he_0211",
+          "word": "לאורך זמן",
+          "translation": "over time, in the long run",
+          "definition": "בטווח הארוך, על פני תקופה ממושכת",
+          "partOfSpeech": "ביטוי",
+          "example": "שינויים לאורך זמן הם אלה שבאמת משנים את החברה.",
+          "exampleTranslation": "Changes over time are those that truly transform society.",
+          "associations": [
+            { "text": "לאורך זמן — אורך = length. לאורך הזמן = לאורך הדרך = על פני זמן ארוך", "lang": "he" },
+            { "text": "LE'ORECH ZMAN — ORECH = length, ZMAN = time. Along the LENGTH of time = over time", "lang": "en" }
+          ],
+          "synonyms": ["בטווח הארוך", "על פני זמן", "עם הזמן"],
+          "antonyms": ["לטווח הקצר", "מיידית", "ברגע זה"]
+        },
+        {
+          "id": "he_0212",
+          "word": "מאפיין",
+          "translation": "characteristic, feature, trait",
+          "definition": "תכונה המציינת ומבדילה דבר מה",
+          "partOfSpeech": "שם עצם/פועל",
+          "example": "מה הם המאפיינים הייחודיים של תרבות ישראלית?",
+          "exampleTranslation": "What are the unique characteristics of Israeli culture?",
+          "associations": [
+            { "text": "מאפיין — אופן = character. מאפיין = מה שמאפיין (characterizes) = תכונה ייחודית", "lang": "he" },
+            { "text": "ME'AFEN — ME'AFEN (characterizes) — the features that characterize something", "lang": "en" }
+          ],
+          "synonyms": ["תכונה", "סימן", "מאפיין"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0213",
+          "word": "נוקשה",
+          "translation": "rigid, strict, inflexible",
+          "definition": "קשה, חסר גמישות, לא מוכן להתפשר",
+          "partOfSpeech": "תואר",
+          "example": "הגישה הנוקשה שלו מנעה כל פשרה.",
+          "exampleTranslation": "His rigid approach prevented any compromise.",
+          "associations": [
+            { "text": "נוקשה — קשה, נוקשה. כמו אבן קשה (rock). נוקשה = אבן, לא זזה = לא גמיש", "lang": "he" },
+            { "text": "NUKSHE — NOKESHeh sounds like 'knocker'. A hard KNOCKER that won't bend = rigid", "lang": "en" }
+          ],
+          "synonyms": ["קשיח", "מחמיר", "לא גמיש"],
+          "antonyms": ["גמיש", "מתפשר", "נינוח"]
+        },
+        {
+          "id": "he_0214",
+          "word": "עמדה",
+          "translation": "position, stance, view",
+          "definition": "דעה או עמדה בנושא מסוים",
+          "partOfSpeech": "שם עצם",
+          "example": "עמדתו של השר בנושא היגרה שנויה במחלוקת.",
+          "exampleTranslation": "The minister's position on immigration is controversial.",
+          "associations": [
+            { "text": "עמדה — מלשון לעמוד. עמדה = מקום שבו עומדים. גם: מה שאתה עומד עליו = עמדתך", "lang": "he" },
+            { "text": "AMADA — OMED = stands. Your AMADA is where you STAND on an issue = position/stance", "lang": "en" }
+          ],
+          "synonyms": ["עמדה", "עמדה", "השקפה"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0215",
+          "word": "פגיע",
+          "translation": "vulnerable, susceptible",
+          "definition": "חשוף לפגיעה, חסר הגנה",
+          "partOfSpeech": "תואר",
+          "example": "אוכלוסיות פגיעות זקוקות להגנה מיוחדת.",
+          "exampleTranslation": "Vulnerable populations need special protection.",
+          "associations": [
+            { "text": "פגיע — מלשון פגיעה. מי שאפשר לפגוע בו = פגיע. לא מוגן = חשוף לפגיעה", "lang": "he" },
+            { "text": "PAGIYA — PGIA = hit/wound. PAGIYa = can be hit/wounded = vulnerable", "lang": "en" }
+          ],
+          "synonyms": ["חסר הגנה", "חשוף", "שביר"],
+          "antonyms": ["מוגן", "חסין", "עמיד"]
+        }
+      ]
+    },
+    {
+      "level": 3,
+      "name": "מתקדם",
+      "description": "מילים עבריות ברמה מתקדמת — נפוצות מאוד בפסיכומטרי",
+      "words": [
+        {
+          "id": "he_0301",
+          "word": "אוטונומיה",
+          "translation": "autonomy, self-governance",
+          "definition": "שלטון עצמי, עצמאות בניהול הדברים",
+          "partOfSpeech": "שם עצם",
+          "example": "מתן אוטונומיה לעובדים מגביר את המוטיבציה שלהם.",
+          "exampleTranslation": "Giving autonomy to employees increases their motivation.",
+          "associations": [
+            { "text": "אוטונומיה — אוטו (עצמי) + נומוס (חוק ביוונית). חוק עצמי = שלטון עצמי", "lang": "he" },
+            { "text": "AUTONOMIA — AUTO = self + NOMOS = law. Self-law = AUTONOMY", "lang": "en" }
+          ],
+          "synonyms": ["עצמאות", "שלטון עצמי", "חירות"],
+          "antonyms": ["כפיפות", "תלות", "כפייה"]
+        },
+        {
+          "id": "he_0302",
+          "word": "ביקורתי",
+          "translation": "critical, analytical",
+          "definition": "המסוגל לנתח ולבקר; חיוני להצלחה",
+          "partOfSpeech": "תואר",
+          "example": "חשיבה ביקורתית היא מיומנות חיונית במאה ה-21.",
+          "exampleTranslation": "Critical thinking is a vital skill in the 21st century.",
+          "associations": [
+            { "text": "ביקורתי — מלשון ביקורת. לבקר = לנתח. ביקורתי = המנתח ובוחן דברים לעומק", "lang": "he" },
+            { "text": "BIKORTIT — BIKORET = criticism/review. BIKORTIt = one who criticizes/analyzes deeply", "lang": "en" }
+          ],
+          "synonyms": ["אנליטי", "שיפוטי", "בוחן"],
+          "antonyms": ["קבלני", "פסיבי", "לא ביקורתי"]
+        },
+        {
+          "id": "he_0303",
+          "word": "גלישה",
+          "translation": "sliding, overflow, spreading",
+          "definition": "מעבר הדרגתי ממצב אחד למצב אחר; חריגה",
+          "partOfSpeech": "שם עצם",
+          "example": "גלישה לאלימות קשה למניעה כשמתחה גבוהה.",
+          "exampleTranslation": "Sliding into violence is hard to prevent when tension is high.",
+          "associations": [
+            { "text": "גלישה — כמו לגלוש (surf). הגלישה לאירוע = להחליק בהדרגה לתוכו", "lang": "he" },
+            { "text": "GLISHA — like GLIDING/SLIDING. A slow GLIDE from one state to another = gradual slide", "lang": "en" }
+          ],
+          "synonyms": ["מעבר", "חריגה", "שפיכה"],
+          "antonyms": ["עצירה", "שמירה", "בלימה"]
+        },
+        {
+          "id": "he_0304",
+          "word": "דואליזם",
+          "translation": "dualism, duality",
+          "definition": "קיום שני עקרונות מנוגדים כאחד",
+          "partOfSpeech": "שם עצם",
+          "example": "הדואליזם בין טוב לרע הוא נושא מרכזי בפילוסופיה.",
+          "exampleTranslation": "The dualism between good and evil is a central topic in philosophy.",
+          "associations": [
+            { "text": "דואליזם — DUO = שניים. שניים שחיים יחד = דואליזם. כמו יין ויאנג", "lang": "he" },
+            { "text": "DUALISM — DUO = two. Two opposing principles coexisting = dualism", "lang": "en" }
+          ],
+          "synonyms": ["דו-ערכיות", "בינאריות", "ניגודיות"],
+          "antonyms": ["מוניזם", "אחידות", "אחד-ממד"]
+        },
+        {
+          "id": "he_0305",
+          "word": "הגמוניה",
+          "translation": "hegemony, dominance",
+          "definition": "שלטון או השפעה דומיננטית של קבוצה אחת על אחרות",
+          "partOfSpeech": "שם עצם",
+          "example": "ארה\"ב שמרה על הגמוניה גלובלית לאחר המלחמה הקרה.",
+          "exampleTranslation": "The US maintained global hegemony after the Cold War.",
+          "associations": [
+            { "text": "הגמוניה — היגמון (HEGEMON ביוונית) = מנהיג. הגמוניה = שלטון המנהיג", "lang": "he" },
+            { "text": "HEGEMONIA — HEGEMON (Greek) = leader. HEGEMONY = dominance of the leader", "lang": "en" }
+          ],
+          "synonyms": ["דומיננטיות", "עליונות", "שליטה"],
+          "antonyms": ["כפיפות", "שוויון", "פלורליזם"]
+        },
+        {
+          "id": "he_0306",
+          "word": "חד-ממדי",
+          "translation": "one-dimensional, simplistic",
+          "definition": "שאינו לוקח בחשבון מורכבות ורב-ממדיות",
+          "partOfSpeech": "תואר",
+          "example": "ניתוח חד-ממדי של בעיה מורכבת אינו מספיק.",
+          "exampleTranslation": "A one-dimensional analysis of a complex problem is insufficient.",
+          "associations": [
+            { "text": "חד-ממדי — כמו קו ישר. רק מימד אחד = מנקודת מבט אחת. פשטני", "lang": "he" },
+            { "text": "CHAD-MEMADI — CHAD = one, MEAD = dimension. One-dimensional = oversimplified", "lang": "en" }
+          ],
+          "synonyms": ["שטחי", "פשטני", "מצומצם"],
+          "antonyms": ["רב-ממדי", "מורכב", "כולל"]
+        },
+        {
+          "id": "he_0307",
+          "word": "טלאולוגי",
+          "translation": "teleological, goal-oriented",
+          "definition": "הנוגע למטרה הסופית; מסביר תופעות לפי תכלית",
+          "partOfSpeech": "תואר",
+          "example": "הפרשנות הטלאולוגית של האבולוציה שגויה.",
+          "exampleTranslation": "A teleological interpretation of evolution is incorrect.",
+          "associations": [
+            { "text": "טלאולוגי — TELOS ביוונית = מטרה/תכלית. טלאולוגי = מוסבר על ידי מטרתו", "lang": "he" },
+            { "text": "TELEOLOGICAL — TELOS (Greek) = end/goal. Explained by its END goal = teleological", "lang": "en" }
+          ],
+          "synonyms": ["תכליתי", "מוכוון-מטרה", "פינאליסטי"],
+          "antonyms": ["קזואלי", "אקראי", "ללא מטרה"]
+        },
+        {
+          "id": "he_0308",
+          "word": "כפייה",
+          "translation": "coercion, compulsion",
+          "definition": "שימוש בכוח כדי לאלץ מישהו לעשות משהו",
+          "partOfSpeech": "שם עצם",
+          "example": "כפייה לחתום על חוזה מבטלת אותו.",
+          "exampleTranslation": "Coercion to sign a contract nullifies it.",
+          "associations": [
+            { "text": "כפייה — כמו כפות (cuffed). מי שכפות = אינו חופשי = כפייה עליו", "lang": "he" },
+            { "text": "KFIYA — KFOT = cuffs/shackles. KFiYA = shackling someone to do something = coercion", "lang": "en" }
+          ],
+          "synonyms": ["אלמנות", "אונס", "דיכוי"],
+          "antonyms": ["שכנוע", "עידוד", "חופש"]
+        },
+        {
+          "id": "he_0309",
+          "word": "לגיטימי",
+          "translation": "legitimate, valid",
+          "definition": "מוכר כחוקי, מוסרי, או מקובל",
+          "partOfSpeech": "תואר",
+          "example": "מחאה שקטה היא אמצעי לגיטימי לשינוי חברתי.",
+          "exampleTranslation": "Peaceful protest is a legitimate means of social change.",
+          "associations": [
+            { "text": "לגיטימי — LEX (חוק בלטינית). לגיטימי = מה שהחוק מכיר בו. חוקי ומוכר", "lang": "he" },
+            { "text": "LEGITIMACY — LEGIT = legal. LEGITimate = LEGIT + MATE. Your legal partner = valid", "lang": "en" }
+          ],
+          "synonyms": ["חוקי", "מוסכם", "מקובל"],
+          "antonyms": ["בלתי חוקי", "פסול", "לא מוסרי"]
+        },
+        {
+          "id": "he_0310",
+          "word": "מורכב",
+          "translation": "complex, complicated",
+          "definition": "המכיל מרכיבים רבים; קשה להבנה",
+          "partOfSpeech": "תואר",
+          "example": "הפתרון למשבר הוא מורכב ממה שנראה.",
+          "exampleTranslation": "The solution to the crisis is more complex than it seems.",
+          "associations": [
+            { "text": "מורכב — מרכיבים (components). מה שמורכב ממרכיבים רבים = מורכב", "lang": "he" },
+            { "text": "MURKAV — MURKAV has MURK in it. Something MURKY (unclear) = complex, complicated", "lang": "en" }
+          ],
+          "synonyms": ["סבוך", "מסועף", "מסובך"],
+          "antonyms": ["פשוט", "ברור", "ישיר"]
+        },
+        {
+          "id": "he_0311",
+          "word": "נורמטיבי",
+          "translation": "normative, prescriptive",
+          "definition": "הקובע נורמות; הדן במה שצריך להיות (לעומת מה שיש)",
+          "partOfSpeech": "תואר",
+          "example": "המחקר עוסק בשאלה נורמטיבית: מה צריך להיות?",
+          "exampleTranslation": "The research deals with a normative question: what should be?",
+          "associations": [
+            { "text": "נורמטיבי — נורמה = norm. נורמטיבי = קשור לנורמות, קובע מה ראוי", "lang": "he" },
+            { "text": "NORMATIVE — NORM + ATIVE. About what is the NORM = what should be = normative", "lang": "en" }
+          ],
+          "synonyms": ["רגולטיבי", "מניחות", "קובע-ערכים"],
+          "antonyms": ["דסקריפטיבי", "אמפירי", "תיאורי"]
+        },
+        {
+          "id": "he_0312",
+          "word": "סדר-עדיפויות",
+          "translation": "order of priorities",
+          "definition": "דירוג הדברים לפי חשיבותם",
+          "partOfSpeech": "ביטוי",
+          "example": "חשוב לקבוע סדר עדיפויות ברורה לפני תחילת הפרויקט.",
+          "exampleTranslation": "It is important to establish a clear order of priorities before starting the project.",
+          "associations": [
+            { "text": "סדר עדיפויות — מה עדיף (better/preferred). מה עדיף בראש = סדר עדיפויות", "lang": "he" },
+            { "text": "SEDER ADIFUYOT — SEDER = order, ADIF = preferred. Order of what is PREFERRED = priorities", "lang": "en" }
+          ],
+          "synonyms": ["דירוג", "עדיפות", "ראשוניות"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0313",
+          "word": "עמיד",
+          "translation": "durable, resistant, resilient",
+          "definition": "שאינו נשחק, יכול לעמוד בפני לחץ",
+          "partOfSpeech": "תואר",
+          "example": "חומר עמיד מפני חום יחיד לאורך שנים.",
+          "exampleTranslation": "A heat-resistant material will last for years.",
+          "associations": [
+            { "text": "עמיד — מלשון לעמוד. מה שיכול לעמוד (withstand) בפני כוחות = עמיד", "lang": "he" },
+            { "text": "AMID — OMED = stands. AMID = one who STANDS against force = durable, resistant", "lang": "en" }
+          ],
+          "synonyms": ["חסין", "מחוסן", "עמיד"],
+          "antonyms": ["שביר", "פגיע", "חלש"]
+        },
+        {
+          "id": "he_0314",
+          "word": "פרדיגמה",
+          "translation": "paradigm, model",
+          "definition": "מסגרת מחשבה מקובלת; דפוס חשיבה שליט",
+          "partOfSpeech": "שם עצם",
+          "example": "המהפכה המדעית שינתה את הפרדיגמה הקיימת.",
+          "exampleTranslation": "The scientific revolution changed the existing paradigm.",
+          "associations": [
+            { "text": "פרדיגמה — paradigm. כמו 'דוגמה' (paradigm = example ביוונית). מסגרת = דפוס", "lang": "he" },
+            { "text": "PARADIGM — PARA-DIGM. Para = beside + DIGM = dig. The framework you DIG beside = model", "lang": "en" }
+          ],
+          "synonyms": ["מודל", "תבנית", "מסגרת"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0315",
+          "word": "קונצנזוס",
+          "translation": "consensus",
+          "definition": "הסכמה כללית של רוב הדעות",
+          "partOfSpeech": "שם עצם",
+          "example": "הושג קונצנזוס בין המפלגות בנושא הביטחון.",
+          "exampleTranslation": "Consensus was reached among the parties on the security issue.",
+          "associations": [
+            { "text": "קונצנזוס — CONSEN-SUS. כולם חושבים (SENSE) יחד (CON). חשיבה משותפת = הסכמה", "lang": "he" },
+            { "text": "CONSENSUS — CON (together) + SENSE. Making SENSE TOGETHER = consensus", "lang": "en" }
+          ],
+          "synonyms": ["הסכמה", "אחדות דעים", "הסכמה כללית"],
+          "antonyms": ["מחלוקת", "פילוג", "אי-הסכמה"]
+        }
+      ]
+    },
+    {
+      "level": 4,
+      "name": "קשה",
+      "description": "מילים עבריות קשות — נבחנות בפסיכומטרי ברמה גבוהה",
+      "words": [
+        {
+          "id": "he_0401",
+          "word": "אוקסימורון",
+          "translation": "oxymoron",
+          "definition": "ביטוי המכיל שני מושגים סותרים לכאורה",
+          "partOfSpeech": "שם עצם",
+          "example": "\"שקט רועש\" הוא אוקסימורון.",
+          "exampleTranslation": "'Deafening silence' is an oxymoron.",
+          "associations": [
+            { "text": "אוקסימורון — OXY (חד, חריף) + MOROS (טיפש). 'טיפשות חכמה' = אוקסימורון!", "lang": "he" },
+            { "text": "OXYMORON — OXY (sharp) + MORON (dull). A SHARP MORON = the ultimate oxymoron itself!", "lang": "en" }
+          ],
+          "synonyms": ["סתירה", "פרדוקס לשוני"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0402",
+          "word": "אינרציה",
+          "translation": "inertia, resistance to change",
+          "definition": "נטייה לשמור על מצב קיים; עמידות לשינוי",
+          "partOfSpeech": "שם עצם",
+          "example": "האינרציה הבירוקרטית מאטה כל תהליך שינוי.",
+          "exampleTranslation": "Bureaucratic inertia slows down any process of change.",
+          "associations": [
+            { "text": "אינרציה — IN + ERTIA. IN-ERTIA = 'inside ert (inactive)'. מה שנמצא בפנים ולא זז", "lang": "he" },
+            { "text": "INERTIA — IN + ERT (inactive). What is INERT (not active) stays PUT = inertia", "lang": "en" }
+          ],
+          "synonyms": ["עמידות לשינוי", "קיפאון", "אדישות"],
+          "antonyms": ["דינמיות", "תנועה", "שינוי"]
+        },
+        {
+          "id": "he_0403",
+          "word": "ביזור",
+          "translation": "decentralization, dispersal",
+          "definition": "פיזור סמכויות ממרכז לפריפריה",
+          "partOfSpeech": "שם עצם",
+          "example": "ביזור הסמכויות שיפר את יכולת ההחלטה המקומית.",
+          "exampleTranslation": "Decentralization of authority improved local decision-making.",
+          "associations": [
+            { "text": "ביזור — מלשון בזר (scattered). ביזור = לפזר סמכויות. פריפריה מקבלת כוח", "lang": "he" },
+            { "text": "BIZUR — BIZAR = scatter/disperse. BIZURing = scattering power away from center", "lang": "en" }
+          ],
+          "synonyms": ["פיזור", "ריכוז-ביטול", "אי-ריכוז"],
+          "antonyms": ["ריכוז", "צנטרליזציה", "מרכוז"]
+        },
+        {
+          "id": "he_0404",
+          "word": "גמישות",
+          "translation": "flexibility, adaptability",
+          "definition": "יכולת להתאים את עצמו למצבים שונים",
+          "partOfSpeech": "שם עצם",
+          "example": "גמישות מחשבתית היא מאפיין של מנהיגים מצוינים.",
+          "exampleTranslation": "Intellectual flexibility is a trait of excellent leaders.",
+          "associations": [
+            { "text": "גמישות — גמיש כמו גומי (rubber). גומי = מתכופף ולא שובר. גמישות = כוח", "lang": "he" },
+            { "text": "GMISHUT — like GUM (rubber/chewing gum). GUM bends but doesn't break = flexibility", "lang": "en" }
+          ],
+          "synonyms": ["אדפטביליות", "נוחות", "ניידות"],
+          "antonyms": ["קשיחות", "חוסר-גמישות", "נוקשות"]
+        },
+        {
+          "id": "he_0405",
+          "word": "דיסונס קוגניטיבי",
+          "translation": "cognitive dissonance",
+          "definition": "אי-נוחות נפשית הנגרמת על ידי אמונות סותרות",
+          "partOfSpeech": "ביטוי",
+          "example": "העישון למרות ידיעת הנזקים יוצר דיסונס קוגניטיבי.",
+          "exampleTranslation": "Smoking despite knowing the harms creates cognitive dissonance.",
+          "associations": [
+            { "text": "דיסונס קוגניטיבי — DIS-SONANCE = צלילים לא מתאימים. קוגניטיבי = של המוח. שני רעיונות 'לא מתאימים' במוח", "lang": "he" },
+            { "text": "COGNITIVE DISSONANCE — DISSONANT notes that clash in your MIND. Mental clashing = dissonance", "lang": "en" }
+          ],
+          "synonyms": ["אי-עקביות קוגניטיבית", "קונפליקט פנימי"],
+          "antonyms": ["עקביות קוגניטיבית", "הרמוניה פנימית"]
+        },
+        {
+          "id": "he_0406",
+          "word": "הרמוניה",
+          "translation": "harmony",
+          "definition": "אחדות נעימה בין חלקים שונים",
+          "partOfSpeech": "שם עצם",
+          "example": "הרמוניה בין חברי הצוות מובילה לתוצאות טובות.",
+          "exampleTranslation": "Harmony among team members leads to good results.",
+          "associations": [
+            { "text": "הרמוניה — HARMONY. בהרמוניה של מוזיקה — כולם שרים יחד בצורה מתאימה", "lang": "he" },
+            { "text": "HARMONY — like in music: all notes playing TOGETHER beautifully = harmony", "lang": "en" }
+          ],
+          "synonyms": ["הסכמה", "אחדות", "שלום"],
+          "antonyms": ["דיסהרמוניה", "קונפליקט", "מחלוקת"]
+        },
+        {
+          "id": "he_0407",
+          "word": "חזות",
+          "translation": "appearance, facade, seeming",
+          "definition": "המראה החיצוני; מה שנראה על-פני השטח",
+          "partOfSpeech": "שם עצם",
+          "example": "חזות האמינות שלו לא שיקפה את טבעו האמיתי.",
+          "exampleTranslation": "His appearance of reliability didn't reflect his true nature.",
+          "associations": [
+            { "text": "חזות — מלשון חזה/חזון. מה שחוזים (see) = החיצוניות, מה שנראה", "lang": "he" },
+            { "text": "CHAZUT — CHAZAH = see/vision. CHAZUT = what you SEE (external appearance)", "lang": "en" }
+          ],
+          "synonyms": ["מראה", "פנים", "ויזואליות"],
+          "antonyms": ["מהות", "פנים", "עומק"]
+        },
+        {
+          "id": "he_0408",
+          "word": "ייחוד",
+          "translation": "uniqueness, distinctiveness",
+          "definition": "תכונה המייחדת דבר מה ומבדילה אותו מאחרים",
+          "partOfSpeech": "שם עצם",
+          "example": "ייחוד התרבות הישראלית בא לידי ביטוי בשפה ובמנהגים.",
+          "exampleTranslation": "The uniqueness of Israeli culture is expressed in language and customs.",
+          "associations": [
+            { "text": "ייחוד — מלשון יחיד (unique, singular). ייחוד = להיות היחיד בסוגו = ייחודיות", "lang": "he" },
+            { "text": "YICHUD — YACHID = unique/alone. YICHUD = what makes you YACHID (the only one)", "lang": "en" }
+          ],
+          "synonyms": ["ייחודיות", "אי-שגרתיות", "בולטות"],
+          "antonyms": ["שגרתיות", "אחידות", "כלליות"]
+        },
+        {
+          "id": "he_0409",
+          "word": "מוסד",
+          "translation": "institution, establishment",
+          "definition": "ארגון מבוסס ויציב; מוסד חברתי",
+          "partOfSpeech": "שם עצם",
+          "example": "בית-המשפט הוא מוסד יסוד של המדינה הדמוקרטית.",
+          "exampleTranslation": "The court is a foundational institution of the democratic state.",
+          "associations": [
+            { "text": "מוסד — מלשון יסוד (foundation). מוסד = דבר שהונח על יסוד חזק = מוסד יציב", "lang": "he" },
+            { "text": "MOSAD — YESOD = foundation. MOSAD (built on) = institution built on solid foundation", "lang": "en" }
+          ],
+          "synonyms": ["ארגון", "גוף", "ממסד"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0410",
+          "word": "נרטיב",
+          "translation": "narrative, story",
+          "definition": "סיפור, קו עלילתי; תפיסת מציאות",
+          "partOfSpeech": "שם עצם",
+          "example": "הנרטיב הלאומי משפיע על תפיסת ההיסטוריה.",
+          "exampleTranslation": "The national narrative influences the perception of history.",
+          "associations": [
+            { "text": "נרטיב — NARRATE. לספר = to narrate. NARRATIVE = הסיפור שמסופר = נרטיב", "lang": "he" },
+            { "text": "NARRATIVE — like a NARRATor telling a story. The NARRATIVE = the told story/frame", "lang": "en" }
+          ],
+          "synonyms": ["סיפור", "עלילה", "מסגרת-תפיסה"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0411",
+          "word": "סובייקטיבי",
+          "translation": "subjective, personal",
+          "definition": "מבוסס על דעת הפרט ולא על עובדות אובייקטיביות",
+          "partOfSpeech": "תואר",
+          "example": "טעם הוא עניין סובייקטיבי לחלוטין.",
+          "exampleTranslation": "Taste is an entirely subjective matter.",
+          "associations": [
+            { "text": "סובייקטיבי — SUBJECT = הנושא האישי. הסובייקטיבי = מה שנמצא בתוך הסובייקט (האדם)", "lang": "he" },
+            { "text": "SUBJECTIVE — SUBject = you/me. SUBJECTive = from YOUR subject (personal) perspective", "lang": "en" }
+          ],
+          "synonyms": ["אישי", "פרטי", "פנומנולוגי"],
+          "antonyms": ["אובייקטיבי", "עובדתי", "חיצוני"]
+        },
+        {
+          "id": "he_0412",
+          "word": "עמימות",
+          "translation": "ambiguity, vagueness",
+          "definition": "חוסר בהירות; ניתן לפירוש בכמה דרכים",
+          "partOfSpeech": "שם עצם",
+          "example": "עמימות החוק יצרה בלבול בקרב הציבור.",
+          "exampleTranslation": "The ambiguity of the law created confusion among the public.",
+          "associations": [
+            { "text": "עמימות — עמום = dim/hazy. עמימות = חוסר בהירות. כמו ערפל שמסתיר את הנוף", "lang": "he" },
+            { "text": "AMIMUT — AMUM = dim/hazy. AMIMUt = haziness = ambiguity, lack of clarity", "lang": "en" }
+          ],
+          "synonyms": ["דו-משמעות", "ערפול", "אי-בהירות"],
+          "antonyms": ["בהירות", "חד-משמעות", "וודאות"]
+        },
+        {
+          "id": "he_0413",
+          "word": "פנומן",
+          "translation": "phenomenon",
+          "definition": "תופעה יוצאת דופן; דבר שניתן להתבוננות",
+          "partOfSpeech": "שם עצם",
+          "example": "ילד פלא הוא פנומן נדיר.",
+          "exampleTranslation": "A child prodigy is a rare phenomenon.",
+          "associations": [
+            { "text": "פנומן — PHENOMENON. מה שנראה (PHAiNO = להופיע ביוונית). תופעה שרואים", "lang": "he" },
+            { "text": "PHENOMENON — PHAINO (Greek) = to appear. What APPEARS to us = phenomenon", "lang": "en" }
+          ],
+          "synonyms": ["תופעה", "אירוע", "מופת"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0414",
+          "word": "קיטוב",
+          "translation": "polarization",
+          "definition": "חלוקה חדה לשתי קבוצות מנוגדות",
+          "partOfSpeech": "שם עצם",
+          "example": "הקיטוב הפוליטי בחברה הגיע לשיאים חדשים.",
+          "exampleTranslation": "Political polarization in society reached new heights.",
+          "associations": [
+            { "text": "קיטוב — קוטב (pole). קוטב צפוני וקוטב דרומי = שני קצוות. קיטוב = פיצול לשני קצוות", "lang": "he" },
+            { "text": "KITVUB — KOTEV = pole (North/South). KITVUB = going to opposite POLES = polarization", "lang": "en" }
+          ],
+          "synonyms": ["פיצול", "דיכוטומיה", "ניגוד קיצוני"],
+          "antonyms": ["אחדות", "אינטגרציה", "הרמוניה"]
+        },
+        {
+          "id": "he_0415",
+          "word": "רטוריקה",
+          "translation": "rhetoric",
+          "definition": "אמנות הנאום המשכנע; לעיתים: דברים ריקים מתוכן",
+          "partOfSpeech": "שם עצם",
+          "example": "הפוליטיקאי השתמש ברטוריקה שנונה אך ריקה מתוכן.",
+          "exampleTranslation": "The politician used sharp but empty rhetoric.",
+          "associations": [
+            { "text": "רטוריקה — RHETOR ביוונית = נואם. רטוריקה = אמנות הנאום. לפעמים: מילים ריקות", "lang": "he" },
+            { "text": "RHETORIC — RHETOR (Greek) = speaker/orator. The ART of speaking (often empty talk)", "lang": "en" }
+          ],
+          "synonyms": ["נאמנות", "פואטיקה", "שכנוע-לשוני"],
+          "antonyms": ["עובדות", "תוכן", "ישירות"]
+        }
+      ]
+    },
+    {
+      "level": 5,
+      "name": "מומחה",
+      "description": "מילים עבריות נדירות — לציון גבוה מאוד",
+      "words": [
+        {
+          "id": "he_0501",
+          "word": "אנתרופוצנטריות",
+          "translation": "anthropocentrism",
+          "definition": "תפיסה הרואה את האדם כמרכז ומטרת הקיום",
+          "partOfSpeech": "שם עצם",
+          "example": "הביקורת האקולוגית מתנגדת לאנתרופוצנטריות.",
+          "exampleTranslation": "Ecological criticism opposes anthropocentrism.",
+          "associations": [
+            { "text": "אנתרופוצנטריות — ANTHROPOS (אדם ביוונית) + CENTER (מרכז). האדם במרכז = אנתרופוצנטריות", "lang": "he" },
+            { "text": "ANTHROPOCENTRISM — ANTHROPOS (human) + CENTRE. Humans at the CENTER of everything", "lang": "en" }
+          ],
+          "synonyms": ["ה-אדם-כמרכז", "הומנוצנטריות"],
+          "antonyms": ["ביוצנטריות", "אקוצנטריות"]
+        },
+        {
+          "id": "he_0502",
+          "word": "דיכוטומיה",
+          "translation": "dichotomy, binary division",
+          "definition": "חלוקה לשניים, בדרך כלל ניגודיים",
+          "partOfSpeech": "שם עצם",
+          "example": "הדיכוטומיה בין גוף לנפש נידונה בפילוסופיה.",
+          "exampleTranslation": "The dichotomy between body and soul is debated in philosophy.",
+          "associations": [
+            { "text": "דיכוטומיה — DICHO (שניים) + TOMY (חיתוך). לחתוך לשניים = דיכוטומיה", "lang": "he" },
+            { "text": "DICHOTOMY — DICHO (two) + TOMY (cutting). CUT into TWO = dichotomy", "lang": "en" }
+          ],
+          "synonyms": ["ניגוד", "קיטוב", "פיצול בינארי"],
+          "antonyms": ["קונטינואום", "ספקטרום", "גווניות"]
+        },
+        {
+          "id": "he_0503",
+          "word": "הרמנויטיקה",
+          "translation": "hermeneutics (art of interpretation)",
+          "definition": "תורת הפרשנות, בעיקר של טקסטים",
+          "partOfSpeech": "שם עצם",
+          "example": "הרמנויטיקה בינארית משמשת בפרשנות הקוד האישי.",
+          "exampleTranslation": "Hermeneutics is used in interpreting personal meaning.",
+          "associations": [
+            { "text": "הרמנויטיקה — HERMES = שליח האלים. הרמנויטיקה = פרשנות, כמו 'תרגום' מסר", "lang": "he" },
+            { "text": "HERMENEUTICS — HERMES (Greek messenger of the gods). Interpreting the MESSAGES of texts", "lang": "en" }
+          ],
+          "synonyms": ["פרשנות", "אקסגזה", "תיאוריית הפרשנות"],
+          "antonyms": []
+        },
+        {
+          "id": "he_0504",
+          "word": "טוטולוגיה",
+          "translation": "tautology (circular reasoning)",
+          "definition": "הצהרה שחוזרת על עצמה מבלי להוסיף מידע",
+          "partOfSpeech": "שם עצם",
+          "example": "\"הזוכה ניצח\" הוא טוטולוגיה — לא ניתן לנצח מבלי להיות זוכה.",
+          "exampleTranslation": "'The winner won' is a tautology — you can't win without being a winner.",
+          "associations": [
+            { "text": "טוטולוגיה — TAUTO (אותו הדבר ביוונית) + LOGOS (מילה). לומר אותו הדבר פעמיים", "lang": "he" },
+            { "text": "TAUTOLOGY — TAUTO (same) + LOGOS (word). Saying the SAME WORD twice = circular", "lang": "en" }
+          ],
+          "synonyms": ["חזרה טאוטולוגית", "עיגול מחשבתי"],
+          "antonyms": ["חידוש", "תוספת מידע"]
+        },
+        {
+          "id": "he_0505",
+          "word": "כפלטרופיה",
+          "translation": "hypertrophy, excessive growth",
+          "definition": "גדילה יתרה, התנפחות מעבר לרצוי",
+          "partOfSpeech": "שם עצם",
+          "example": "ביורוקרטיה סובלת לעיתים מהיפרטרופיה מנהלית.",
+          "exampleTranslation": "Bureaucracy sometimes suffers from administrative hypertrophy.",
+          "associations": [
+            { "text": "היפרטרופיה — HYPER (מעל) + TROPHY (גדילה). גדילה מעל הנורמה = היפרטרופיה", "lang": "he" },
+            { "text": "HYPERTROPHY — HYPER (above) + TROPHY (growth). Growth ABOVE normal = hypertrophy", "lang": "en" }
+          ],
+          "synonyms": ["גדילת-יתר", "נפיחות", "התנפחות"],
+          "antonyms": ["אטרופיה", "כמישה", "צמצום"]
+        },
+        {
+          "id": "he_0506",
+          "word": "לינאריות",
+          "translation": "linearity",
+          "definition": "מאפיין של תהליך שמתקדם בקו ישר, ללא סטיות",
+          "partOfSpeech": "שם עצם",
+          "example": "ההיסטוריה אינה לינארית — היא מלאה זיגזגים ועיגולים.",
+          "exampleTranslation": "History is not linear — it is full of zigzags and loops.",
+          "associations": [
+            { "text": "לינאריות — LINE (קו). לינאריות = כמו קו ישר. ניגוד: לא-לינארי = מסובך", "lang": "he" },
+            { "text": "LINEARITY — LINEAR = line. LINEARity = straight LINE behavior = step-by-step progress", "lang": "en" }
+          ],
+          "synonyms": ["ישירות", "רציפות", "שלביות"],
+          "antonyms": ["לא-לינאריות", "ספיראליות", "כאוס"]
+        },
+        {
+          "id": "he_0507",
+          "word": "מניפולציה",
+          "translation": "manipulation",
+          "definition": "שליטה בסמויה על אנשים לצרכים אישיים",
+          "partOfSpeech": "שם עצם",
+          "example": "מניפולציה רגשית היא צורת אלימות לא-פיזית.",
+          "exampleTranslation": "Emotional manipulation is a form of non-physical violence.",
+          "associations": [
+            { "text": "מניפולציה — MANUS (יד בלטינית). לשלוט ביד מסתרת = מניפולציה", "lang": "he" },
+            { "text": "MANIPULATION — MANUS (Latin hand). Control with a HIDDEN HAND = manipulation", "lang": "en" }
+          ],
+          "synonyms": ["שיבוש", "הכוונה סמויה", "אינדוקטרינציה"],
+          "antonyms": ["שקיפות", "ישירות", "כנות"]
+        },
+        {
+          "id": "he_0508",
+          "word": "נומינלי",
+          "translation": "nominal, in name only",
+          "definition": "בשמו בלבד, ללא תוכן ממשי",
+          "partOfSpeech": "תואר",
+          "example": "הוא היה ראש ממשלה נומינלי בלבד — הכוח היה בידי אחרים.",
+          "exampleTranslation": "He was prime minister in name only — the power was in others' hands.",
+          "associations": [
+            { "text": "נומינלי — NOMEN (שם בלטינית). נומינלי = בשם בלבד. כמו תג שם ללא תוכן", "lang": "he" },
+            { "text": "NOMINAL — NOMEN (name in Latin). NOMINAL = in NAME only, without real substance", "lang": "en" }
+          ],
+          "synonyms": ["פורמלי", "על-הנייר", "בשמו-בלבד"],
+          "antonyms": ["ממשי", "אפקטיבי", "פעיל"]
+        },
+        {
+          "id": "he_0509",
+          "word": "עמידה בפני",
+          "translation": "resistance to, standing against",
+          "definition": "יכולת לא להיכנע לכוח חיצוני",
+          "partOfSpeech": "ביטוי",
+          "example": "עמידה בפני פיתויים מצריכה כוח רצון.",
+          "exampleTranslation": "Resistance to temptations requires willpower.",
+          "associations": [
+            { "text": "עמידה בפני — לעמוד (stand) + בפני (before/against). לעמוד מול = לא להיכנע", "lang": "he" },
+            { "text": "AMIDA BIFNEI — OMED = stands + BIFNEI = facing. Standing FACING something = resistance", "lang": "en" }
+          ],
+          "synonyms": ["התנגדות", "עמידות", "חוסן"],
+          "antonyms": ["כניעה", "נפילה", "קריסה"]
+        },
+        {
+          "id": "he_0510",
+          "word": "פטליזם",
+          "translation": "fatalism",
+          "definition": "אמונה שהגורל קבוע מראש ואין כוח לשנותו",
+          "partOfSpeech": "שם עצם",
+          "example": "פטליזם יכול לעכב פעולה ויוזמה.",
+          "exampleTranslation": "Fatalism can hinder action and initiative.",
+          "associations": [
+            { "text": "פטליזם — FATUM (גורל בלטינית). פטום = גורל. פטליזם = הכל נגזר מראש", "lang": "he" },
+            { "text": "FATALISM — FATUM (Latin fate). Everything is already FATeD = fatalism", "lang": "en" }
+          ],
+          "synonyms": ["דטרמיניזם", "גזירה-קדומה", "ייאוש"],
+          "antonyms": ["בחירה חופשית", "אופטימיזם", "פרגמטיזם"]
+        },
+        {
+          "id": "he_0511",
+          "word": "קפיטליזם",
+          "translation": "capitalism",
+          "definition": "שיטה כלכלית המבוססת על רכוש פרטי ושוק חופשי",
+          "partOfSpeech": "שם עצם",
+          "example": "הקפיטליזם מאפשר חדשנות אך גם יוצר אי-שוויון.",
+          "exampleTranslation": "Capitalism enables innovation but also creates inequality.",
+          "associations": [
+            { "text": "קפיטליזם — CAPITAL (הון). הון = בסיס הקפיטליזם. כסף שולט = קפיטליזם", "lang": "he" },
+            { "text": "CAPITALISM — CAPITAL (money/wealth). CAPITALISM = the system where CAPITAL rules", "lang": "en" }
+          ],
+          "synonyms": ["שוק חופשי", "ליברליזם כלכלי"],
+          "antonyms": ["סוציאליזם", "קומוניזם", "כלכלה מתוכננת"]
+        },
+        {
+          "id": "he_0512",
+          "word": "רלטיביזם",
+          "translation": "relativism",
+          "definition": "גישה שלפיה אמת ומוסר הם יחסיים ולא מוחלטים",
+          "partOfSpeech": "שם עצם",
+          "example": "הרלטיביזם התרבותי מאתגר שיפוט מוסרי אוניברסלי.",
+          "exampleTranslation": "Cultural relativism challenges universal moral judgment.",
+          "associations": [
+            { "text": "רלטיביזם — RELATIVE (יחסי). כל דבר יחסי = רלטיביזם. אין אמת מוחלטת", "lang": "he" },
+            { "text": "RELATIVISM — RELATIVE (not absolute). Everything is RELATIVE = relativism", "lang": "en" }
+          ],
+          "synonyms": ["ריחוקנות", "יחסיות", "אנטי-אוניברסליזם"],
+          "antonyms": ["אוניברסליזם", "דוגמטיות", "מוחלטות"]
+        },
+        {
+          "id": "he_0513",
+          "word": "שיח",
+          "translation": "discourse, dialogue",
+          "definition": "שיחה ציבורית; מכלול הדעות והשפה סביב נושא",
+          "partOfSpeech": "שם עצם",
+          "example": "שיח פוליטי בריא הוא עמוד השדרה של הדמוקרטיה.",
+          "exampleTranslation": "A healthy political discourse is the backbone of democracy.",
+          "associations": [
+            { "text": "שיח — מלשון שיחה. שיח = מכלול השיחות סביב נושא. כמו 'שיח פמיניסטי'", "lang": "he" },
+            { "text": "SIACH — from SICHA (conversation). SIACH = the total CONVERSATION around a topic", "lang": "en" }
+          ],
+          "synonyms": ["דיסקורס", "שיחה", "נרטיב"],
+          "antonyms": ["שתיקה", "מונולוג", "דממה"]
+        },
+        {
+          "id": "he_0514",
+          "word": "תמורה",
+          "translation": "change, transformation, compensation",
+          "definition": "שינוי, מעבר ממצב אחד לאחר; גמול",
+          "partOfSpeech": "שם עצם",
+          "example": "תמורות עמוקות עברו על החברה הישראלית מאז קום המדינה.",
+          "exampleTranslation": "Deep transformations have occurred in Israeli society since the state was founded.",
+          "associations": [
+            { "text": "תמורה — מלשון תמר (date palm) שמשנה את עצמה. כמו עץ שגדל: תמורה = שינוי", "lang": "he" },
+            { "text": "TMURA — TAMAR (palm tree that transforms). TMURA = the transformation/change process", "lang": "en" }
+          ],
+          "synonyms": ["שינוי", "מהפך", "פיצוי"],
+          "antonyms": ["קיפאון", "שמרנות", "אי-שינוי"]
+        },
+        {
+          "id": "he_0515",
+          "word": "תפיסה",
+          "translation": "perception, conception, capture",
+          "definition": "האופן שבו מבינים ותופסים דבר; תפיסת מחשבה",
+          "partOfSpeech": "שם עצם",
+          "example": "התפיסה של הבוחר בדבר הכלכלה משפיעה על הצבעתו.",
+          "exampleTranslation": "The voter's perception of the economy influences their vote.",
+          "associations": [
+            { "text": "תפיסה — מלשון לתפוס. 'לתפוס' את הרעיון = להבין. תפיסה = הבנה", "lang": "he" },
+            { "text": "TFISA — TOFES = grabs/captures. TFISA = how you CAPTURE (understand) something", "lang": "en" }
+          ],
+          "synonyms": ["הבנה", "תפישה", "פרספקטיבה"],
+          "antonyms": ["אי-הבנה", "עיוורון"]
+        }
+      ]
+    }
+  ]
+}

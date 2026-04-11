@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>אוצר מילים פסיכומטרי — ExamPrep</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="vocab.css" />
+</head>
+<body>
+
+<!-- ── Topbar ──────────────────────────────────────────────── -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-logo">
+      ExamPrep
+      <span class="logo-badge">מילים</span>
+    </div>
+    <nav class="topbar-nav" id="topbar-nav">
+      <a href="#/" class="active" data-route="/">בית</a>
+      <a href="#/browse" data-route="/browse">עיון במילים</a>
+      <a href="#/flashcards" data-route="/flashcards">כרטיסיות</a>
+      <a href="#/quiz" data-route="/quiz">חידון</a>
+      <a href="#/match" data-route="/match">התאמה</a>
+      <a href="#/progress" data-route="/progress">ההתקדמות שלי</a>
+    </nav>
+    <div class="topbar-actions">
+      <button class="theme-toggle" id="theme-toggle" title="החלף ערכת נושא">🌙</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── App Mount ───────────────────────────────────────────── -->
+<div id="app"></div>
+
+<!-- ── Toast ───────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ── Mobile Nav ──────────────────────────────────────────── -->
+<nav class="mobile-nav">
+  <a href="#/" class="mobile-nav-item active" data-route="/">
+    <span class="mn-icon">🏠</span>בית
+  </a>
+  <a href="#/browse" class="mobile-nav-item" data-route="/browse">
+    <span class="mn-icon">📖</span>עיון
+  </a>
+  <a href="#/flashcards" class="mobile-nav-item" data-route="/flashcards">
+    <span class="mn-icon">🃏</span>כרטיסיות
+  </a>
+  <a href="#/quiz" class="mobile-nav-item" data-route="/quiz">
+    <span class="mn-icon">🎯</span>חידון
+  </a>
+  <a href="#/progress" class="mobile-nav-item" data-route="/progress">
+    <span class="mn-icon">📊</span>התקדמות
+  </a>
+</nav>
+
+<!-- ── Templates ───────────────────────────────────────────── -->
+
+<!-- HOME -->
+<template id="tmpl-home">
+  <div class="page">
+    <div class="page-header">
+      <div class="eyebrow">פסיכומטרי</div>
+      <h1>אוצר מילים</h1>
+      <p>תרגל מילים לחלק האנגלית והעברית בפסיכומטרי — עם אסוציאציות, רמות, ומעקב התקדמות.</p>
+    </div>
+
+    <!-- Word of the Day -->
+    <div class="wotd-widget" id="wotd-widget">
+      <div class="wotd-icon">✨</div>
+      <div class="wotd-content">
+        <div class="wotd-label">המילה של היום</div>
+        <div class="wotd-word" id="wotd-word">...</div>
+        <div class="wotd-translation" id="wotd-translation">...</div>
+      </div>
+      <button class="wotd-btn" id="wotd-cta">לכרטיסיות</button>
+    </div>
+
+    <!-- Section toggle -->
+    <div class="section-toggle" id="section-toggle">
+      <button data-section="english" class="active">🇺🇸 אנגלית</button>
+      <button data-section="hebrew">🇮🇱 עברית</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="home-stats">
+      <div class="stat-card green">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-value" id="stat-mastered">0</div>
+        <div class="stat-label">מילים שנלמדו</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value" id="stat-learning">0</div>
+        <div class="stat-label">בלמידה</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-icon">🔔</div>
+        <div class="stat-value" id="stat-due">0</div>
+        <div class="stat-label">לחזרה היום</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-value" id="stat-streak">0</div>
+        <div class="stat-label">ימי רצף</div>
+      </div>
+    </div>
+
+    <!-- Mode selection -->
+    <div class="section-h"><h2>בחר מצב תרגול</h2></div>
+    <div class="mode-grid">
+      <div class="mode-card featured" data-mode="flashcards">
+        <div class="mode-icon">🃏</div>
+        <div class="mode-title">כרטיסיות</div>
+        <div class="mode-desc">הפוך כרטיסיות, ציין מה ידעת — ואלגוריתם חכם יחליט מה לחזור</div>
+      </div>
+      <div class="mode-card" data-mode="quiz">
+        <div class="mode-icon">🎯</div>
+        <div class="mode-title">חידון</div>
+        <div class="mode-desc">4 אפשרויות, 1 תשובה נכונה — עם הסבר ואסוציאציה בסוף</div>
+      </div>
+      <div class="mode-card" data-mode="match">
+        <div class="mode-icon">🔗</div>
+        <div class="mode-title">התאמה</div>
+        <div class="mode-desc">בחר מילה ואחר כך תרגומה — נגד השעון</div>
+      </div>
+      <div class="mode-card" data-mode="browse">
+        <div class="mode-icon">📖</div>
+        <div class="mode-title">עיון במילים</div>
+        <div class="mode-desc">חפש, סנן לפי רמה, קרא הגדרות ואסוציאציות</div>
+      </div>
+      <div class="mode-card" data-mode="review">
+        <div class="mode-icon">🔁</div>
+        <div class="mode-title">כרטיסיות — לחזרה</div>
+        <div class="mode-desc">תרגל רק מילים שמגיע להן חזרה לפי לוח הזמנים</div>
+      </div>
+      <div class="mode-card" data-mode="bookmarks">
+        <div class="mode-icon">⭐</div>
+        <div class="mode-title">מועדפים</div>
+        <div class="mode-desc">תרגל רק מילים שסימנת כחשובות</div>
+      </div>
+    </div>
+
+    <!-- Level overview -->
+    <div class="section-h" style="margin-top:8px;"><h2>רמות</h2></div>
+    <div id="home-levels"></div>
+  </div>
+</template>
+
+<!-- BROWSE -->
+<template id="tmpl-browse">
+  <div class="page">
+    <div class="page-header">
+      <div class="eyebrow">עיון</div>
+      <h1>כל המילים</h1>
+    </div>
+
+    <div class="section-toggle" id="browse-section-toggle">
+      <button data-section="english" class="active">🇺🇸 אנגלית</button>
+      <button data-section="hebrew">🇮🇱 עברית</button>
+    </div>
+
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="search" id="browse-search" placeholder="חפש מילה..." autocomplete="off" />
+    </div>
+
+    <div class="filter-row">
+      <span class="levels-bar">
+        <label>רמה:</label>
+        <button class="level-pill active" data-level="all">הכל</button>
+        <button class="level-pill" data-level="1">1 — בסיסי</button>
+        <button class="level-pill" data-level="2">2 — בינוני</button>
+        <button class="level-pill" data-level="3">3 — מתקדם</button>
+        <button class="level-pill" data-level="4">4 — קשה</button>
+        <button class="level-pill" data-level="5">5 — מומחה</button>
+      </span>
+      <label style="margin-inline-start:auto;">
+        <input type="checkbox" id="browse-bookmarks-only" /> מועדפים בלבד
+      </label>
+      <span class="filter-count" id="browse-count">0 מילים</span>
+    </div>
+
+    <div class="word-list" id="browse-list">
+      <div class="empty-state">
+        <div class="empty-icon">⏳</div>
+        <h3>טוען מילים...</h3>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- FLASHCARDS -->
+<template id="tmpl-flashcards">
+  <div class="page">
+    <div class="page-header">
+      <div class="eyebrow">כרטיסיות</div>
+      <h1>תרגול בכרטיסיות</h1>
+    </div>
+
+    <!-- Filter panel -->
+    <div class="fc-filter-panel">
+      <label>
+        שפה
+        <select id="fc-section">
+          <option value="english">🇺🇸 אנגלית</option>
+          <option value="hebrew">🇮🇱 עברית</option>
+        </select>
+      </label>
+      <label>
+        רמה
+        <select id="fc-level">
+          <option value="all">כל הרמות</option>
+          <option value="1">1 — בסיסי</option>
+          <option value="2">2 — בינוני</option>
+          <option value="3">3 — מתקדם</option>
+          <option value="4">4 — קשה</option>
+          <option value="5">5 — מומחה</option>
+        </select>
+      </label>
+      <label class="fc-checkbox-row">
+        <input type="checkbox" id="fc-due-only" />
+        מילים לחזרה בלבד
+      </label>
+      <label class="fc-checkbox-row">
+        <input type="checkbox" id="fc-bookmarks-only" />
+        מועדפים בלבד
+      </label>
+    </div>
+    <div style="margin-bottom:16px;">
+      <button class="btn btn-primary" id="fc-start-btn">התחל תרגול</button>
+      <span id="fc-count-label" style="margin-inline-start:12px;font-size:.88rem;color:var(--text-muted);"></span>
+    </div>
+
+    <!-- Flashcard stage (shown after start) -->
+    <div id="fc-stage" style="display:none;">
+      <div class="flashcard-stage">
+        <div class="flashcard-progress-bar">
+          <div class="flashcard-progress-bar-fill" id="fc-progress-fill" style="width:0%"></div>
+        </div>
+        <div class="flashcard-counter" id="fc-counter">1 / 20</div>
+
+        <div class="flashcard-wrap" id="fc-card">
+          <div class="flashcard-inner">
+            <div class="flashcard-face front">
+              <div class="flashcard-word" id="fc-word">word</div>
+              <div class="flashcard-pos" id="fc-pos">adjective</div>
+              <div class="flashcard-hint">לחץ להפיכה 👆</div>
+            </div>
+            <div class="flashcard-face back">
+              <div class="flashcard-translation" id="fc-translation">תרגום</div>
+              <div class="flashcard-example" id="fc-example"></div>
+              <div class="flashcard-assoc-preview" id="fc-assoc"></div>
+              <div class="flashcard-hint">לחץ להפיכה 👆</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flashcard-actions">
+          <button class="btn fc-btn-learning" id="fc-btn-learning">❌ עדיין לומד</button>
+          <button class="btn fc-btn-flip" id="fc-btn-flip">הפוך</button>
+          <button class="btn fc-btn-know" id="fc-btn-know">✅ ידעתי</button>
+        </div>
+
+        <div class="flashcard-actions" style="margin-top:4px;">
+          <button class="btn btn-secondary btn-sm" id="fc-btn-prev">→ הקודם</button>
+          <button class="btn btn-icon" id="fc-btn-bookmark" title="סמן כמועדף">☆</button>
+          <button class="btn btn-secondary btn-sm" id="fc-btn-next">הבא ←</button>
+        </div>
+      </div>
+
+      <!-- End screen -->
+      <div id="fc-end" style="display:none;">
+        <div class="quiz-end">
+          <div style="font-size:3rem;">🎉</div>
+          <h2>סיימת את הכרטיסיות!</h2>
+          <div id="fc-end-stats" style="font-size:1rem;color:var(--text-muted);"></div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+            <button class="btn btn-primary" id="fc-restart-btn">שוב מההתחלה</button>
+            <button class="btn btn-secondary" id="fc-home-btn">חזרה לבית</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- QUIZ -->
+<template id="tmpl-quiz">
+  <div class="page">
+    <div class="page-header">
+      <div class="eyebrow">חידון</div>
+      <h1>חידון מילים</h1>
+    </div>
+
+    <!-- Config panel -->
+    <div id="quiz-config" class="fc-filter-panel" style="grid-template-columns:1fr 1fr 1fr;">
+      <label>
+        שפה
+        <select id="qz-section">
+          <option value="english">🇺🇸 אנגלית</option>
+          <option value="hebrew">🇮🇱 עברית</option>
+        </select>
+      </label>
+      <label>
+        רמה
+        <select id="qz-level">
+          <option value="all">כל הרמות</option>
+          <option value="1">1 — בסיסי</option>
+          <option value="2">2 — בינוני</option>
+          <option value="3">3 — מתקדם</option>
+          <option value="4">4 — קשה</option>
+          <option value="5">5 — מומחה</option>
+        </select>
+      </label>
+      <label>
+        כיוון
+        <select id="qz-direction">
+          <option value="toTranslation">מילה ← תרגום</option>
+          <option value="toWord">תרגום ← מילה</option>
+          <option value="random">אקראי</option>
+        </select>
+      </label>
+      <label>
+        מספר שאלות
+        <select id="qz-count">
+          <option value="10">10</option>
+          <option value="20" selected>20</option>
+          <option value="30">30</option>
+        </select>
+      </label>
+      <label class="fc-checkbox-row" style="align-self:end;">
+        <input type="checkbox" id="qz-bookmarks" />
+        מועדפים בלבד
+      </label>
+      <div style="align-self:end;">
+        <button class="btn btn-primary" id="qz-start-btn">התחל חידון</button>
+      </div>
+    </div>
+
+    <!-- Quiz stage -->
+    <div id="quiz-stage" style="display:none;">
+      <div class="quiz-stage">
+        <div class="quiz-header">
+          <div class="quiz-progress-bar">
+            <div class="quiz-progress-bar-fill" id="qz-progress-fill" style="width:0%"></div>
+          </div>
+          <div class="quiz-score-display" id="qz-score-display">0 נכון</div>
+        </div>
+
+        <div class="quiz-card">
+          <div class="quiz-prompt" id="qz-prompt">מה פירוש המילה?</div>
+          <div class="quiz-word" id="qz-word">word</div>
+        </div>
+
+        <div class="quiz-options" id="qz-options"></div>
+
+        <div class="quiz-feedback" id="qz-feedback">
+          <div id="qz-fb-result" style="font-weight:700;"></div>
+          <div class="fb-assoc" id="qz-fb-assoc"></div>
+        </div>
+
+        <button class="btn btn-primary" id="qz-next-btn" style="display:none;align-self:center;">הבאה ←</button>
+      </div>
+    </div>
+
+    <!-- End screen -->
+    <div id="quiz-end" style="display:none;">
+      <div class="quiz-end">
+        <div class="end-score" id="qz-end-score">0%</div>
+        <div class="end-label" id="qz-end-label">מתוך X שאלות</div>
+        <div id="qz-mistakes-wrap"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+          <button class="btn btn-primary" id="qz-retry-btn">נסה שוב עם הטעויות</button>
+          <button class="btn btn-secondary" id="qz-home-btn">חזרה לבית</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- MATCH -->
+<template id="tmpl-match">
+  <div class="page">
+    <div class="page-header">
+      <div class="eyebrow">משחק התאמה</div>
+      <h1>התאם מילה לתרגום</h1>
+    </div>
+
+    <!-- Config -->
+    <div id="match-config" class="fc-filter-panel" style="grid-template-columns:1fr 1fr;">
+      <label>
+        שפה
+        <select id="mt-section">
+          <option value="english">🇺🇸 אנגלית</option>
+          <option value="hebrew">🇮🇱 עברית</option>
+        </select>
+      </label>
+      <label>
+        רמה
+        <select id="mt-level">
+          <option value="all">כל הרמות</option>
+          <option value="1">1 — בסיסי</option>
+          <option value="2">2 — בינוני</option>
+          <option value="3">3 — מתקדם</option>
+          <option value="4">4 — קשה</option>
+          <option value="5">5 — מומחה</option>
+        </select>
+      </label>
+      <div style="grid-column:1/-1;">
+        <button class="btn btn-primary" id="mt-start-btn">התחל משחק</button>
+      </div>
+    </div>
+
+    <!-- Match stage -->
+    <div id="match-stage" style="display:none;">
+      <div class="match-header">
+        <div class="match-timer" id="mt-timer">0:00</div>
+        <div id="mt-matched-count" style="font-size:.9rem;color:var(--text-muted);"></div>
+        <div class="match-mistakes" id="mt-mistakes">❌ 0 טעויות</div>
+      </div>
+      <div class="match-grid">
+        <div class="match-col">
+          <div class="match-col-label">מילים</div>
+          <div id="mt-words-col"></div>
+        </div>
+        <div class="match-col">
+          <div class="match-col-label">תרגומים</div>
+          <div id="mt-trans-col"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match end -->
+    <div id="match-end" style="display:none;">
+      <div class="match-end">
+        <div class="end-emoji" id="mt-end-emoji">🎉</div>
+        <h2>כל הצדקים!</h2>
+        <div class="end-time" id="mt-end-time">0:00</div>
+        <div id="mt-end-stats" style="font-size:.95rem;color:var(--text-muted);"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+          <button class="btn btn-primary" id="mt-play-again">עוד סיבוב</button>
+          <button class="btn btn-secondary" id="mt-home-btn">חזרה לבית</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- PROGRESS -->
+<template id="tmpl-progress">
+  <div class="page">
+    <div class="page-header">
+      <div class="eyebrow">סטטיסטיקה</div>
+      <h1>ההתקדמות שלי</h1>
+    </div>
+
+    <div class="prog-tabs" id="prog-tabs">
+      <button class="prog-tab active" data-section="english">🇺🇸 אנגלית</button>
+      <button class="prog-tab" data-section="hebrew">🇮🇱 עברית</button>
+    </div>
+
+    <div class="progress-overview">
+      <!-- Mastery distribution -->
+      <div class="progress-card">
+        <h3>רמות שליטה</h3>
+        <div class="mastery-bar-wrap" id="prog-mastery-bars"></div>
+      </div>
+
+      <!-- Streak + totals -->
+      <div class="progress-card">
+        <h3>רצף יומי</h3>
+        <div class="streak-display">
+          <div class="streak-number" id="prog-streak">0</div>
+          <div>
+            <div style="font-size:1rem;font-weight:700;">ימי רצף</div>
+            <div class="streak-label" id="prog-streak-best"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Per-level breakdown -->
+      <div class="progress-card" style="grid-column:1/-1;">
+        <h3>פירוט לפי רמה</h3>
+        <div id="prog-levels-table"></div>
+      </div>
+
+      <!-- Quiz history -->
+      <div class="progress-card" style="grid-column:1/-1;">
+        <h3>היסטוריית חידונים</h3>
+        <div class="history-list" id="prog-history"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script src="vocab.js"></script>
+</body>
+</html>

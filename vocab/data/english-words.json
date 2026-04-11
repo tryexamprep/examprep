@@ -1,0 +1,1165 @@
+{
+  "version": 1,
+  "language": "english",
+  "levels": [
+    {
+      "level": 1,
+      "name": "בסיסי",
+      "description": "מילים נפוצות שכדאי לדעת לפני הפסיכומטרי",
+      "words": [
+        {
+          "id": "en_0101",
+          "word": "abundant",
+          "translation": "שופע, רב",
+          "definition": "existing or available in large quantities; more than enough",
+          "partOfSpeech": "adjective",
+          "example": "The region has abundant natural resources.",
+          "exampleTranslation": "לאזור יש משאבי טבע שופעים.",
+          "associations": [
+            { "text": "A-BUN-DANCE — imagine so many buns they start dancing because there are SO many", "lang": "en" },
+            { "text": "אבנדנט — שמעת על 'אבונדנציה'? זה מאותה משפחה — כמות גדולה מאוד", "lang": "he" }
+          ],
+          "synonyms": ["plentiful", "copious", "ample"],
+          "antonyms": ["scarce", "rare", "meager"]
+        },
+        {
+          "id": "en_0102",
+          "word": "accurate",
+          "translation": "מדויק",
+          "definition": "correct in all details; free from errors",
+          "partOfSpeech": "adjective",
+          "example": "The scientist provided an accurate description of the results.",
+          "exampleTranslation": "המדענית סיפקה תיאור מדויק של התוצאות.",
+          "associations": [
+            { "text": "ACCURATE = A-CURE-ATE — a cure that the doctor ATE perfectly, no mistakes", "lang": "en" },
+            { "text": "אקיורט — נשמע כמו 'אקורד' מדויק בגיטרה, כל תו במקום הנכון", "lang": "he" }
+          ],
+          "synonyms": ["precise", "exact", "correct"],
+          "antonyms": ["inaccurate", "imprecise", "erroneous"]
+        },
+        {
+          "id": "en_0103",
+          "word": "acquire",
+          "translation": "לרכוש, להשיג",
+          "definition": "to get or obtain something, especially through effort or experience",
+          "partOfSpeech": "verb",
+          "example": "She worked hard to acquire new skills.",
+          "exampleTranslation": "היא עבדה קשה כדי לרכוש מיומנויות חדשות.",
+          "associations": [
+            { "text": "ACQUIRE = A-QUIRE of paper — you GET a quire (24 sheets) when you buy paper", "lang": "en" },
+            { "text": "אקווייר — כמו 'רכישה' בעסקים (acquisition). לרכוש = להשיג משהו", "lang": "he" }
+          ],
+          "synonyms": ["obtain", "gain", "attain"],
+          "antonyms": ["lose", "surrender", "relinquish"]
+        },
+        {
+          "id": "en_0104",
+          "word": "adequate",
+          "translation": "מספיק, הולם",
+          "definition": "sufficient for a specific need or requirement",
+          "partOfSpeech": "adjective",
+          "example": "The salary was adequate for a modest lifestyle.",
+          "exampleTranslation": "השכר היה מספיק לאורח חיים צנוע.",
+          "associations": [
+            { "text": "ADEQUATE — 'add a quote' to make it just enough to fill the page", "lang": "en" },
+            { "text": "אדיקוואט — מספיק (adequate). A=אחד, D=דסה, EQUATE=שווה. שווה לדרישה", "lang": "he" }
+          ],
+          "synonyms": ["sufficient", "enough", "satisfactory"],
+          "antonyms": ["inadequate", "insufficient", "lacking"]
+        },
+        {
+          "id": "en_0105",
+          "word": "benefit",
+          "translation": "תועלת, יתרון; להועיל",
+          "definition": "an advantage or profit gained from something",
+          "partOfSpeech": "noun/verb",
+          "example": "Exercise has many health benefits.",
+          "exampleTranslation": "לפעילות גופנית יש יתרונות בריאותיים רבים.",
+          "associations": [
+            { "text": "BENE-FIT — 'bene' means good in Latin, it FITS you well = good for you", "lang": "en" },
+            { "text": "בנפיט — בן עם פיט (רגל חזקה). רגל חזקה = תועלת לרץ", "lang": "he" }
+          ],
+          "synonyms": ["advantage", "profit", "gain"],
+          "antonyms": ["disadvantage", "harm", "detriment"]
+        },
+        {
+          "id": "en_0106",
+          "word": "capable",
+          "translation": "מסוגל, כשיר",
+          "definition": "having the ability, fitness, or quality necessary to do something",
+          "partOfSpeech": "adjective",
+          "example": "She is capable of solving complex problems.",
+          "exampleTranslation": "היא מסוגלת לפתור בעיות מורכבות.",
+          "associations": [
+            { "text": "CAPABLE = has a CAPE like Superman — Superman is capable of anything", "lang": "en" },
+            { "text": "קייפבל — קיפוד (ארנב) יכול לגלגל את עצמו. גם הוא CAPABLE!", "lang": "he" }
+          ],
+          "synonyms": ["able", "competent", "skilled"],
+          "antonyms": ["incapable", "incompetent", "unable"]
+        },
+        {
+          "id": "en_0107",
+          "word": "crucial",
+          "translation": "חיוני, קריטי",
+          "definition": "of great importance; decisive or critical, especially at a key moment",
+          "partOfSpeech": "adjective",
+          "example": "Water is crucial for all living things.",
+          "exampleTranslation": "מים חיוניים לכל היצורים החיים.",
+          "associations": [
+            { "text": "CRUCIAL = CROSS-ial — at a crossroads, the decision is CRUCIAL", "lang": "en" },
+            { "text": "קרוושל — 'קרוסיאל' — כמו מעבר קריטי בחיים. כשאתה בפרשת דרכים, ההחלטה קריטית", "lang": "he" }
+          ],
+          "synonyms": ["critical", "vital", "essential"],
+          "antonyms": ["unimportant", "trivial", "insignificant"]
+        },
+        {
+          "id": "en_0108",
+          "word": "decline",
+          "translation": "לדחות; ירידה",
+          "definition": "(v) to politely refuse; (n) a decrease or deterioration",
+          "partOfSpeech": "verb/noun",
+          "example": "She declined the job offer. / There was a sharp decline in sales.",
+          "exampleTranslation": "היא דחתה את הצעת העבודה. / היה ירידה חדה במכירות.",
+          "associations": [
+            { "text": "DE-CLINE — go DOWN the incline (slope). Decline = go down = refuse = decrease", "lang": "en" },
+            { "text": "דקליין — לרדת מהדקל (עץ קוקוס). לרדת = ירידה. גם: לסרב לעלות", "lang": "he" }
+          ],
+          "synonyms": ["refuse", "decrease", "diminish"],
+          "antonyms": ["accept", "increase", "rise"]
+        },
+        {
+          "id": "en_0109",
+          "word": "diverse",
+          "translation": "מגוון, שונה",
+          "definition": "showing a great deal of variety; very different from one another",
+          "partOfSpeech": "adjective",
+          "example": "The city has a diverse population.",
+          "exampleTranslation": "לעיר יש אוכלוסייה מגוונת.",
+          "associations": [
+            { "text": "DIVERSE = DI-VERSE — many verses, many different poems = variety", "lang": "en" },
+            { "text": "דייברס — די (די!) + ורס (verse/שיר). יש די שירים שונים = מגוון", "lang": "he" }
+          ],
+          "synonyms": ["varied", "different", "assorted"],
+          "antonyms": ["uniform", "homogeneous", "identical"]
+        },
+        {
+          "id": "en_0110",
+          "word": "evident",
+          "translation": "ברור, מובן מאליו",
+          "definition": "plain or obvious; clearly seen or understood",
+          "partOfSpeech": "adjective",
+          "example": "It was evident that she was upset.",
+          "exampleTranslation": "היה ברור שהיא הייתה מוטרדת.",
+          "associations": [
+            { "text": "EVIDENT = has EVIDENCE — when there's evidence, the truth is obvious", "lang": "en" },
+            { "text": "אווידנט — אוי, דנת! (שם) — ברור שאוי דנת ראתה, כי יש ראיות (evidence)", "lang": "he" }
+          ],
+          "synonyms": ["obvious", "apparent", "clear"],
+          "antonyms": ["hidden", "unclear", "obscure"]
+        },
+        {
+          "id": "en_0111",
+          "word": "frequent",
+          "translation": "תדיר, תכוף",
+          "definition": "occurring or done many times at short intervals",
+          "partOfSpeech": "adjective",
+          "example": "He made frequent visits to the library.",
+          "exampleTranslation": "הוא ביקר בספרייה לעיתים קרובות.",
+          "associations": [
+            { "text": "FRE-QUENT — FREE RENT — if you visit SO often it's like you live there for free", "lang": "en" },
+            { "text": "פריקוונט — תדר (frequency) גבוה = דברים קורים הרבה פעמים. FM100 = תדיר!", "lang": "he" }
+          ],
+          "synonyms": ["regular", "repeated", "common"],
+          "antonyms": ["rare", "infrequent", "occasional"]
+        },
+        {
+          "id": "en_0112",
+          "word": "generate",
+          "translation": "לייצר, ליצור",
+          "definition": "to cause something to arise or come about; to produce",
+          "partOfSpeech": "verb",
+          "example": "The new policy generated a lot of controversy.",
+          "exampleTranslation": "המדיניות החדשה יצרה הרבה מחלוקת.",
+          "associations": [
+            { "text": "GENERATE = like a GENERATOR — a machine that produces (generates) electricity", "lang": "en" },
+            { "text": "ג'נרייט — גנרטור מייצר חשמל. לייצר = להוציא לפועל", "lang": "he" }
+          ],
+          "synonyms": ["produce", "create", "cause"],
+          "antonyms": ["destroy", "eliminate", "prevent"]
+        },
+        {
+          "id": "en_0113",
+          "word": "impact",
+          "translation": "השפעה, השלכה",
+          "definition": "a strong effect or influence on someone or something",
+          "partOfSpeech": "noun/verb",
+          "example": "The new law had a major impact on the economy.",
+          "exampleTranslation": "לחוק החדש הייתה השפעה גדולה על הכלכלה.",
+          "associations": [
+            { "text": "IMPACT = IM-PACKED — something so tightly packed it HITS hard when it lands", "lang": "en" },
+            { "text": "אימפקט — אימא פגעה (pact/impact). כשאימא מדברת — יש השפעה!", "lang": "he" }
+          ],
+          "synonyms": ["effect", "influence", "consequence"],
+          "antonyms": ["insignificance", "irrelevance"]
+        },
+        {
+          "id": "en_0114",
+          "word": "major",
+          "translation": "עיקרי, גדול",
+          "definition": "important, serious, or significant; greater in size or extent",
+          "partOfSpeech": "adjective",
+          "example": "This is a major problem that needs to be addressed.",
+          "exampleTranslation": "זו בעיה עיקרית שצריך לטפל בה.",
+          "associations": [
+            { "text": "MAJOR = military MAJOR is a high rank — high rank = important = major", "lang": "en" },
+            { "text": "מייג'ור — קצין בצבא (Major). הוא חשוב, כי הוא בדרגה גבוהה = עיקרי", "lang": "he" }
+          ],
+          "synonyms": ["significant", "important", "primary"],
+          "antonyms": ["minor", "trivial", "secondary"]
+        },
+        {
+          "id": "en_0115",
+          "word": "obtain",
+          "translation": "להשיג, לקבל",
+          "definition": "to get, attain, or secure something, especially through effort",
+          "partOfSpeech": "verb",
+          "example": "He managed to obtain a scholarship.",
+          "exampleTranslation": "הוא הצליח להשיג מלגה.",
+          "associations": [
+            { "text": "OBTAIN = OB-TAIN — obstain (obstinate) + TAIN (contain). Hold on tightly to GET it", "lang": "en" },
+            { "text": "אובטיין — 'אוב' + 'טיין'. תחשוב: OB = אובייקט שצריך לתפוס. לתפוס = להשיג", "lang": "he" }
+          ],
+          "synonyms": ["acquire", "get", "attain"],
+          "antonyms": ["lose", "surrender", "forfeit"]
+        }
+      ]
+    },
+    {
+      "level": 2,
+      "name": "בינוני",
+      "description": "מילים נפוצות בפסיכומטרי ברמה בינונית",
+      "words": [
+        {
+          "id": "en_0201",
+          "word": "ambiguous",
+          "translation": "דו-משמעי, מעורפל",
+          "definition": "open to more than one interpretation; not having one obvious meaning",
+          "partOfSpeech": "adjective",
+          "example": "The contract contained several ambiguous clauses.",
+          "exampleTranslation": "החוזה הכיל מספר סעיפים דו-משמעיים.",
+          "associations": [
+            { "text": "AMBI-GUOUS — AMBI means both (ambidextrous = both hands). Both meanings at once!", "lang": "en" },
+            { "text": "אמביגיואס — אמבי = שניים (אמפיביה = יבשה+מים). שני פירושים = דו-משמעי", "lang": "he" }
+          ],
+          "synonyms": ["vague", "unclear", "equivocal"],
+          "antonyms": ["clear", "unambiguous", "explicit"]
+        },
+        {
+          "id": "en_0202",
+          "word": "anticipate",
+          "translation": "לצפות, לקדם",
+          "definition": "to expect or predict something; to look forward to",
+          "partOfSpeech": "verb",
+          "example": "We anticipate strong demand for the new product.",
+          "exampleTranslation": "אנו צופים ביקוש חזק למוצר החדש.",
+          "associations": [
+            { "text": "ANTI-CIPATE — ANTI (before) + CIPATE (participate). Participate BEFORE it happens", "lang": "en" },
+            { "text": "אנטיסיפייט — אנטי (לפני) + ציפייה. לצפות מראש = לחכות לדבר לפני שקורה", "lang": "he" }
+          ],
+          "synonyms": ["expect", "foresee", "predict"],
+          "antonyms": ["be surprised", "react"]
+        },
+        {
+          "id": "en_0203",
+          "word": "arbitrary",
+          "translation": "שרירותי, אקראי",
+          "definition": "based on random choice or personal whim rather than reason or system",
+          "partOfSpeech": "adjective",
+          "example": "The decision seemed completely arbitrary.",
+          "exampleTranslation": "ההחלטה נראתה שרירותית לחלוטין.",
+          "associations": [
+            { "text": "ARBIT-RARY — like an ARBITRATOR who just picks randomly without a real system", "lang": "en" },
+            { "text": "ארביטררי — ארביטר (שופט) שמחליט לפי כיף נפשו = שרירותי, ללא היגיון", "lang": "he" }
+          ],
+          "synonyms": ["random", "capricious", "whimsical"],
+          "antonyms": ["systematic", "reasoned", "deliberate"]
+        },
+        {
+          "id": "en_0204",
+          "word": "assert",
+          "translation": "לטעון, לקבוע",
+          "definition": "to state a fact or belief confidently and forcefully",
+          "partOfSpeech": "verb",
+          "example": "She asserted her right to speak freely.",
+          "exampleTranslation": "היא קבעה את זכותה לדבר בחופשיות.",
+          "associations": [
+            { "text": "ASSERT — AS-SERT! Shout it like a SERGEANT. A sergeant ASSERTS orders boldly", "lang": "en" }
+          ],
+          "synonyms": ["claim", "declare", "insist"],
+          "antonyms": ["deny", "retract", "concede"]
+        },
+        {
+          "id": "en_0205",
+          "word": "considerable",
+          "translation": "ניכר, משמעותי, רב",
+          "definition": "notably large in size, extent, or amount",
+          "partOfSpeech": "adjective",
+          "example": "She spent a considerable amount of time on the project.",
+          "exampleTranslation": "היא הקדישה כמות ניכרת של זמן לפרויקט.",
+          "associations": [
+            { "text": "CONSIDER-ABLE — something worth CONSIDERING because it's big enough to matter", "lang": "en" },
+            { "text": "קונסידרבל — שווה להתחשב (consider) בו כי הוא גדול מאוד", "lang": "he" }
+          ],
+          "synonyms": ["significant", "substantial", "sizable"],
+          "antonyms": ["negligible", "insignificant", "trivial"]
+        },
+        {
+          "id": "en_0206",
+          "word": "contradict",
+          "translation": "לסתור, לעמוד בסתירה",
+          "definition": "to deny or go against what someone else has said or written",
+          "partOfSpeech": "verb",
+          "example": "The new evidence contradicts the original theory.",
+          "exampleTranslation": "הראיות החדשות סותרות את התיאוריה המקורית.",
+          "associations": [
+            { "text": "CONTRA-DICT — CONTRA (against) + DICT (say/dictate). Say AGAINST = contradict", "lang": "en" },
+            { "text": "קונטרהדיקט — קונטרה (נגד בלטינית) + דיקט (לומר). לומר נגד = לסתור", "lang": "he" }
+          ],
+          "synonyms": ["deny", "refute", "oppose"],
+          "antonyms": ["confirm", "support", "agree"]
+        },
+        {
+          "id": "en_0207",
+          "word": "depict",
+          "translation": "לתאר, להציג, לצייר",
+          "definition": "to show or represent by a drawing, painting, or other art form; to describe in words",
+          "partOfSpeech": "verb",
+          "example": "The painting depicts a rural landscape.",
+          "exampleTranslation": "הציור מתאר נוף כפרי.",
+          "associations": [
+            { "text": "DE-PICT — like a PICTURE. To DEPICT = to make a picture of something", "lang": "en" },
+            { "text": "דיפיקט — 'דה-פיקצ'ר' (the picture). לצייר תמונה = לתאר", "lang": "he" }
+          ],
+          "synonyms": ["portray", "illustrate", "represent"],
+          "antonyms": ["conceal", "hide"]
+        },
+        {
+          "id": "en_0208",
+          "word": "divert",
+          "translation": "להסיח, להסטות, להטות",
+          "definition": "to turn from one course or use to another; to distract attention",
+          "partOfSpeech": "verb",
+          "example": "The comedian diverted the audience from their worries.",
+          "exampleTranslation": "הקומיקאי הסיח את דעת הקהל מהדאגות שלהם.",
+          "associations": [
+            { "text": "DI-VERT — VERT = turn (convert, invert). Di = away. Turn AWAY from the path", "lang": "en" },
+            { "text": "דיווירט — להסטות = להפנות לכיוון אחר. כמו כביש עוקף (diversion)", "lang": "he" }
+          ],
+          "synonyms": ["deflect", "redirect", "distract"],
+          "antonyms": ["concentrate", "focus", "direct"]
+        },
+        {
+          "id": "en_0209",
+          "word": "eliminate",
+          "translation": "לחסל, להסיר, לבטל",
+          "definition": "to completely remove or get rid of something",
+          "partOfSpeech": "verb",
+          "example": "The treatment eliminated all symptoms of the disease.",
+          "exampleTranslation": "הטיפול חיסל את כל תסמיני המחלה.",
+          "associations": [
+            { "text": "E-LIMIN-ATE — eliminate the LEMON from a recipe. Remove it completely!", "lang": "en" },
+            { "text": "אלימינייט — להסיר = לחסל לגמרי. בתוכנית ריאליטי, מישהו מאוּלמן (eliminated)", "lang": "he" }
+          ],
+          "synonyms": ["remove", "eradicate", "abolish"],
+          "antonyms": ["add", "include", "introduce"]
+        },
+        {
+          "id": "en_0210",
+          "word": "enhance",
+          "translation": "לשפר, להגביר, להעצים",
+          "definition": "to intensify, increase, or improve the quality or value of something",
+          "partOfSpeech": "verb",
+          "example": "The new lighting enhanced the beauty of the room.",
+          "exampleTranslation": "התאורה החדשה העצימה את יופי החדר.",
+          "associations": [
+            { "text": "EN-HANCE — EN (make) + HANCE (advance/elevate). Make it go HIGHER = enhance", "lang": "en" },
+            { "text": "אנהנס — אנחנו מנסים להנאנס (לעלות) את רמת המוצר. לשפר!", "lang": "he" }
+          ],
+          "synonyms": ["improve", "boost", "augment"],
+          "antonyms": ["diminish", "reduce", "weaken"]
+        },
+        {
+          "id": "en_0211",
+          "word": "exhaustive",
+          "translation": "ממצה, יסודי, מקיף",
+          "definition": "examining all aspects; thorough and comprehensive",
+          "partOfSpeech": "adjective",
+          "example": "The researchers conducted an exhaustive study of the topic.",
+          "exampleTranslation": "החוקרים ביצעו מחקר ממצה של הנושא.",
+          "associations": [
+            { "text": "EXHAUST-IVE — it EXHAUSTS you because it covers EVERYTHING. Totally worn out from being so thorough", "lang": "en" },
+            { "text": "אגזוסטיב — כל כך מקיף עד שאתה מותש (exhausted). מחקר ממצה = מתיש", "lang": "he" }
+          ],
+          "synonyms": ["thorough", "comprehensive", "complete"],
+          "antonyms": ["superficial", "incomplete", "cursory"]
+        },
+        {
+          "id": "en_0212",
+          "word": "facilitate",
+          "translation": "לאפשר, להקל, לסייע",
+          "definition": "to make an action or process easier or smoother",
+          "partOfSpeech": "verb",
+          "example": "Technology facilitates communication across distances.",
+          "exampleTranslation": "טכנולוגיה מאפשרת תקשורת על פני מרחקים.",
+          "associations": [
+            { "text": "FACIL-ITATE — FACILE = easy in French/Italian. To make FACILE = facilitate = make easy", "lang": "en" },
+            { "text": "פסיליטייט — פציל (facile) = קל בלטינית. לפצ'ל = להקל = לאפשר", "lang": "he" }
+          ],
+          "synonyms": ["ease", "enable", "assist"],
+          "antonyms": ["hinder", "obstruct", "complicate"]
+        },
+        {
+          "id": "en_0213",
+          "word": "imply",
+          "translation": "לרמוז, להשתמע",
+          "definition": "to strongly suggest the truth or existence of something not expressly stated",
+          "partOfSpeech": "verb",
+          "example": "Her silence implied that she disagreed.",
+          "exampleTranslation": "השתיקה שלה רמזה שהיא לא הסכימה.",
+          "associations": [
+            { "text": "IM-PLY — ply = fold/layer. Hidden UNDER the layers of meaning = imply", "lang": "en" },
+            { "text": "אימפלאי — לרמוז = לומר משהו מתחת לפני השטח. Apply from below = imply", "lang": "he" }
+          ],
+          "synonyms": ["suggest", "hint", "indicate"],
+          "antonyms": ["state explicitly", "declare"]
+        },
+        {
+          "id": "en_0214",
+          "word": "inhibit",
+          "translation": "לעכב, למנוע, להדכא",
+          "definition": "to hinder, restrain, or prevent an action or process",
+          "partOfSpeech": "verb",
+          "example": "Fear can inhibit creative thinking.",
+          "exampleTranslation": "פחד יכול לעכב חשיבה יצירתית.",
+          "associations": [
+            { "text": "IN-HIBIT — IN (inside) + HABIT. A bad habit INSIDE you that STOPS you from growing", "lang": "en" },
+            { "text": "אינהיביט — לעכב = להגביל. אינהיביציה = עיכוב. 'יש לו אינהיביציות'", "lang": "he" }
+          ],
+          "synonyms": ["hinder", "restrain", "suppress"],
+          "antonyms": ["encourage", "facilitate", "promote"]
+        },
+        {
+          "id": "en_0215",
+          "word": "perceive",
+          "translation": "לתפוס, לחוש, להבין",
+          "definition": "to become aware of or understand through the senses or mind",
+          "partOfSpeech": "verb",
+          "example": "Children perceive the world differently than adults.",
+          "exampleTranslation": "ילדים תופסים את העולם באופן שונה ממבוגרים.",
+          "associations": [
+            { "text": "PER-CEIVE — PER (through) + CEIVE (take/receive). Take information THROUGH your senses", "lang": "en" },
+            { "text": "פרסיב — perception = תפיסה. מה שאתה תופס בחושים = how you perceive", "lang": "he" }
+          ],
+          "synonyms": ["sense", "discern", "recognize"],
+          "antonyms": ["miss", "overlook", "ignore"]
+        }
+      ]
+    },
+    {
+      "level": 3,
+      "name": "מתקדם",
+      "description": "מילים נפוצות בפסיכומטרי ברמת קושי בינונית-גבוהה",
+      "words": [
+        {
+          "id": "en_0301",
+          "word": "alleviate",
+          "translation": "להקל (על כאב/בעיה), לרכך",
+          "definition": "to make suffering, pain, or a problem less severe",
+          "partOfSpeech": "verb",
+          "example": "The medication helped alleviate the patient's pain.",
+          "exampleTranslation": "התרופה עזרה להקל על כאב המטופל.",
+          "associations": [
+            { "text": "AL-LEVI-ATE — LEVI jeans are LIGHT and comfortable. To make LIGHT = alleviate pain", "lang": "en" },
+            { "text": "אליויייט — אלוויי (alway) + לייט (light). תמיד להפוך קל = להקל על הסבל", "lang": "he" }
+          ],
+          "synonyms": ["ease", "relieve", "mitigate"],
+          "antonyms": ["worsen", "aggravate", "intensify"]
+        },
+        {
+          "id": "en_0302",
+          "word": "ambivalent",
+          "translation": "אמביוולנטי, בעל רגשות מעורבים",
+          "definition": "having mixed feelings or contradictory ideas about something",
+          "partOfSpeech": "adjective",
+          "example": "She felt ambivalent about moving to a new city.",
+          "exampleTranslation": "היא חשה רגשות מעורבים לגבי המעבר לעיר חדשה.",
+          "associations": [
+            { "text": "AMBI-VALENT — AMBI (both) + VALENT (value). Valuing BOTH sides equally = can't decide", "lang": "en" },
+            { "text": "אמביוולנט — אמבי (שניים) + וואלנט (ערך). ערך שתי דרכים = רגשות מעורבים", "lang": "he" }
+          ],
+          "synonyms": ["undecided", "conflicted", "uncertain"],
+          "antonyms": ["certain", "decisive", "committed"]
+        },
+        {
+          "id": "en_0303",
+          "word": "analogy",
+          "translation": "אנלוגיה, השוואה",
+          "definition": "a comparison between two things for the purpose of explanation or clarification",
+          "partOfSpeech": "noun",
+          "example": "He used an analogy to explain the complex concept.",
+          "exampleTranslation": "הוא השתמש באנלוגיה כדי להסביר את המושג המורכב.",
+          "associations": [
+            { "text": "ANALOGY = ANNA + LOGY. Anna studies (-logy) two things and compares them", "lang": "en" },
+            { "text": "אנלוגיה — כמו שאנחנו משווים שני מקרים דומים. A is to B as C is to D", "lang": "he" }
+          ],
+          "synonyms": ["comparison", "parallel", "metaphor"],
+          "antonyms": ["difference", "contrast"]
+        },
+        {
+          "id": "en_0304",
+          "word": "coherent",
+          "translation": "קוהרנטי, עקבי, הגיוני",
+          "definition": "logical and consistent; forming a unified whole",
+          "partOfSpeech": "adjective",
+          "example": "She presented a coherent argument.",
+          "exampleTranslation": "היא הציגה טיעון קוהרנטי.",
+          "associations": [
+            { "text": "CO-HERE-NT — CO (together) + HERE. Everything HERE together makes sense", "lang": "en" },
+            { "text": "קוהרנט — קו-הרנט. קו ישר + הרנט = הכל על קו אחד, עקבי ומסודר", "lang": "he" }
+          ],
+          "synonyms": ["logical", "consistent", "rational"],
+          "antonyms": ["incoherent", "inconsistent", "illogical"]
+        },
+        {
+          "id": "en_0305",
+          "word": "concede",
+          "translation": "להודות, לוותר, לקבל",
+          "definition": "to acknowledge or admit something reluctantly; to yield or give up",
+          "partOfSpeech": "verb",
+          "example": "He conceded that he had made a mistake.",
+          "exampleTranslation": "הוא הודה שהוא עשה טעות.",
+          "associations": [
+            { "text": "CON-CEDE — CON (together/against) + CEDE (give up). Give up to the opposition", "lang": "en" },
+            { "text": "קונסיד — לוותר + להודות. Con (נגד) + cede (לתת). לתת לצד השני = לוותר", "lang": "he" }
+          ],
+          "synonyms": ["admit", "acknowledge", "yield"],
+          "antonyms": ["deny", "contest", "resist"]
+        },
+        {
+          "id": "en_0306",
+          "word": "contemplate",
+          "translation": "להרהר, לשקול, להתבונן",
+          "definition": "to think deeply and at length; to consider carefully",
+          "partOfSpeech": "verb",
+          "example": "She sat by the window, contemplating her future.",
+          "exampleTranslation": "היא ישבה ליד החלון, מהרהרת בעתידה.",
+          "associations": [
+            { "text": "CONTEMPLATE = TEMPLE. Ancient Greeks went to the TEMPLE to CONTEMPLATE deeply", "lang": "en" },
+            { "text": "קונטמפלייט — קונטמפ+לייט. אור (light) בתוך המקדש לחשיבה עמוקה", "lang": "he" }
+          ],
+          "synonyms": ["ponder", "reflect", "meditate"],
+          "antonyms": ["ignore", "disregard", "act impulsively"]
+        },
+        {
+          "id": "en_0307",
+          "word": "controversial",
+          "translation": "שנוי במחלוקת",
+          "definition": "giving rise to or subject to controversy or public disagreement",
+          "partOfSpeech": "adjective",
+          "example": "The new policy was highly controversial.",
+          "exampleTranslation": "המדיניות החדשה הייתה שנויה מאוד במחלוקת.",
+          "associations": [
+            { "text": "CONTRO-VERSY — CONTRA (against) + VERSE. People write AGAINST each other = controversy", "lang": "en" },
+            { "text": "קונטרוברשל — קונטרה (נגד) + ורסה (מול). אנשים מולי = מחלוקת", "lang": "he" }
+          ],
+          "synonyms": ["disputed", "debatable", "contentious"],
+          "antonyms": ["uncontroversial", "accepted", "undisputed"]
+        },
+        {
+          "id": "en_0308",
+          "word": "diminish",
+          "translation": "להקטין, לפחות, להמעיט",
+          "definition": "to make or become less; to reduce in size, importance, or intensity",
+          "partOfSpeech": "verb",
+          "example": "The rain gradually diminished.",
+          "exampleTranslation": "הגשם הלך ופחת בהדרגה.",
+          "associations": [
+            { "text": "DIMIN-ISH — DIMIN = DIMINUENDO in music, getting quieter and smaller", "lang": "en" },
+            { "text": "דימינייש — דימינואנדו (מונח מוזיקלי) = הולך וקטן. להקטין = diminish", "lang": "he" }
+          ],
+          "synonyms": ["decrease", "reduce", "lessen"],
+          "antonyms": ["increase", "enhance", "amplify"]
+        },
+        {
+          "id": "en_0309",
+          "word": "elicit",
+          "translation": "לעורר, להפיק, להוציא",
+          "definition": "to draw out or bring forth a reaction, response, or answer",
+          "partOfSpeech": "verb",
+          "example": "The teacher's question elicited a lively debate.",
+          "exampleTranslation": "שאלת המורה עוררה ויכוח ערני.",
+          "associations": [
+            { "text": "E-LICIT — E (out) + LICIT (legal/allowed). Draw OUT what's allowed to come out = elicit", "lang": "en" },
+            { "text": "אליסיט — להוציא תגובה. לא לבלבל עם illicit (לא חוקי)! ELICIT = להפיק", "lang": "he" }
+          ],
+          "synonyms": ["evoke", "draw out", "provoke"],
+          "antonyms": ["suppress", "prevent", "stifle"]
+        },
+        {
+          "id": "en_0310",
+          "word": "emphasize",
+          "translation": "להדגיש",
+          "definition": "to give special importance or prominence to something in speaking or writing",
+          "partOfSpeech": "verb",
+          "example": "The professor emphasized the importance of critical thinking.",
+          "exampleTranslation": "הפרופסור הדגיש את חשיבות החשיבה הביקורתית.",
+          "associations": [
+            { "text": "EMPHASIS — em-PHASE-is — when something is in PHASE it stands out = emphasize", "lang": "en" },
+            { "text": "אמפסייז — אמפסיס = דגש. כשמרים את הקול בנאום, מדגיש משהו חשוב", "lang": "he" }
+          ],
+          "synonyms": ["stress", "highlight", "underscore"],
+          "antonyms": ["underplay", "minimize", "downplay"]
+        },
+        {
+          "id": "en_0311",
+          "word": "inevitable",
+          "translation": "בלתי נמנע",
+          "definition": "certain to happen; unavoidable",
+          "partOfSpeech": "adjective",
+          "example": "Change is inevitable in any society.",
+          "exampleTranslation": "שינוי הוא בלתי נמנע בכל חברה.",
+          "associations": [
+            { "text": "IN-EVIT-ABLE — IN (not) + EVITABLE (avoidable). NOT avoidable = inevitable", "lang": "en" },
+            { "text": "אינאביטבל — in-evit-able. לא ניתן להתחמק (evade) ממנו = בלתי נמנע", "lang": "he" }
+          ],
+          "synonyms": ["unavoidable", "inescapable", "certain"],
+          "antonyms": ["avoidable", "preventable", "uncertain"]
+        },
+        {
+          "id": "en_0312",
+          "word": "inherent",
+          "translation": "טבעי, מובנה, מהותי",
+          "definition": "existing in something as a permanent, essential, or characteristic attribute",
+          "partOfSpeech": "adjective",
+          "example": "Creativity is an inherent part of human nature.",
+          "exampleTranslation": "יצירתיות היא חלק טבעי מהטבע האנושי.",
+          "associations": [
+            { "text": "IN-HERE-NT — it's IN HERE, inside by nature. You can't separate it", "lang": "en" },
+            { "text": "אינהרנט — 'IN-HERE' — בתוך הדבר. המאפיין הוא IN HERE = מובנה, מהותי", "lang": "he" }
+          ],
+          "synonyms": ["intrinsic", "innate", "built-in"],
+          "antonyms": ["external", "acquired", "added"]
+        },
+        {
+          "id": "en_0313",
+          "word": "intriguing",
+          "translation": "מסקרן, מעניין מאוד",
+          "definition": "arousing one's curiosity or interest; fascinating",
+          "partOfSpeech": "adjective",
+          "example": "The scientist made an intriguing discovery.",
+          "exampleTranslation": "המדען עשה גילוי מסקרן.",
+          "associations": [
+            { "text": "INTRIGUE — like a spy INTRIGUE. Spies make things mysterious and fascinating", "lang": "en" },
+            { "text": "אינטריגה — פוליטיקאים אוהבים אינטריגות (מזימות). מסקרן, מסתורי, מעניין", "lang": "he" }
+          ],
+          "synonyms": ["fascinating", "captivating", "compelling"],
+          "antonyms": ["boring", "dull", "uninteresting"]
+        },
+        {
+          "id": "en_0314",
+          "word": "paradox",
+          "translation": "פרדוקס, סתירה",
+          "definition": "a statement that seems self-contradictory but may express a possible truth",
+          "partOfSpeech": "noun",
+          "example": "It's a paradox that the more we learn, the more we realize how little we know.",
+          "exampleTranslation": "זה פרדוקס שככל שאנחנו לומדים יותר, כך אנחנו מבינים כמה מעט אנחנו יודעים.",
+          "associations": [
+            { "text": "PARA-DOX — PARA (beside/beyond) + DOX (belief). BEYOND belief = paradox", "lang": "en" },
+            { "text": "פרדוקס — פרה (מעבר) + דוקסה (אמונה). מעבר לאמונה = קשה להאמין, אבל נכון", "lang": "he" }
+          ],
+          "synonyms": ["contradiction", "irony", "anomaly"],
+          "antonyms": ["straightforward fact", "logical statement"]
+        },
+        {
+          "id": "en_0315",
+          "word": "persist",
+          "translation": "להתמיד, לעמוד על עמדתו",
+          "definition": "to continue firmly despite obstacles or discouragement",
+          "partOfSpeech": "verb",
+          "example": "Despite repeated failures, she persisted in her efforts.",
+          "exampleTranslation": "למרות כישלונות חוזרים, היא התמידה במאמציה.",
+          "associations": [
+            { "text": "PER-SIST — SIS-ter keeps going! Your sister PERSISTS and never gives up", "lang": "en" },
+            { "text": "פרסיסט — per (דרך) + sist (עמידה). לעמוד דרך הכל = להתמיד", "lang": "he" }
+          ],
+          "synonyms": ["persevere", "continue", "endure"],
+          "antonyms": ["give up", "quit", "abandon"]
+        }
+      ]
+    },
+    {
+      "level": 4,
+      "name": "קשה",
+      "description": "מילים קשות הנבחנות בפסיכומטרי ברמה גבוהה",
+      "words": [
+        {
+          "id": "en_0401",
+          "word": "abrogate",
+          "translation": "לבטל (חוק/הסכם), לשלול",
+          "definition": "to formally repeal or annul a law, agreement, or practice",
+          "partOfSpeech": "verb",
+          "example": "The new government decided to abrogate the old treaty.",
+          "exampleTranslation": "הממשלה החדשה החליטה לבטל את האמנה הישנה.",
+          "associations": [
+            { "text": "AB-ROGATE — AB (away) + ROGUE. A ROGUE removes the rules = abrogate (cancel)", "lang": "en" },
+            { "text": "אברוגייט — 'אב' + 'רוג'ייט' (ביטול). האב מבטל את הצו = אברוגציה", "lang": "he" }
+          ],
+          "synonyms": ["repeal", "annul", "revoke"],
+          "antonyms": ["enact", "establish", "ratify"]
+        },
+        {
+          "id": "en_0402",
+          "word": "acrimony",
+          "translation": "חריפות, מרירות (בטון דיבור)",
+          "definition": "bitterness or ill feeling, especially in speech or manner",
+          "partOfSpeech": "noun",
+          "example": "The divorce was marked by great acrimony.",
+          "exampleTranslation": "הגירושים התאפיינו במרירות רבה.",
+          "associations": [
+            { "text": "ACRI-MONY — ACRID = sharp/bitter smell. ACRIMONY = bitter sharp WORDS, not smells", "lang": "en" },
+            { "text": "אקרימוני — אקריד (חריף, מר). מרירות בדברים = acrimony. כמו לימון חריף", "lang": "he" }
+          ],
+          "synonyms": ["bitterness", "animosity", "rancor"],
+          "antonyms": ["goodwill", "harmony", "pleasantness"]
+        },
+        {
+          "id": "en_0403",
+          "word": "ameliorate",
+          "translation": "לשפר (מצב קשה), לשכך",
+          "definition": "to make something bad or unsatisfactory better; to improve",
+          "partOfSpeech": "verb",
+          "example": "Efforts were made to ameliorate the living conditions of refugees.",
+          "exampleTranslation": "נעשו מאמצים לשפר את תנאי החיים של פליטים.",
+          "associations": [
+            { "text": "AMELI-ORATE — AMELIA (a name) + ORATE. Amelia gives a speech to IMPROVE things", "lang": "en" },
+            { "text": "אמליורייט — 'מליור' בלטינית = טוב יותר. לאמליורט = לשפר מצב קשה", "lang": "he" }
+          ],
+          "synonyms": ["improve", "alleviate", "better"],
+          "antonyms": ["worsen", "aggravate", "deteriorate"]
+        },
+        {
+          "id": "en_0404",
+          "word": "anachronism",
+          "translation": "אנכרוניזם, דבר שאינו בן זמנו",
+          "definition": "a thing belonging or appropriate to a period other than that in which it exists",
+          "partOfSpeech": "noun",
+          "example": "A horse-drawn carriage in a city is an anachronism.",
+          "exampleTranslation": "כרכרה רתומה לסוסים בעיר היא אנכרוניזם.",
+          "associations": [
+            { "text": "ANA-CHRON-ISM — CHRONO (time) + ANA (against). Against time = out of its time period", "lang": "en" },
+            { "text": "אנכרוניזם — CHRONO = זמן (כרונולוגיה). משהו שאינו שייך לזמנו", "lang": "he" }
+          ],
+          "synonyms": ["archaism", "obsolescence"],
+          "antonyms": ["contemporary", "modern"]
+        },
+        {
+          "id": "en_0405",
+          "word": "benevolent",
+          "translation": "טוב לב, נדיב",
+          "definition": "well-meaning and kindly; generous or charitable",
+          "partOfSpeech": "adjective",
+          "example": "The benevolent donor gave millions to the hospital.",
+          "exampleTranslation": "התורם הנדיב נתן מיליונים לבית החולים.",
+          "associations": [
+            { "text": "BENE-VOLENT — BENE (good) + VOLENT (willing). Willing to do GOOD = benevolent", "lang": "en" },
+            { "text": "בנוולנט — 'בנה' + 'וולנט'. בנה רצון טוב = נדיב. Bene = טוב בלטינית (benefit!)", "lang": "he" }
+          ],
+          "synonyms": ["generous", "charitable", "kind"],
+          "antonyms": ["malevolent", "cruel", "selfish"]
+        },
+        {
+          "id": "en_0406",
+          "word": "circumspect",
+          "translation": "זהיר, שקול, מתוחכם",
+          "definition": "wary and unwilling to take risks; careful to consider all circumstances",
+          "partOfSpeech": "adjective",
+          "example": "The politician was circumspect in his public statements.",
+          "exampleTranslation": "הפוליטיקאי היה זהיר בהצהרותיו הפומביות.",
+          "associations": [
+            { "text": "CIRCUM-SPECT — CIRCUM (around) + SPECT (look). Look AROUND before acting = careful", "lang": "en" },
+            { "text": "סירקומספקט — CIRCUM (סביב) + SPECT (לראות). להסתכל סביב = זהיר, שקול", "lang": "he" }
+          ],
+          "synonyms": ["cautious", "prudent", "careful"],
+          "antonyms": ["reckless", "impulsive", "careless"]
+        },
+        {
+          "id": "en_0407",
+          "word": "coerce",
+          "translation": "לכפות, להשתמש בכפייה",
+          "definition": "to persuade someone by force or threats to do something",
+          "partOfSpeech": "verb",
+          "example": "The defendant claimed he was coerced into signing the document.",
+          "exampleTranslation": "הנאשם טען שהוא נאלץ בכפייה לחתום על המסמך.",
+          "associations": [
+            { "text": "CO-ERCE — a CO-WORKER who FORCES you (ERCE = force) to do what they want", "lang": "en" },
+            { "text": "קוארס — כפייה. קו-ארס = 'קו אכזרי'. להשתמש בכוח כדי לאלץ מישהו", "lang": "he" }
+          ],
+          "synonyms": ["force", "compel", "pressure"],
+          "antonyms": ["persuade", "encourage", "allow"]
+        },
+        {
+          "id": "en_0408",
+          "word": "complacent",
+          "translation": "שאנן, מרוצה מעצמו",
+          "definition": "showing self-satisfaction especially when unaware of potential danger; smug",
+          "partOfSpeech": "adjective",
+          "example": "After years of success, the company became complacent.",
+          "exampleTranslation": "לאחר שנים של הצלחה, החברה הפכה לשאננה.",
+          "associations": [
+            { "text": "COM-PLACENT — COMPLACE = comfortable place. You're SO comfortable you stop improving", "lang": "en" },
+            { "text": "קומפלייסנט — COMPLACE = מקום נוח. כל כך נוח שאתה שאנן ולא שם לב לסכנות", "lang": "he" }
+          ],
+          "synonyms": ["smug", "self-satisfied", "content"],
+          "antonyms": ["anxious", "vigilant", "motivated"]
+        },
+        {
+          "id": "en_0409",
+          "word": "culminate",
+          "translation": "להגיע לשיא, להסתיים ב-",
+          "definition": "to reach a climax or point of highest development",
+          "partOfSpeech": "verb",
+          "example": "Years of hard work culminated in her winning the award.",
+          "exampleTranslation": "שנים של עבודה קשה הגיעו לשיאן בזכייתה בפרס.",
+          "associations": [
+            { "text": "CULMIN-ATE — CULMIN = COLUMN at its PEAK. Reach the TOP of the column = culminate", "lang": "en" },
+            { "text": "קולמינייט — CULMEN = פסגה בלטינית. להגיע לפסגה = לסיים בשיא", "lang": "he" }
+          ],
+          "synonyms": ["climax", "peak", "conclude"],
+          "antonyms": ["begin", "start", "initiate"]
+        },
+        {
+          "id": "en_0410",
+          "word": "digress",
+          "translation": "לסטות מהנושא",
+          "definition": "to leave the main subject temporarily in speech or writing",
+          "partOfSpeech": "verb",
+          "example": "The speaker digressed from the main topic several times.",
+          "exampleTranslation": "הדובר סטה מהנושא הראשי מספר פעמים.",
+          "associations": [
+            { "text": "DI-GRESS — DIGRESS = walk AWAY (di) from the path (gress = walk, like progress)", "lang": "en" },
+            { "text": "דייגרס — DI (מרחק) + GRESS (הליכה, כמו progress). ללכת הצידה = לסטות מהנושא", "lang": "he" }
+          ],
+          "synonyms": ["deviate", "stray", "wander"],
+          "antonyms": ["stay on topic", "focus", "proceed"]
+        },
+        {
+          "id": "en_0411",
+          "word": "egregious",
+          "translation": "מחפיר, בוטה, קיצוני לרעה",
+          "definition": "outstandingly bad; shockingly awful",
+          "partOfSpeech": "adjective",
+          "example": "It was an egregious violation of human rights.",
+          "exampleTranslation": "זו הייתה הפרה מחפירה של זכויות האדם.",
+          "associations": [
+            { "text": "E-GREG-IOUS — e-GREG = e-GREGARY. Gregariously bad = standing out from the flock as AWFUL", "lang": "en" },
+            { "text": "אגריג'יס — 'אי' (out) + GREG (עדר). בולט מהעדר בצורה נוראית = מחפיר", "lang": "he" }
+          ],
+          "synonyms": ["outrageous", "shocking", "flagrant"],
+          "antonyms": ["minor", "acceptable", "commendable"]
+        },
+        {
+          "id": "en_0412",
+          "word": "eloquent",
+          "translation": "רהוט, נאה דברים",
+          "definition": "fluent or persuasive in speaking or writing; expressing ideas clearly",
+          "partOfSpeech": "adjective",
+          "example": "She delivered an eloquent speech at the graduation ceremony.",
+          "exampleTranslation": "היא נשאה נאום רהוט בטקס סיום הלימודים.",
+          "associations": [
+            { "text": "ELOQ-UENT — ELOQ = ELOQUENCE. Like a musical SEQUENCE of beautiful words", "lang": "en" },
+            { "text": "אלוקוונט — AL + LOQUI (לדבר בלטינית). לדבר יפה = רהוט. soliloquy = מונולוג", "lang": "he" }
+          ],
+          "synonyms": ["articulate", "fluent", "expressive"],
+          "antonyms": ["inarticulate", "tongue-tied", "inexpressive"]
+        },
+        {
+          "id": "en_0413",
+          "word": "ephemeral",
+          "translation": "חולף, קצר מועד",
+          "definition": "lasting for a very short time; transitory",
+          "partOfSpeech": "adjective",
+          "example": "Fame can be ephemeral in the entertainment industry.",
+          "exampleTranslation": "פרסום יכול להיות חולף בתעשיית הבידור.",
+          "associations": [
+            { "text": "EPHE-MERAL — EPHEMERA = things that last only a day (Greek hemera = day). Day-long only", "lang": "en" },
+            { "text": "אפמרל — יומי (hemera = יום ביוונית). כמו חרק חד-יומי = חולף מאוד מהר", "lang": "he" }
+          ],
+          "synonyms": ["fleeting", "transient", "temporary"],
+          "antonyms": ["permanent", "lasting", "enduring"]
+        },
+        {
+          "id": "en_0414",
+          "word": "exacerbate",
+          "translation": "להחמיר, להגביר",
+          "definition": "to make a problem, bad situation, or negative feeling worse",
+          "partOfSpeech": "verb",
+          "example": "The drought exacerbated the food shortage.",
+          "exampleTranslation": "הבצורת החמירה את מחסור המזון.",
+          "associations": [
+            { "text": "EX-ACERB-ATE — ACERB = bitter/sour. Make EXtra bitter = make worse = exacerbate", "lang": "en" },
+            { "text": "אגזסרבייט — 'אקסרב' = חמצמץ (acerb). להחמיץ עוד יותר = להחמיר", "lang": "he" }
+          ],
+          "synonyms": ["aggravate", "worsen", "intensify"],
+          "antonyms": ["alleviate", "improve", "mitigate"]
+        },
+        {
+          "id": "en_0415",
+          "word": "fallacious",
+          "translation": "מוטעה, מבוסס על כשל הגיוני",
+          "definition": "based on a mistaken belief or an error in reasoning",
+          "partOfSpeech": "adjective",
+          "example": "His argument was fallacious because it ignored key evidence.",
+          "exampleTranslation": "טיעונו היה מוטעה כי התעלם מראיות מפתח.",
+          "associations": [
+            { "text": "FALL-ACIOUS — something that FALLS down logically. A FALLEN argument = fallacious", "lang": "en" },
+            { "text": "פלציאס — FALL (ליפול) + ACES. טיעון שנופל (logically) = מוטעה, מכיל כשל", "lang": "he" }
+          ],
+          "synonyms": ["erroneous", "misleading", "deceptive"],
+          "antonyms": ["valid", "sound", "correct"]
+        }
+      ]
+    },
+    {
+      "level": 5,
+      "name": "מומחה",
+      "description": "מילים נדירות וקשות ביותר — לציון גבוה מאוד",
+      "words": [
+        {
+          "id": "en_0501",
+          "word": "abstruse",
+          "translation": "סתום, מסובך להבנה",
+          "definition": "difficult to understand; obscure",
+          "partOfSpeech": "adjective",
+          "example": "The professor's lecture was so abstruse that most students were lost.",
+          "exampleTranslation": "ההרצאה של הפרופסור הייתה כל כך סתומה שרוב הסטודנטים אבדו.",
+          "associations": [
+            { "text": "AB-STRUSE — 'STRUSE' sounds like 'intruse' (intrude). Meaning that intruded and got tangled = hard to grasp", "lang": "en" },
+            { "text": "אבסטרוס — נשמע כמו 'אוסטרוס' (אי) — רעיון בודד על אי נידח, קשה להגיע אליו = סתום", "lang": "he" }
+          ],
+          "synonyms": ["obscure", "esoteric", "recondite"],
+          "antonyms": ["clear", "simple", "accessible"]
+        },
+        {
+          "id": "en_0502",
+          "word": "anachronistic",
+          "translation": "לא מתאים לתקופתו",
+          "definition": "belonging to a period other than that being portrayed; chronologically misplaced",
+          "partOfSpeech": "adjective",
+          "example": "Using a quill pen today would be anachronistic.",
+          "exampleTranslation": "שימוש בנוצה לכתיבה היום יהיה אנכרוניסטי.",
+          "associations": [
+            { "text": "ANA-CHRON-ISTIC — CHRONO = time. Going AGAINST time = belonging to wrong era", "lang": "en" },
+            { "text": "אנכרוניסטי — CHRONO=זמן. נגד הזמן = שייך לתקופה אחרת", "lang": "he" }
+          ],
+          "synonyms": ["outdated", "archaic", "obsolete"],
+          "antonyms": ["contemporary", "modern", "current"]
+        },
+        {
+          "id": "en_0503",
+          "word": "equivocate",
+          "translation": "לדבר בלשון כפולה, להתחמק",
+          "definition": "to use ambiguous language so as to conceal the truth or avoid committing oneself",
+          "partOfSpeech": "verb",
+          "example": "The politician equivocated when asked about his plans.",
+          "exampleTranslation": "הפוליטיקאי דיבר בלשון כפולה כשנשאל על תוכניותיו.",
+          "associations": [
+            { "text": "EQUI-VOCATE — EQUI (equal) + VOC (voice). Equal voice on BOTH sides = wishy-washy", "lang": "en" },
+            { "text": "אקוויבוקייט — EQUI=שווה + VOC=קול. לדבר בשני קולות שווים = לא מחויב לאף עמדה", "lang": "he" }
+          ],
+          "synonyms": ["prevaricate", "hedge", "waffle"],
+          "antonyms": ["assert", "declare", "commit"]
+        },
+        {
+          "id": "en_0504",
+          "word": "obfuscate",
+          "translation": "לטשטש, לסבך, לעמעם",
+          "definition": "to render obscure, unclear, or unintelligible; to confuse intentionally",
+          "partOfSpeech": "verb",
+          "example": "The legal jargon seemed designed to obfuscate rather than explain.",
+          "exampleTranslation": "הז'רגון המשפטי נראה מתוכנן לטשטש במקום להסביר.",
+          "associations": [
+            { "text": "OB-FUSC-ATE — FUSCATE = darkening (Latin fuscus = dark). Make DARK = hide truth = obfuscate", "lang": "en" },
+            { "text": "אובפוסקייט — FUSCUS=כהה בלטינית. להכהות = לטשטש. כמו להעלות עשן כדי להסתיר", "lang": "he" }
+          ],
+          "synonyms": ["obscure", "muddle", "confuse"],
+          "antonyms": ["clarify", "illuminate", "explain"]
+        },
+        {
+          "id": "en_0505",
+          "word": "perfidious",
+          "translation": "בוגדני, נוכל",
+          "definition": "deceitful and untrustworthy; guilty of betrayal",
+          "partOfSpeech": "adjective",
+          "example": "His perfidious act of betrayal shocked everyone.",
+          "exampleTranslation": "מעשה הבגידה הנוכלי שלו הדהים את כולם.",
+          "associations": [
+            { "text": "PER-FIDE-OUS — PER (through) + FIDE (faith/trust). BREAKING through trust = perfidious", "lang": "en" },
+            { "text": "פרפידיאס — PER (שבירה) + FIDE (אמונה, כמו fidelity). שובר את האמון = בוגדני", "lang": "he" }
+          ],
+          "synonyms": ["treacherous", "disloyal", "deceitful"],
+          "antonyms": ["loyal", "faithful", "trustworthy"]
+        },
+        {
+          "id": "en_0506",
+          "word": "propitious",
+          "translation": "מבשר טוב, נוח, מעודד",
+          "definition": "giving or indicating a good chance of success; favorable",
+          "partOfSpeech": "adjective",
+          "example": "The clear weather was propitious for the outdoor event.",
+          "exampleTranslation": "מזג האוויר הבהיר היה מבשר טוב לאירוע בחוץ.",
+          "associations": [
+            { "text": "PROPI-TIOUS — PROPITIATE = to appease gods for GOOD fortune. Propitious = gods-approved = favorable", "lang": "en" },
+            { "text": "פרופישס — PROPITIUS בלטינית = חסד האלים. כשהאלים מחייכים = מצב מעודד", "lang": "he" }
+          ],
+          "synonyms": ["favorable", "auspicious", "opportune"],
+          "antonyms": ["inauspicious", "unfavorable", "ominous"]
+        },
+        {
+          "id": "en_0507",
+          "word": "recalcitrant",
+          "translation": "סרבן, עקשן, מורד",
+          "definition": "having an obstinately uncooperative attitude toward authority",
+          "partOfSpeech": "adjective",
+          "example": "The recalcitrant student refused to follow any instructions.",
+          "exampleTranslation": "הסטודנט הסרבן סירב לפעול לפי כל הוראה.",
+          "associations": [
+            { "text": "RE-CALCIT-RANT — CALC = kick (like a horse kicking). RE-kicking again and again. A stubborn horse", "lang": "en" },
+            { "text": "ריקלסיטרנט — סוס שמבעט שוב ושוב (CALCITRARE=לבעוט בלטינית). עקשן כסוס", "lang": "he" }
+          ],
+          "synonyms": ["obstinate", "defiant", "unruly"],
+          "antonyms": ["cooperative", "compliant", "obedient"]
+        },
+        {
+          "id": "en_0508",
+          "word": "sycophant",
+          "translation": "חנפן, מחמיא",
+          "definition": "a person who acts obsequiously toward someone important in order to gain advantage",
+          "partOfSpeech": "noun",
+          "example": "The boss was surrounded by sycophants who agreed with everything he said.",
+          "exampleTranslation": "הבוס היה מוקף בחנפנים שהסכימו עם כל מה שאמר.",
+          "associations": [
+            { "text": "SYCO-PHANT — SYCO = fig (Greek). PHANT = show. One who 'shows figs' = informer = flatterer", "lang": "en" },
+            { "text": "סיקופנט — 'סיקו' (תאנה ביוונית) + 'פנט' (מראה). מי שמחנחן = חנפן, ליקוקי מגפיים", "lang": "he" }
+          ],
+          "synonyms": ["flatterer", "yes-man", "toady"],
+          "antonyms": ["critic", "dissenter", "honest advisor"]
+        },
+        {
+          "id": "en_0509",
+          "word": "tenuous",
+          "translation": "דק, חלש, רעוע",
+          "definition": "very weak or slight; having little substance or validity",
+          "partOfSpeech": "adjective",
+          "example": "The connection between the two events was tenuous at best.",
+          "exampleTranslation": "הקשר בין שני האירועים היה רעוע ביותר.",
+          "associations": [
+            { "text": "TENU-OUS — TENU = THIN (like tension = stretch thin). THIN connection = tenuous", "lang": "en" },
+            { "text": "טניואס — TENUOUS = מתוח דק (tension). כמו חוט דק שיכול להיקרע = רעוע", "lang": "he" }
+          ],
+          "synonyms": ["weak", "fragile", "flimsy"],
+          "antonyms": ["strong", "solid", "firm"]
+        },
+        {
+          "id": "en_0510",
+          "word": "trepidation",
+          "translation": "חשש, פחד, חרדה",
+          "definition": "a feeling of fear or anxiety about something that may happen",
+          "partOfSpeech": "noun",
+          "example": "She approached the interview with great trepidation.",
+          "exampleTranslation": "היא ניגשה לראיון עם חשש רב.",
+          "associations": [
+            { "text": "TREPID-ATION — TREPID = trembling (like INTREPID = not trembling = brave). TREPIDATION = trembling fear", "lang": "en" },
+            { "text": "טרפידיישן — TREPID = לרעוד מפחד. הפוך מ-INTREPID (אמיץ, לא רועד). חשש = רעד פנימי", "lang": "he" }
+          ],
+          "synonyms": ["apprehension", "anxiety", "dread"],
+          "antonyms": ["confidence", "calmness", "intrepidity"]
+        },
+        {
+          "id": "en_0511",
+          "word": "truculent",
+          "translation": "תוקפני, ניטפל",
+          "definition": "eager or quick to argue or fight; aggressively defiant",
+          "partOfSpeech": "adjective",
+          "example": "The truculent child started arguments with everyone.",
+          "exampleTranslation": "הילד התוקפני התחיל ויכוחים עם כולם.",
+          "associations": [
+            { "text": "TRUCULENT — sounds like TRUCK + VIOLENT. A violent TRUCK ramming everything = truculent", "lang": "en" },
+            { "text": "טרוקולנט — 'טרוק' + 'אולנט'. תוקפני כמו משאית שדוחפת הכל = ניטפל", "lang": "he" }
+          ],
+          "synonyms": ["belligerent", "aggressive", "combative"],
+          "antonyms": ["peaceable", "gentle", "docile"]
+        },
+        {
+          "id": "en_0512",
+          "word": "vacillate",
+          "translation": "להסס, לנדנד, לנוע בין קצוות",
+          "definition": "to waver between different opinions or actions; to be indecisive",
+          "partOfSpeech": "verb",
+          "example": "He vacillated between accepting and declining the offer.",
+          "exampleTranslation": "הוא היסס בין קבלת ההצעה לדחייתה.",
+          "associations": [
+            { "text": "VACI-LATE — like a VACCINE that oscillates (goes back and forth) between hot and cold in storage", "lang": "en" },
+            { "text": "ווסילייט — לנוע הלוך ושוב. כמו מטוטלת (oscillate). לא מחליט = מתנדנד", "lang": "he" }
+          ],
+          "synonyms": ["waver", "hesitate", "oscillate"],
+          "antonyms": ["decide", "commit", "resolve"]
+        },
+        {
+          "id": "en_0513",
+          "word": "veracious",
+          "translation": "דובר אמת, כן",
+          "definition": "speaking or representing the truth; habitually truthful",
+          "partOfSpeech": "adjective",
+          "example": "The witness was known for being veracious.",
+          "exampleTranslation": "העד היה ידוע כדובר אמת.",
+          "associations": [
+            { "text": "VERA-CIOUS — VERA = truth (verity, verify). VERA-CIOUS = full of TRUTH", "lang": "en" },
+            { "text": "ורייסיאס — VERA = אמת בלטינית (כמו 'verify'). ורציאס = מלא אמת = כן", "lang": "he" }
+          ],
+          "synonyms": ["truthful", "honest", "candid"],
+          "antonyms": ["dishonest", "deceitful", "mendacious"]
+        },
+        {
+          "id": "en_0514",
+          "word": "vituperative",
+          "translation": "גידופי, חריף (בביקורת)",
+          "definition": "bitter and abusive; full of censure or harsh criticism",
+          "partOfSpeech": "adjective",
+          "example": "The review was surprisingly vituperative.",
+          "exampleTranslation": "הביקורת הייתה גידופית בצורה מפתיעה.",
+          "associations": [
+            { "text": "VITUPER-ATIVE — VITUP = VIPER (snake). A VIPER attack = venomous harsh words", "lang": "en" },
+            { "text": "ויטיופרטיב — כמו ויפר (נחש). עוקץ בביקורת ארסית = גידופי", "lang": "he" }
+          ],
+          "synonyms": ["scathing", "abusive", "caustic"],
+          "antonyms": ["complimentary", "laudatory", "gentle"]
+        },
+        {
+          "id": "en_0515",
+          "word": "zealous",
+          "translation": "להוט, נלהב, קנאי",
+          "definition": "having or showing zeal; enthusiastically devoted to a cause or ideal",
+          "partOfSpeech": "adjective",
+          "example": "She was a zealous advocate for environmental protection.",
+          "exampleTranslation": "היא הייתה סניגורית נלהבת לשמירת הסביבה.",
+          "associations": [
+            { "text": "ZEAL-OUS — like a ZEALOT. Full of burning passion and enthusiasm for a cause", "lang": "en" },
+            { "text": "זילאס — זלות (zeal = להיטות). קנאי שעושה הכל בלהיטות = zealous", "lang": "he" }
+          ],
+          "synonyms": ["passionate", "fervent", "ardent"],
+          "antonyms": ["apathetic", "indifferent", "unenthusiastic"]
+        }
+      ]
+    }
+  ]
+}
