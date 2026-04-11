@@ -434,28 +434,42 @@ export default async function handler(req, res) {
       }
     }
 
-    // Upload exam PDF to Supabase Storage (for client-side page rendering)
-    const admin = getAdmin();
-    let pdfStorageUrl = null;
-    if (admin) {
+    // Upload PDF to Cloudinary → renders pages as images automatically
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const cloudKey = process.env.CLOUDINARY_API_KEY;
+    const cloudSecret = process.env.CLOUDINARY_API_SECRET;
+    let pdfCloudinaryId = null;
+
+    if (cloudName && cloudKey && cloudSecret) {
       try {
-        // Auto-create bucket (idempotent)
-        await admin.storage.createBucket('exam-pages', { public: true }).catch(() => {});
-        const pdfPath = `exams/${auth.userId}/${exam.id}/exam.pdf`;
-        const pdfBuffer = Buffer.from(examFile.data);
-        console.log(`[upload] uploading PDF to storage: ${pdfPath} (${pdfBuffer.length} bytes)`);
-        const { error: storageErr } = await admin.storage.from('exam-pages').upload(pdfPath, pdfBuffer, {
-          contentType: 'application/pdf', upsert: true,
+        const publicId = `examprep/${auth.userId}/${exam.id}/exam`;
+        const timestamp = String(Math.floor(Date.now() / 1000));
+        const sigStr = `public_id=${publicId}&timestamp=${timestamp}${cloudSecret}`;
+        const crypto = await import('node:crypto');
+        const signature = crypto.createHash('sha1').update(sigStr).digest('hex');
+
+        const form = new FormData();
+        form.append('file', new Blob([examFile.data], { type: 'application/pdf' }), 'exam.pdf');
+        form.append('public_id', publicId);
+        form.append('api_key', cloudKey);
+        form.append('timestamp', timestamp);
+        form.append('signature', signature);
+        form.append('resource_type', 'image');
+
+        console.log(`[upload] uploading PDF to Cloudinary: ${publicId}`);
+        const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: 'POST', body: form,
         });
-        if (storageErr) {
-          console.error('[upload] storage upload error:', storageErr.message);
+        if (cloudRes.ok) {
+          const cloudData = await cloudRes.json();
+          pdfCloudinaryId = cloudData.public_id;
+          console.log(`[upload] Cloudinary OK: ${pdfCloudinaryId}, pages: ${cloudData.pages || '?'}`);
         } else {
-          const { data: urlData } = admin.storage.from('exam-pages').getPublicUrl(pdfPath);
-          pdfStorageUrl = urlData?.publicUrl || null;
-          console.log(`[upload] PDF stored at: ${pdfStorageUrl}`);
+          const errText = await cloudRes.text().catch(() => '');
+          console.error(`[upload] Cloudinary upload failed (${cloudRes.status}):`, errText.slice(0, 200));
         }
       } catch (e) {
-        console.warn('[upload] PDF storage failed:', e.message);
+        console.warn('[upload] Cloudinary upload failed:', e.message);
       }
     }
 
@@ -480,12 +494,14 @@ export default async function handler(req, res) {
       console.warn('[upload] page matching failed:', e.message);
     }
 
-    // Store questions in DB — with PDF page references for client-side rendering
+    // Store questions in DB — with Cloudinary page image URLs
     if (questions.length > 0) {
       const qRecords = questions.map((q, i) => {
         const pageNum = questionPages[q.n] || (i + 1);
-        // Format: "pdfpage:{fullUrl}:{pageNum}" — client renders with PDF.js
-        const imagePath = pdfStorageUrl ? `pdfpage:${pdfStorageUrl}:${pageNum}` : 'text-only';
+        // Cloudinary renders PDF pages as images via URL transformation
+        const imagePath = pdfCloudinaryId
+          ? `https://res.cloudinary.com/${cloudName}/image/upload/pg_${pageNum},w_800,q_auto/${pdfCloudinaryId}.png`
+          : 'text-only';
         return {
           exam_id: exam.id,
           course_id: courseIdInt,

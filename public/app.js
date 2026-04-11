@@ -2339,13 +2339,11 @@ function showExamManagementModal(courseId) {
             if (!examQs.length) { grid.innerHTML = '<p class="muted" style="grid-column:1/-1;">אין שאלות.</p>'; return; }
 
             grid.innerHTML = examQs.map(q => `
-              <div class="em-q-thumb" data-q-id="${q.id}" data-page="${(q.image_path || '').startsWith('pdfpage:') ? q.image_path.slice(8) : ''}" style="border:1px solid var(--border-soft);border-radius:8px;overflow:hidden;position:relative;min-height:80px;background:var(--gray-50);">
+              <div class="em-q-thumb" data-q-id="${q.id}" style="border:1px solid var(--border-soft);border-radius:8px;overflow:hidden;position:relative;min-height:80px;background:var(--gray-50);">
                 <div class="em-q-render" style="display:grid;place-items:center;min-height:70px;font-size:11px;color:var(--text-muted);">
                   ${q.image_path === 'text-only'
                     ? `<div style="padding:8px;">${(q.general_explanation || 'שאלה ' + q.question_number).slice(0, 50)}...</div>`
-                    : q.image_path?.startsWith('pdfpage:')
-                      ? `<div style="padding:12px;text-align:center;">📄 טוען עמוד ${q.image_path.split(':')[1]}...</div>`
-                      : `<img src="${Data.imageUrl(q.image_path)}" alt="שאלה ${q.question_number}" style="width:100%;display:block;" loading="lazy" />`}
+                    : `<img src="${q.image_path.startsWith('http') ? q.image_path : Data.imageUrl(q.image_path)}" alt="שאלה ${q.question_number}" style="width:100%;display:block;" loading="lazy" onerror="this.parentElement.innerHTML='<div style=padding:8px>#${q.question_number}</div>'" />`}
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:var(--gray-100);font-size:11px;">
                   <span>#${q.question_number}</span>
@@ -2354,37 +2352,7 @@ function showExamManagementModal(courseId) {
               </div>
             `).join('');
 
-            // Render PDF pages for pdfpage: questions
-            const pdfPageThumbs = grid.querySelectorAll('.em-q-thumb[data-page]');
-            for (const thumb of pdfPageThumbs) {
-              const raw = thumb.dataset.page; // format: "url:pageNum" or just "pageNum"
-              if (!raw) continue;
-              const renderEl = thumb.querySelector('.em-q-render');
-              // Parse: could be "https://...supabase.co/.../exam.pdf:3" or legacy "3"
-              let pdfUrl, pageNum;
-              const lastColon = raw.lastIndexOf(':');
-              if (lastColon > 5) { // has URL
-                pdfUrl = raw.slice(0, lastColon);
-                pageNum = parseInt(raw.slice(lastColon + 1));
-              } else {
-                pageNum = parseInt(raw);
-                pdfUrl = examPdfUrl(state.user?.id, examId);
-              }
-              if (!pageNum || !pdfUrl) continue;
-              try {
-                const canvas = await renderPdfPage(pdfUrl, pageNum, 1);
-                if (canvas) {
-                  canvas.style.cssText = 'width:100%;display:block;border-radius:4px;';
-                  renderEl.innerHTML = '';
-                  renderEl.appendChild(canvas);
-                } else {
-                  renderEl.innerHTML = `<div style="padding:8px;font-size:11px;color:var(--red-500);">❌ לא ניתן לטעון</div>`;
-                }
-              } catch (e) {
-                console.error('[thumb render]', e.message, pdfUrl);
-                renderEl.innerHTML = `<div style="padding:8px;font-size:11px;">❌ שגיאה</div>`;
-              }
-            }
+            // Images load automatically via <img> tags — Cloudinary URLs are regular image URLs
 
             // Wire question click → open viewer
             grid.querySelectorAll('.em-q-thumb').forEach(thumb => {
@@ -2462,8 +2430,7 @@ function showExamManagementModal(courseId) {
 // Question viewer lightbox — full-size image with delete option
 function showQuestionViewer(q, courseId, onDelete) {
   const isTextOnly = q.image_path === 'text-only';
-  const isPdfPage = q.image_path?.startsWith?.('pdfpage:');
-  const imgSrc = (isTextOnly || isPdfPage) ? null : Data.imageUrl(q.image_path, courseId);
+  const imgSrc = isTextOnly ? null : (q.image_path?.startsWith('http') ? q.image_path : Data.imageUrl(q.image_path, courseId));
   const viewer = document.createElement('div');
   viewer.className = 'modal-backdrop';
   viewer.style.cssText = 'z-index:10000;display:flex;align-items:center;justify-content:center;';
@@ -2478,39 +2445,12 @@ function showQuestionViewer(q, courseId, onDelete) {
       </div>
       ${isTextOnly
         ? `<div style="padding:24px;font-size:15px;line-height:1.8;direction:rtl;">${escapeHtml(q.general_explanation || 'שאלה ללא תמונה')}</div>`
-        : isPdfPage
-          ? `<div id="qv-pdf-container" style="display:grid;place-items:center;padding:24px;min-height:200px;"><p class="muted">📄 טוען עמוד...</p></div>`
-          : `<img src="${imgSrc}" alt="שאלה" style="width:100%;display:block;border-radius:0 0 16px 16px;" />`}
+        : `<img src="${imgSrc}" alt="שאלה" style="width:100%;display:block;border-radius:0 0 16px 16px;" />`}
     </div>
   `;
   document.body.appendChild(viewer);
   viewer.querySelector('#qv-close').addEventListener('click', () => viewer.remove());
   viewer.addEventListener('click', (e) => { if (e.target === viewer) viewer.remove(); });
-
-  // Render PDF page in viewer
-  if (isPdfPage) {
-    const raw = q.image_path.slice(8); // remove "pdfpage:"
-    const lastColon = raw.lastIndexOf(':');
-    let pdfUrl, pageNum;
-    if (lastColon > 5) {
-      pdfUrl = raw.slice(0, lastColon);
-      pageNum = parseInt(raw.slice(lastColon + 1)) || 1;
-    } else {
-      pageNum = parseInt(raw) || 1;
-      pdfUrl = examPdfUrl(state.user?.id, q.exam_id);
-    }
-    const container = viewer.querySelector('#qv-pdf-container');
-    renderPdfPage(pdfUrl, pageNum, 2).then(canvas => {
-      if (canvas && container) {
-        canvas.style.cssText = 'width:100%;display:block;border-radius:0 0 16px 16px;';
-        container.innerHTML = '';
-        container.style.padding = '0';
-        container.appendChild(canvas);
-      } else if (container) {
-        container.innerHTML = '<p class="muted">לא ניתן לטעון את העמוד.</p>';
-      }
-    });
-  }
 
   const delBtn = viewer.querySelector('#qv-delete');
   if (delBtn && onDelete) {
