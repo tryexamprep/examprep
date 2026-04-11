@@ -93,7 +93,7 @@ function matchRoute(method, url) {
   if (method === 'POST' && p === '/ai/generate-similar') return { r: 'ai-similar' };
 
   if (s[0] === 'courses' && s.length >= 2) {
-    const cid = s[1];
+    const cid = parseInt(s[1], 10) || s[1]; // integer for DB, fallback to string for safety
     if (s.length === 2 && method === 'DELETE') return { r: 'delete-course', cid };
     if (s.length === 2 && method === 'PATCH') return { r: 'update-course', cid };
     if (s.length === 3 && s[2] === 'exams' && method === 'GET') return { r: 'list-exams', cid };

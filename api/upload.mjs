@@ -345,6 +345,7 @@ export default async function handler(req, res) {
     const solFile = getFile('solutionPdf');
 
     if (!courseId) return res.status(400).json({ error: 'חסר courseId' });
+    const courseIdInt = parseInt(courseId, 10) || courseId;
     if (!name || name.length < 2 || name.length > 200) return res.status(400).json({ error: 'שם מבחן לא תקין' });
     if (!examFile) return res.status(400).json({ error: 'חסר קובץ PDF של המבחן' });
     if (!isPdf(examFile.data)) return res.status(400).json({ error: 'קובץ הבחינה אינו PDF תקני' });
@@ -352,12 +353,12 @@ export default async function handler(req, res) {
     if (solFile && !isPdf(solFile.data)) return res.status(400).json({ error: 'קובץ הפתרון אינו PDF תקני' });
 
     // Verify course ownership
-    const { data: course } = await auth.db.from('ep_courses').select('id').eq('id', courseId).maybeSingle();
+    const { data: course } = await auth.db.from('ep_courses').select('id').eq('id', courseIdInt).maybeSingle();
     if (!course) return res.status(403).json({ error: 'אין גישה לקורס' });
 
     // Create exam record
     const { data: exam, error: examErr } = await auth.db.from('ep_exams')
-      .insert({ course_id: courseId, user_id: auth.userId, name, status: 'processing' })
+      .insert({ course_id: courseIdInt, user_id: auth.userId, name, status: 'processing' })
       .select().single();
     if (examErr) {
       console.error('[upload] insert exam:', examErr.message);
@@ -440,7 +441,7 @@ export default async function handler(req, res) {
     if (questions.length > 0) {
       const qRecords = questions.map((q, i) => ({
         exam_id: exam.id,
-        course_id: parseInt(courseId),
+        course_id: courseIdInt,
         user_id: auth.userId,
         question_number: q.n || (i + 1),
         image_path: 'text-only',
@@ -465,10 +466,10 @@ export default async function handler(req, res) {
     // Update course counters
     const [{ count: qCount }, { count: pdfCount }] = await Promise.all([
       auth.db.from('ep_questions').select('id', { count: 'exact', head: true })
-        .eq('course_id', courseId).is('deleted_at', null),
-      auth.db.from('ep_exams').select('id', { count: 'exact', head: true }).eq('course_id', courseId),
+        .eq('course_id', courseIdInt).is('deleted_at', null),
+      auth.db.from('ep_exams').select('id', { count: 'exact', head: true }).eq('course_id', courseIdInt),
     ]);
-    await auth.db.from('ep_courses').update({ total_questions: qCount, total_pdfs: pdfCount }).eq('id', courseId);
+    await auth.db.from('ep_courses').update({ total_questions: qCount, total_pdfs: pdfCount }).eq('id', courseIdInt);
 
     // Build warnings
     if (questions.length === 0) {
