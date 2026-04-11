@@ -1752,39 +1752,34 @@ async function renderCourseDashboard() {
     </div>
   `;
 
-  // Quick actions
+  // Quick actions — 4 clear tiles
   const isUserCourse = !state.course.isBuiltin;
   document.getElementById('cd-actions').innerHTML = `
+    <button class="action-tile action-tile-featured" data-action="practice">
+      <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>
+      <strong>תרגול חופשי</strong>
+      <small>בחר גודל מקבץ והתחל לתרגל</small>
+    </button>
     ${isUserCourse ? `
     <button class="action-tile action-tile-upload" data-action="upload">
       <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
       <strong>העלאת מבחן PDF</strong>
-      <small>מבחן + פתרון או סיכום</small>
-    </button>` : ''}
-    <button class="action-tile action-tile-featured" data-action="practice">
-      <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>
-      <strong>תרגול חופשי</strong>
-      <small>מקבצי תרגול לפי גודל וסוג</small>
-    </button>
+      <small>העלה מבחן + פתרון</small>
+    </button>` : `
     <button class="action-tile" data-action="lab">
       <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.58 16.5h12.85"/></svg></span>
       <strong>מעבדה חכמה</strong>
       <small>מבחני דמה + יוצר שאלות</small>
-    </button>
+    </button>`}
     <button class="action-tile" data-action="insights">
       <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
-      <strong>תובנות</strong>
+      <strong>תובנות וניתוח</strong>
       <small>ניתוח חומר ומפת נושאים</small>
     </button>
     <button class="action-tile" data-action="progress">
       <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
       <strong>ההתקדמות שלי</strong>
       <small>סטטיסטיקה, רצף וטיפים</small>
-    </button>
-    <button class="action-tile" data-action="study">
-      <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg></span>
-      <strong>לימוד חכם מסיכום</strong>
-      <small>שאלות + כרטיסיות + מתאר</small>
     </button>
   `;
 
@@ -1796,30 +1791,16 @@ async function renderCourseDashboard() {
       else if (action === 'lab') navigate(`/course/${cid}/lab`);
       else if (action === 'insights') navigate(`/course/${cid}/insights`);
       else if (action === 'progress') navigate(`/course/${cid}/progress`);
-      else if (action === 'study') navigate('/study');
     });
   });
 
-  // ===== Tabs: Exams + Batches =====
-  const tabExams = document.getElementById('cd-tab-exams');
-  const tabBatches = document.getElementById('cd-tab-batches');
-
-  // Wire tab switching
-  document.querySelectorAll('#cd-tabs .cd-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('#cd-tabs .cd-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const target = tab.dataset.tab;
-      tabExams.style.display = target === 'exams' ? '' : 'none';
-      tabBatches.style.display = target === 'batches' ? '' : 'none';
-    });
-  });
-
-  // -- Exams tab content --
+  // ===== Exams section =====
+  const examsEl = document.getElementById('cd-exams');
+  const examsTitle = document.getElementById('cd-exams-title');
   if (state.course.isBuiltin) {
-    // Built-in course: show static exams list
-    if (Data.metadata?.exams?.length) {
-      tabExams.innerHTML = Data.metadata.exams.map(ex => `
+    if (examsTitle) examsTitle.textContent = 'מבחנים בקורס';
+    if (examsEl && Data.metadata?.exams?.length) {
+      examsEl.innerHTML = Data.metadata.exams.map(ex => `
         <div class="exam-row">
           <div class="batch-row">
             <div class="batch-score" style="font-size:14px;">
@@ -1834,17 +1815,20 @@ async function renderCourseDashboard() {
       `).join('');
     }
   } else {
-    // User course: show uploaded PDFs with management
-    loadCourseExams(cid, tabExams);
+    if (examsTitle) examsTitle.textContent = 'מבחנים שהעליתי';
+    loadCourseExams(cid, examsEl);
   }
 
-  // -- Batches tab content --
+  // ===== Recent batches section =====
   const batches = batchesForCourse(uid, cid);
+  const batchesEl = document.getElementById('cd-batches');
+  const batchesHeader = document.getElementById('cd-batches-header');
   if (!batches.length) {
-    tabBatches.innerHTML = '<p class="muted" style="padding:24px 16px;text-align:center;">עדיין לא תרגלת בקורס זה. לחץ על "תרגול חופשי" כדי להתחיל.</p>';
+    batchesHeader.style.display = 'none';
   } else {
-    const recent = batches.slice(-5).reverse();
-    tabBatches.innerHTML = recent.map((b, i) => {
+    batchesHeader.style.display = '';
+    const recent = batches.slice(-3).reverse();
+    batchesEl.innerHTML = recent.map((b, i) => {
       const score = b.size > 0 ? Math.round((b.correct / b.size) * 100) : 0;
       const date = b.endedAt ? new Date(b.endedAt).toLocaleDateString('he-IL') : '';
       return `
@@ -1858,7 +1842,7 @@ async function renderCourseDashboard() {
         </div>
       `;
     }).join('');
-    tabBatches.querySelectorAll('.batch-clickable').forEach(row => {
+    batchesEl.querySelectorAll('.batch-clickable').forEach(row => {
       row.addEventListener('click', () => {
         const idx = parseInt(row.dataset.batchI);
         state.lastBatch = recent[idx];
@@ -1870,7 +1854,7 @@ async function renderCourseDashboard() {
 
 // Load and render exam list for a course
 async function loadCourseExams(courseId, containerEl) {
-  const pdfsEl = containerEl || document.getElementById('cd-tab-exams') || document.getElementById('cd-pdfs');
+  const pdfsEl = containerEl || document.getElementById('cd-exams');
   if (!pdfsEl) return;
   try {
     const token = await Auth.getToken();
@@ -2276,10 +2260,7 @@ function showUploadPdfModal(courseId) {
       const newExamId = res.data.exam_id;
 
       // If already on course page, just refresh the exam list in-place
-      if (document.getElementById('cd-tab-exams')) {
-        // Switch to exams tab if not already active
-        const examsTab = document.querySelector('#cd-tabs [data-tab="exams"]');
-        if (examsTab) examsTab.click();
+      if (document.getElementById('cd-exams')) {
         await loadCourseExams(courseId);
         // Animate the new exam row sliding in
         const newRow = document.querySelector(`[data-exam-id="${newExamId}"]`);
