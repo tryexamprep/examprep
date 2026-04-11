@@ -2907,13 +2907,13 @@ code { font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace; font-size: .
   margin-bottom: 8px; opacity: .92;
 }
 .phb-track {
-  height: 10px; background: rgba(255,255,255,.18);
+  height: 10px; background: var(--gray-200, #e5e7eb);
   border-radius: 100px; overflow: hidden;
 }
 .phb-fill {
-  height: 100%; background: linear-gradient(90deg, var(--accent-300), #fff);
+  height: 100%; background: linear-gradient(90deg, var(--brand-400), var(--brand-600));
   border-radius: 100px;
-  box-shadow: 0 0 12px rgba(255,255,255,.5);
+  box-shadow: 0 0 8px rgba(59,130,246,.3);
   transition: width 800ms cubic-bezier(.4,0,.2,1);
 }
 
