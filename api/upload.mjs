@@ -515,22 +515,33 @@ export default async function handler(req, res) {
       const seenQ = new Set();
       const uniqueHeaders = allHeaders.filter(h => { if (seenQ.has(h.qNum)) return false; seenQ.add(h.qNum); return true; });
 
-      // Calculate crop for each MCQ question — tight to ONLY this question
+      // Calculate PIXEL-EXACT crop for each question
+      // Cloudinary renders PDF at w_1600 → scale = 1600/612 ≈ 2.614
+      // Page height at that scale ≈ pageHeight * 2.614
+      const RENDER_W = 1600;
+      const PDF_W = 612; // standard letter width in points
+      const scale = RENDER_W / PDF_W;
+
       for (let i = 0; i < uniqueHeaders.length; i++) {
         const h = uniqueHeaders[i];
         const next = uniqueHeaders[i + 1];
-        const startPct = Math.max(0, (h.yFromTop / h.pageHeight) * 100 - 1);
-        let endPct;
+        const renderedPageH = Math.round(h.pageHeight * scale);
+
+        // Start: at the question header, with 5px margin above
+        const yStartPx = Math.max(0, Math.round(h.yFromTop * scale) - 5);
+
+        // End: 15px BEFORE the next question header on same page
+        let yEndPx;
         if (next && next.page === h.page) {
-          // Stop 4% BEFORE next question so its header doesn't appear
-          endPct = (next.yFromTop / h.pageHeight) * 100 - 4;
+          yEndPx = Math.round(next.yFromTop * scale) - 15;
         } else {
-          // Last question on page — take max 25% of page
-          endPct = Math.min(startPct + 25, 95);
+          // Last question on page: take at most 500px or to page bottom
+          yEndPx = Math.min(yStartPx + 500, renderedPageH - 10);
         }
-        const heightPct = Math.min(Math.max(endPct - startPct, 10), 28);
-        questionPos[h.qNum] = { page: h.page, yPct: startPct, heightPct };
-        console.log(`[crop] q${h.qNum} p${h.page}: ${startPct.toFixed(0)}% → ${(startPct + heightPct).toFixed(0)}% (${heightPct.toFixed(0)}%)`);
+
+        const cropH = Math.max(yEndPx - yStartPx, 150); // min 150px
+        questionPos[h.qNum] = { page: h.page, yPx: yStartPx, hPx: cropH };
+        console.log(`[crop] q${h.qNum} p${h.page}: y=${yStartPx}px h=${cropH}px (of ${renderedPageH}px)`);
       }
       // Find "שאלות פתוחות" section to exclude questions after it
       let openSectionStart = null; // { page, yFromTop }
@@ -593,9 +604,7 @@ export default async function handler(req, res) {
         let imagePath = 'text-only';
 
         if (pdfCloudinaryId && pos) {
-          const y = Math.round((pos.yPct / 100) * H);
-          const h = Math.max(Math.round((pos.heightPct / 100) * H), 200);
-          imagePath = `https://res.cloudinary.com/${cloudName}/image/upload/pg_${pageNum},w_1600/c_crop,w_1600,h_${h},y_${y},g_north/q_auto/${pdfCloudinaryId}.png`;
+          imagePath = `https://res.cloudinary.com/${cloudName}/image/upload/pg_${pageNum},w_1600/c_crop,w_1600,h_${pos.hPx},y_${pos.yPx},g_north/q_auto/${pdfCloudinaryId}.png`;
         } else if (pdfCloudinaryId) {
           // No position data — show full page
           imagePath = `https://res.cloudinary.com/${cloudName}/image/upload/pg_${pageNum},w_1200,q_auto/${pdfCloudinaryId}.png`;
