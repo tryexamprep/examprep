@@ -2,9 +2,10 @@
 import { createHash } from 'node:crypto';
 
 export default async function handler(req, res) {
-  const cloud = (process.env.CLOUDINARY_CLOUD_NAME || '').replace(/\s+/g, '');
-  const key = (process.env.CLOUDINARY_API_KEY || '').replace(/\s+/g, '');
-  const secret = (process.env.CLOUDINARY_API_SECRET || '').replace(/\s+/g, '');
+  const clean = s => (s || '').replace(/\\n/g, '').replace(/\s+/g, '').trim();
+  const cloud = clean(process.env.CLOUDINARY_CLOUD_NAME);
+  const key = clean(process.env.CLOUDINARY_API_KEY);
+  const secret = clean(process.env.CLOUDINARY_API_SECRET);
 
   if (!cloud || !key || !secret) {
     return res.json({ error: 'Missing CLOUDINARY env vars', cloud: !!cloud, key: !!key, secret: !!secret });
