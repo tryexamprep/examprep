@@ -2142,21 +2142,33 @@ function showUploadPdfModal(courseId) {
     const fill = document.getElementById('up-progress-fill');
     const statusEl = document.getElementById('up-status');
 
-    // Phase 2 animation: smooth curve for server-side processing (50-95%)
+    // Phase 2: server-side processing (50-95%) — detailed step messages
     let processingInterval = null;
     let processingStart = null;
+    const processingSteps = [
+      { at: 0, text: '📄 ממיר עמודי PDF לתמונות...' },
+      { at: 3, text: '🔍 סורק את המסמך וקורא טקסט...' },
+      { at: 6, text: '📐 מזהה מבנה שאלות בדף...' },
+      { at: 10, text: '✂️ חותך שאלות מהמבחן...' },
+      { at: 15, text: '🎨 מעבד תמונות שאלה באיכות גבוהה...' },
+      { at: 20, text: '🔎 מחפש תשובות מסומנות בפתרון...' },
+      { at: 28, text: '🟡 מנתח סימוני צהוב בקובץ הפתרון...' },
+      { at: 35, text: '✅ מתאים תשובות לשאלות...' },
+      { at: 42, text: '💾 שומר שאלות ותמונות בענן...' },
+      { at: 50, text: '📊 מעדכן סטטיסטיקות הקורס...' },
+      { at: 60, text: '🧹 מנקה קבצים זמניים...' },
+      { at: 75, text: '⏳ כמעט סיימנו, עוד שנייה...' },
+    ];
     function startProcessingPhase() {
       processingStart = Date.now();
       fill.style.width = '50%';
-      statusEl.textContent = 'מחלץ טקסט מהקובץ...';
+      statusEl.textContent = processingSteps[0].text;
       processingInterval = setInterval(() => {
         const elapsed = (Date.now() - processingStart) / 1000;
         const procPct = 50 + Math.min(45, 45 * (1 - Math.exp(-elapsed / 25)));
         fill.style.width = procPct + '%';
-        if (elapsed < 8) statusEl.textContent = 'מחלץ טקסט מהקובץ...';
-        else if (elapsed < 20) statusEl.textContent = 'מזהה שאלות ותשובות...';
-        else if (elapsed < 40) statusEl.textContent = 'חותך שאלות ומעבד תמונות...';
-        else statusEl.textContent = 'כמעט סיימנו, עוד רגע...';
+        const step = [...processingSteps].reverse().find(s => elapsed >= s.at);
+        if (step) statusEl.textContent = step.text;
       }, 500);
     }
 
@@ -2178,9 +2190,13 @@ function showUploadPdfModal(courseId) {
         onUploadProgress(loaded, total) {
           const uploadPct = (loaded / total) * 50;
           fill.style.width = uploadPct + '%';
+          const pctDone = Math.round((loaded / total) * 100);
           const mbLoaded = (loaded / (1024 * 1024)).toFixed(1);
           const mbTotal = (total / (1024 * 1024)).toFixed(1);
-          statusEl.textContent = `מעלה ${mbLoaded}MB מתוך ${mbTotal}MB...`;
+          if (pctDone < 30) statusEl.textContent = `📤 מעלה קובץ... ${mbLoaded}MB מתוך ${mbTotal}MB`;
+          else if (pctDone < 60) statusEl.textContent = `📡 שולח נתונים לשרת... ${pctDone}%`;
+          else if (pctDone < 90) statusEl.textContent = `📦 מעביר את הקובץ... ${pctDone}%`;
+          else statusEl.textContent = `✅ ההעלאה כמעט הושלמה... ${pctDone}%`;
         },
         onUploadDone() {
           startProcessingPhase();
@@ -4319,12 +4335,16 @@ async function renderStudyCreate() {
     let aiInterval = null;
     let aiStart = null;
     const aiSteps = [
-      { at: 0, text: '📖 קורא את התוכן...' },
-      { at: 8, text: '🧠 הבינה המלאכותית מנתחת את החומר...' },
-      { at: 18, text: '✍️ יוצר שאלות אמריקאיות...' },
-      { at: 30, text: '🃏 בונה כרטיסיות ומתאר...' },
-      { at: 45, text: '📝 מכין מבחן עצמי ומילון מושגים...' },
-      { at: 60, text: '✨ כמעט מוכן...' },
+      { at: 0, text: '📖 קורא ומנתח את הטקסט...' },
+      { at: 4, text: '🔍 מזהה נושאים ומושגי מפתח...' },
+      { at: 8, text: '🧠 הבינה המלאכותית מעבדת את החומר...' },
+      { at: 14, text: '✍️ יוצר שאלות אמריקאיות מהסיכום...' },
+      { at: 20, text: '📝 כותב הסברים לכל תשובה...' },
+      { at: 28, text: '🃏 בונה כרטיסיות לימוד...' },
+      { at: 35, text: '📋 יוצר מתאר נושאים ומילון מושגים...' },
+      { at: 45, text: '🧪 בודק שהתוכן מדויק ואיכותי...' },
+      { at: 55, text: '📊 מסדר את חבילת הלימוד...' },
+      { at: 65, text: '✨ כמעט מוכן, עוד כמה שניות...' },
     ];
     function startAiPhase(fromPct) {
       aiStart = Date.now();
@@ -4354,9 +4374,12 @@ async function renderStudyCreate() {
           onUploadProgress(loaded, total) {
             const uploadPct = (loaded / total) * 40;
             fill.style.width = uploadPct + '%';
+            const pctDone = Math.round((loaded / total) * 100);
             const mbLoaded = (loaded / (1024 * 1024)).toFixed(1);
             const mbTotal = (total / (1024 * 1024)).toFixed(1);
-            stepLabel.textContent = `📤 מעלה ${mbLoaded}MB מתוך ${mbTotal}MB...`;
+            if (pctDone < 50) stepLabel.textContent = `📤 מעלה קובץ... ${mbLoaded}MB מתוך ${mbTotal}MB`;
+            else if (pctDone < 90) stepLabel.textContent = `📡 שולח נתונים... ${pctDone}%`;
+            else stepLabel.textContent = `✅ ההעלאה כמעט הושלמה... ${pctDone}%`;
           },
           onUploadDone() { startAiPhase(40); },
         });
