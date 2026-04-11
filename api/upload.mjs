@@ -187,16 +187,11 @@ function validateFiles(name, examHeader, solHeader) {
     if (examSem && solSem && examSem !== solSem) {
       warnings.push(`שים לב: המבחן מסמסטר ${examSem} אבל הפתרון מסמסטר ${solSem}.`);
     }
-    // Course name mismatch
-    if (pdfCourse && solCourse && commonWords(pdfCourse, solCourse) < 0.3) {
+    // Course name mismatch — only warn if both names are clearly detected
+    // and are completely different (not just different phrasing)
+    if (pdfCourse && solCourse && pdfCourse.length > 5 && solCourse.length > 5
+        && commonWords(pdfCourse, solCourse) === 0) {
       warnings.push(`שים לב: נראה שהמבחן בנושא "${pdfCourse}" אבל הפתרון בנושא "${solCourse}".`);
-    }
-    // Very low text similarity — likely unrelated files
-    if (examHeader.length > 100 && solHeader.length > 100) {
-      const sim = commonWords(examHeader, solHeader);
-      if (sim < 0.1) {
-        warnings.push('שים לב: הקבצים נראים שונים מאוד — ודא שהפתרון מתאים למבחן.');
-      }
     }
   }
 

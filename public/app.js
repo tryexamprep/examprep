@@ -1678,8 +1678,14 @@ async function renderCourseDashboard() {
   if (!state.user) return navigate('/login');
   if (!state.course) state.course = CourseRegistry.BUILTIN;
 
+  // Ensure courses are loaded (critical after page refresh)
+  await CourseRegistry.ensureLoaded();
+  // Re-resolve course from registry to get real name/color
+  const registryCourse = CourseRegistry.get(state.course.id);
+  if (registryCourse) state.course = registryCourse;
+
   const cid = state.course.id;
-  await Data.ensureLoaded(cid);
+  try { await Data.ensureLoaded(cid); } catch (e) { console.warn('[course] data load failed:', e.message); }
 
   $app.innerHTML = '';
   $app.appendChild(tmpl('tmpl-course-dash'));
@@ -1927,9 +1933,11 @@ async function loadCourseExams(courseId) {
         try {
           const tk = await Auth.getToken();
           const qRes = await fetch(`/api/courses/${courseId}/questions`, {
-            headers: { Authorization: `Bearer ${tk}` },
+            headers: tk ? { Authorization: `Bearer ${tk}` } : {},
           });
+          if (!qRes.ok) { grid.innerHTML = '<p class="muted" style="grid-column:1/-1;">לא ניתן לטעון שאלות. נסה לרענן את הדף.</p>'; return; }
           const allQs = await qRes.json();
+          if (!Array.isArray(allQs)) { grid.innerHTML = '<p class="muted" style="grid-column:1/-1;">לא ניתן לטעון שאלות.</p>'; return; }
           const examQs = allQs.filter(q => String(q.exam_id) === String(examId));
           if (!examQs.length) {
             grid.innerHTML = '<p class="muted" style="grid-column:1/-1;">אין שאלות במבחן זה.</p>';
@@ -2225,9 +2233,17 @@ function showUploadPdfModal(courseId) {
       }
       close();
 
+      // Force full data reload and page re-render
       Data._loadedSet.delete(courseId);
       CourseRegistry.invalidate();
-      navigate(`/course/${courseId}`);
+      // If already on the course page, navigate won't trigger hashchange,
+      // so we must re-render directly.
+      if (getRoute() === `/course/${courseId}` || getRoute() === `/course/${courseId}/dashboard`) {
+        await Data.ensureLoaded(courseId);
+        renderCourseDashboard();
+      } else {
+        navigate(`/course/${courseId}`);
+      }
     } catch (err) {
       if (processingInterval) clearInterval(processingInterval);
       errEl.textContent = err.message;
@@ -4734,19 +4750,31 @@ function updateSelfTestResult(answers) {
 }
 
 // ===== Boot =====
-(function boot() {
+(async function boot() {
   Theme.init();
-  // Render immediately from localStorage — no waiting for network
   state.user = Auth.current();
   if (!location.hash) location.hash = '#/';
-  renderRoute();
 
-  // Then silently refresh session from Supabase in background
-  Auth.restoreSession().then(u => {
-    if (u && (!state.user || state.user.email !== u.email || state.user.plan !== u.plan)) {
-      state.user = u;
-    }
-  }).catch(() => {});
+  const route = getRoute();
+  const needsAuth = route.startsWith('/course/') || route === '/dashboard' ||
+                    route === '/settings' || route.startsWith('/study');
+
+  if (needsAuth && state.user) {
+    // For auth-required pages: restore session first so API tokens work
+    try {
+      const u = await Auth.restoreSession();
+      if (u) state.user = u;
+    } catch {}
+    renderRoute();
+  } else {
+    // For public pages: render immediately, restore session in background
+    renderRoute();
+    Auth.restoreSession().then(u => {
+      if (u && (!state.user || state.user.email !== u.email || state.user.plan !== u.plan)) {
+        state.user = u;
+      }
+    }).catch(() => {});
+  }
 
   // Listen for Supabase auth state changes (e.g., OAuth redirect back)
   const _sbBoot = getSbClient();
