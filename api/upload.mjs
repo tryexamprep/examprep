@@ -80,27 +80,80 @@ function isPdf(buf) {
     buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46;
 }
 
-// ===== Gemini =====
-async function callGemini(prompt) {
-  const apiKey = process.env.GEMINI_API_KEY;
+// ===== Gemini Vision: send PDF directly, get MCQ data back =====
+async function analyzeExamWithGemini(examPdfBase64, solPdfBase64) {
+  const apiKey = (process.env.GEMINI_API_KEY || '').replace(/\\n/g, '').trim();
   if (!apiKey) return null;
+
+  const prompt = `You are an expert exam analyzer. Analyze this PDF exam and extract ONLY multiple-choice questions (MCQ / שאלות אמריקאיות / שאלות בחירה).
+
+IMPORTANT RULES:
+- ONLY extract questions that have options labeled א/ב/ג/ד or 1/2/3/4 where the student picks ONE answer
+- DO NOT include open questions, proof questions, "הוכיחו", "הראו", essay questions, or questions with blank answer lines
+- For each MCQ, identify which PAGE it's on (1-based) and its vertical position on that page (as percentage from top: 0=top, 100=bottom)
+
+Return ONLY valid JSON array, no markdown, no explanation:
+[
+  {
+    "n": 1,
+    "page": 2,
+    "y_start_pct": 5,
+    "y_end_pct": 35,
+    "stem": "question text in original language",
+    "options": ["option א text", "option ב text", "option ג text", "option ד text"],
+    "correct": 2,
+    "explanation": "brief explanation why option 2 is correct (in Hebrew)"
+  }
+]
+
+If a solution PDF is provided, use it to determine the correct answer.
+If you can't determine the correct answer, set "correct" to null.
+y_start_pct and y_end_pct define the crop region on the page (percentage from top).`;
+
+  const parts = [{ text: prompt }];
+  // Add exam PDF as inline data
+  parts.push({
+    inlineData: { mimeType: 'application/pdf', data: examPdfBase64 }
+  });
+  // Add solution PDF if provided
+  if (solPdfBase64) {
+    parts.push({ text: '\n\nSolution PDF:' });
+    parts.push({
+      inlineData: { mimeType: 'application/pdf', data: solPdfBase64 }
+    });
+  }
+
   const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
   for (const model of models) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     try {
+      console.log(`[gemini-vision] trying ${model} with PDF...`);
       const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+          contents: [{ parts }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 16384, responseMimeType: 'application/json' },
         }),
-        signal: AbortSignal.timeout(50000),
+        signal: AbortSignal.timeout(55000),
       });
-      if (!r.ok) continue;
+      if (!r.ok) {
+        const errText = await r.text().catch(() => '');
+        console.warn(`[gemini-vision] ${model} returned ${r.status}:`, errText.slice(0, 200));
+        continue;
+      }
       const j = await r.json();
-      return j.candidates?.[0]?.content?.parts?.[0]?.text || null;
-    } catch { continue; }
+      const text = j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
+      const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log(`[gemini-vision] ${model} found ${parsed.length} MCQs`);
+        return parsed;
+      }
+    } catch (e) {
+      console.warn(`[gemini-vision] ${model} failed:`, e.message);
+      continue;
+    }
   }
   return null;
 }
@@ -372,211 +425,94 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'שגיאה ביצירת רשומת מבחן' });
     }
 
-    // Extract text from PDF
-    let examText = '';
-    let solText = '';
-    try {
-      const { extractText } = await import('unpdf');
-      const result = await extractText(new Uint8Array(examFile.data), { mergePages: true });
-      examText = result?.text?.trim() || '';
-      if (solFile) {
-        const solResult = await extractText(new Uint8Array(solFile.data), { mergePages: true });
-        solText = solResult?.text?.trim() || '';
-      }
-    } catch (e) {
-      console.error('[upload] text extraction failed:', e.message);
-    }
-
-    // Validate files match what user claimed
-    const fileWarnings = validateFiles(
-      name,
-      examText.slice(0, 1000),
-      solText ? solText.slice(0, 1000) : null
-    );
-
-    const combinedText = solText ? `=== מבחן ===\n${examText}\n\n=== פתרון ===\n${solText}` : examText;
-
-    // Keep the user's original name — don't append long PDF header text
-
-    // Extract questions: regex parser + optional Gemini AI enrichment
-    let questions = [];
-    let extractionMode = 'none';
-    if (combinedText.length > 100) {
-      questions = parseQuestionsFromText(examText, solText || '');
-      if (questions.length > 0) {
-        extractionMode = 'regex';
-        console.log(`[upload] regex parser found ${questions.length} questions`);
-      }
-      if (questions.length < 2) {
-        const aiResponse = await callGemini(buildExtractionPrompt(combinedText, !!solFile));
-        if (aiResponse) {
-          try {
-            const cleaned = aiResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-            const aiQuestions = JSON.parse(cleaned);
-            if (Array.isArray(aiQuestions) && aiQuestions.length > questions.length) {
-              questions = aiQuestions;
-              extractionMode = 'gemini';
-              console.log(`[upload] Gemini found ${questions.length} questions`);
-            }
-          } catch { console.error('[upload] failed to parse Gemini response'); }
-        }
-      }
-    }
-
-    // Upload PDF to Cloudinary → renders pages as images automatically
+    // ===== Step 1: Upload PDF to Cloudinary (for page image rendering) =====
     const cleanEnv = s => (s || '').replace(/\\n/g, '').replace(/\s+/g, '').trim();
     const cloudName = cleanEnv(process.env.CLOUDINARY_CLOUD_NAME);
     const cloudKey = cleanEnv(process.env.CLOUDINARY_API_KEY);
     const cloudSecret = cleanEnv(process.env.CLOUDINARY_API_SECRET);
     let pdfCloudinaryId = null;
+    const examBase64 = Buffer.from(examFile.data).toString('base64');
 
     if (cloudName && cloudKey && cloudSecret) {
       try {
         const publicId = `examprep/${auth.userId}/${exam.id}/exam`;
         const timestamp = String(Math.floor(Date.now() / 1000));
-        const sigStr = `public_id=${publicId}&timestamp=${timestamp}${cloudSecret}`;
         const { createHash } = await import('node:crypto');
-        const signature = createHash('sha1').update(sigStr).digest('hex');
+        const signature = createHash('sha1').update(`public_id=${publicId}&timestamp=${timestamp}${cloudSecret}`).digest('hex');
 
-        // Use base64 data URI (most compatible with Vercel serverless)
-        const base64 = Buffer.from(examFile.data).toString('base64');
-        const dataUri = `data:application/pdf;base64,${base64}`;
-
-        console.log(`[upload] uploading PDF to Cloudinary: ${publicId} (${examFile.data.length} bytes)`);
+        console.log(`[upload] uploading PDF to Cloudinary (${examFile.data.length} bytes)`);
         const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            file: dataUri,
-            public_id: publicId,
-            api_key: cloudKey,
-            timestamp,
-            signature,
-          }),
+          body: JSON.stringify({ file: `data:application/pdf;base64,${examBase64}`, public_id: publicId, api_key: cloudKey, timestamp, signature }),
         });
-        const cloudBody = await cloudRes.text();
         if (cloudRes.ok) {
-          const cloudData = JSON.parse(cloudBody);
-          pdfCloudinaryId = cloudData.public_id;
-          console.log(`[upload] Cloudinary OK: ${pdfCloudinaryId}, pages: ${cloudData.pages || '?'}, url: ${cloudData.secure_url}`);
+          const cd = await cloudRes.json();
+          pdfCloudinaryId = cd.public_id;
+          console.log(`[upload] Cloudinary OK: ${pdfCloudinaryId}, ${cd.pages} pages`);
         } else {
-          console.error(`[upload] Cloudinary failed (${cloudRes.status}):`, cloudBody.slice(0, 300));
+          console.error(`[upload] Cloudinary failed:`, (await cloudRes.text()).slice(0, 200));
         }
-      } catch (e) {
-        console.error('[upload] Cloudinary error:', e.message);
-      }
+      } catch (e) { console.error('[upload] Cloudinary error:', e.message); }
+    }
+
+    // ===== Step 2: Gemini Vision — analyze PDF, find MCQs, get positions =====
+    let questions = [];
+    const solBase64 = solFile ? Buffer.from(solFile.data).toString('base64') : null;
+
+    const geminiResult = await analyzeExamWithGemini(examBase64, solBase64);
+    if (geminiResult && geminiResult.length > 0) {
+      questions = geminiResult;
+      console.log(`[upload] Gemini Vision found ${questions.length} MCQs`);
     } else {
-      console.warn('[upload] Cloudinary not configured — questions will be text-only');
+      console.warn('[upload] Gemini Vision returned no results, trying text fallback');
+      // Fallback: text extraction + regex parser
+      try {
+        const { extractText } = await import('unpdf');
+        const result = await extractText(new Uint8Array(examFile.data), { mergePages: true });
+        const examText = result?.text?.trim() || '';
+        const solText = solFile ? (await extractText(new Uint8Array(solFile.data), { mergePages: true }))?.text?.trim() || '' : '';
+        questions = parseQuestionsFromText(examText, solText);
+        console.log(`[upload] regex fallback found ${questions.length} questions`);
+      } catch (e) { console.warn('[upload] text fallback failed:', e.message); }
     }
 
-    // Match questions to PDF pages + find Y position for cropping
-    // questionPos[qNum] = { page, yPct (0-100 from top), heightPct }
-    let questionPos = {};
-    let totalPdfPages = 0;
-    try {
-      const { getDocumentProxy } = await import('unpdf');
-      const doc = await getDocumentProxy(new Uint8Array(examFile.data));
-      totalPdfPages = doc.numPages;
-
-      for (let p = 1; p <= doc.numPages; p++) {
-        const page = await doc.getPage(p);
-        const viewport = page.getViewport({ scale: 1 });
-        const pageHeight = viewport.height;
-        const tc = await page.getTextContent();
-
-        // Build text lines from items (items with similar Y → same line)
-        const lines = [];
-        for (const item of tc.items) {
-          if (!item.str?.trim()) continue;
-          const y = Math.round(item.transform[5]);
-          const existing = lines.find(l => Math.abs(l.y - y) < 5);
-          if (existing) {
-            existing.texts.push(item.str);
-          } else {
-            lines.push({ y, yFromTop: pageHeight - y, texts: [item.str] });
-          }
-        }
-        // Find lines containing "שאלה X" headers
-        for (const line of lines) {
-          const lineText = line.texts.join(' ');
-          const m = lineText.match(/שאלה\s*(\d+)/);
-          if (m) {
-            const qNum = parseInt(m[1]);
-            // Skip if this looks like instructions text (has many words around it)
-            const isHeader = lineText.length < 80; // real headers are short lines
-            if (isHeader && !questionPos[qNum]) {
-              questionPos[qNum] = { page: p, yFromTop: line.yFromTop, pageHeight };
-            }
-          }
-        }
-      }
-
-      // Only keep positions for questions that are actually MCQ (in the questions array)
-      const mcqNums = new Set(questions.map(q => q.n));
-      // Also collect ALL question positions for boundary calculation
-      const allPositions = Object.entries(questionPos)
-        .map(([n, pos]) => ({ n: parseInt(n), ...pos }))
-        .sort((a, b) => a.page - b.page || a.yFromTop - b.yFromTop);
-
-      // Calculate crop: from this question to next question header (tight crop)
-      for (let i = 0; i < allPositions.length; i++) {
-        const pos = allPositions[i];
-        const next = allPositions[i + 1];
-        const startPct = Math.max(0, Math.floor((pos.yFromTop / pos.pageHeight) * 100) - 1);
-        let endPct;
-        if (next && next.page === pos.page) {
-          endPct = Math.floor((next.yFromTop / pos.pageHeight) * 100) - 1;
-        } else {
-          endPct = Math.min(startPct + 30, 95); // max 30% of page if last question
-        }
-        questionPos[pos.n].yPct = startPct;
-        questionPos[pos.n].heightPct = Math.min(Math.max(endPct - startPct, 15), 35); // 15-35% of page
-      }
-
-      console.log(`[upload] matched ${Object.keys(questionPos).length}/${questions.length} questions:`,
-        Object.entries(questionPos).map(([k,v]) => `q${k}→p${v.page}@${Math.round(v.yFromTop)}`).join(', '));
-    } catch (e) {
-      console.warn('[upload] page matching failed:', e.message);
-    }
-
-    // Deduplicate questions (version A/B exams often have same questions twice)
+    // ===== Step 3: Deduplicate =====
     const seen = new Set();
     questions = questions.filter(q => {
-      const key = q.q?.slice(0, 50) || `q${q.n}`;
+      const key = (q.stem || q.q || '').slice(0, 60) || `q${q.n}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
-    // Store questions in DB — with Cloudinary CROPPED page image URLs
+    // ===== Step 4: Build image URLs + store in DB =====
     if (questions.length > 0) {
       const qRecords = questions.map((q, i) => {
-        const pos = questionPos[q.n];
-        const pageNum = pos?.page || (i + 1);
+        const pageNum = q.page || (i + 1);
+        const yStart = q.y_start_pct ?? 0;
+        const yEnd = q.y_end_pct ?? Math.min(yStart + 35, 100);
         let imagePath = 'text-only';
+
         if (pdfCloudinaryId) {
-          if (pos?.yPct != null) {
-            // Chain: 1) render page at width 1600  2) crop to question region
-            // PDF letter = 612x792pt → at w_1600: height ≈ 2070px
-            const renderedH = 2070;
-            const y = Math.round((pos.yPct / 100) * renderedH);
-            const h = Math.max(Math.round((pos.heightPct / 100) * renderedH), 250);
-            // Chained transformations use / separator
-            imagePath = `https://res.cloudinary.com/${cloudName}/image/upload/pg_${pageNum},w_1600/c_crop,w_1600,h_${h},y_${y},g_north/q_auto/${pdfCloudinaryId}.png`;
-          } else {
-            imagePath = `https://res.cloudinary.com/${cloudName}/image/upload/pg_${pageNum},w_800,q_auto/${pdfCloudinaryId}.png`;
-          }
+          // Cloudinary: render page then crop to question region
+          // At w_1600, letter PDF ≈ 2070px tall
+          const H = 2070;
+          const y = Math.round((yStart / 100) * H);
+          const h = Math.max(Math.round(((yEnd - yStart) / 100) * H), 200);
+          imagePath = `https://res.cloudinary.com/${cloudName}/image/upload/pg_${pageNum},w_1600/c_crop,w_1600,h_${h},y_${y},g_north/q_auto/${pdfCloudinaryId}.png`;
         }
+
         return {
           exam_id: exam.id,
           course_id: courseIdInt,
           user_id: auth.userId,
           question_number: q.n || (i + 1),
           image_path: imagePath,
-          num_options: q.opts?.length || 4,
-          correct_idx: q.correct || 1,
-          option_labels: q.opts || null,
-          general_explanation: q.q || null,
+          num_options: q.options?.length || q.opts?.length || 4,
+          correct_idx: q.correct || q.correctIdx || null,
+          option_labels: q.options || q.opts || null,
+          general_explanation: q.explanation || q.q || null,
           is_ai_generated: true,
         };
       });
@@ -584,6 +520,8 @@ export default async function handler(req, res) {
       const { error: qErr } = await auth.db.from('ep_questions').insert(qRecords);
       if (qErr) console.error('[upload] insert questions:', qErr.message);
     }
+
+    const fileWarnings = [];
 
     // Update exam status — always 'ready' after processing (even with 0 questions)
     await auth.db.from('ep_exams').update({
