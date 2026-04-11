@@ -116,7 +116,24 @@ export default async function handler(req, res) {
   const m = matchRoute(req.method, req.url);
   if (!m) return res.status(404).json({ error: 'Not found' });
 
-  if (m.r === 'health') return res.json({ status: 'ok', supabase: !!getAdmin(), quotas: Object.keys(QUOTAS) });
+  if (m.r === 'health') {
+    const admin = getAdmin();
+    let storageStatus = 'no admin';
+    if (admin) {
+      try {
+        // Auto-create exam-pages bucket if it doesn't exist
+        const { data: buckets } = await admin.storage.listBuckets();
+        const exists = buckets?.some(b => b.name === 'exam-pages');
+        if (!exists) {
+          const { error } = await admin.storage.createBucket('exam-pages', { public: true, fileSizeLimit: 52428800 });
+          storageStatus = error ? `create failed: ${error.message}` : 'bucket created';
+        } else {
+          storageStatus = 'bucket exists';
+        }
+      } catch (e) { storageStatus = `error: ${e.message}`; }
+    }
+    return res.json({ status: 'ok', supabase: !!admin, storage: storageStatus, quotas: Object.keys(QUOTAS) });
+  }
 
   const auth = await authenticate(req);
   if (!auth) return res.status(401).json({ error: 'Missing or invalid authorization' });
