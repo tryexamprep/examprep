@@ -2340,8 +2340,8 @@ function showQuestionViewer(q, courseId, onDelete) {
       <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-soft);position:sticky;top:0;background:#fff;z-index:1;border-radius:16px 16px 0 0;">
         <span style="font-weight:600;font-size:15px;">שאלה #${q.question_number || q.section || ''}</span>
         <div style="display:flex;gap:8px;">
-          ${onDelete ? `<button id="qv-delete" class="btn btn-sm" style="color:var(--red-500);border-color:var(--red-200);">🗑️ מחק שאלה</button>` : ''}
-          <button id="qv-close" class="btn btn-ghost btn-sm">✕ סגור</button>
+          ${onDelete ? `<button id="qv-delete" class="btn btn-sm" style="color:#dc2626;border:1px solid #fecaca;background:#fef2f2;font-family:inherit;">🗑️ מחק מהמאגר</button>` : ''}
+          <button id="qv-close" class="btn btn-ghost btn-sm" style="font-family:inherit;">✕ סגור</button>
         </div>
       </div>
       ${isTextOnly
