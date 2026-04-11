@@ -224,7 +224,7 @@ export default async function handler(req, res) {
           .eq('id', m.eid).eq('course_id', m.cid).maybeSingle();
         if (fe) return dbErr(res, 'fetch exam', fe);
         if (!exam) return res.status(404).json({ error: 'מבחן לא נמצא' });
-        if (exam.status === 'processing') return res.status(409).json({ error: 'לא ניתן למחוק מבחן בזמן עיבוד' });
+        // Allow deleting exams in any status (including stuck 'processing')
         const { error: de } = await auth.db.from('ep_exams').delete().eq('id', m.eid).eq('course_id', m.cid);
         if (de) return dbErr(res, 'delete exam', de);
         const [{ count: qc }, { count: pc }] = await Promise.all([

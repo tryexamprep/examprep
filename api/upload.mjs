@@ -6,7 +6,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-export const config = { api: { bodyParser: false }, maxDuration: 60 };
+export const config = { api: { bodyParser: false }, maxDuration: 120 };
 
 const MAX_PDF_BYTES = 15 * 1024 * 1024;
 
@@ -425,57 +425,56 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'שגיאה ביצירת רשומת מבחן' });
     }
 
-    // ===== Step 1: Upload PDF to Cloudinary (for page image rendering) =====
+    // ===== Run Cloudinary upload + Gemini Vision in PARALLEL =====
     const cleanEnv = s => (s || '').replace(/\\n/g, '').replace(/\s+/g, '').trim();
     const cloudName = cleanEnv(process.env.CLOUDINARY_CLOUD_NAME);
     const cloudKey = cleanEnv(process.env.CLOUDINARY_API_KEY);
     const cloudSecret = cleanEnv(process.env.CLOUDINARY_API_SECRET);
     let pdfCloudinaryId = null;
     const examBase64 = Buffer.from(examFile.data).toString('base64');
+    const solBase64 = solFile ? Buffer.from(solFile.data).toString('base64') : null;
 
-    if (cloudName && cloudKey && cloudSecret) {
+    // Start both tasks at the same time
+    const cloudinaryPromise = (async () => {
+      if (!cloudName || !cloudKey || !cloudSecret) return null;
       try {
         const publicId = `examprep/${auth.userId}/${exam.id}/exam`;
         const timestamp = String(Math.floor(Date.now() / 1000));
         const { createHash } = await import('node:crypto');
         const signature = createHash('sha1').update(`public_id=${publicId}&timestamp=${timestamp}${cloudSecret}`).digest('hex');
-
-        console.log(`[upload] uploading PDF to Cloudinary (${examFile.data.length} bytes)`);
-        const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        console.log(`[upload] Cloudinary: uploading ${examFile.data.length} bytes...`);
+        const r = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ file: `data:application/pdf;base64,${examBase64}`, public_id: publicId, api_key: cloudKey, timestamp, signature }),
         });
-        if (cloudRes.ok) {
-          const cd = await cloudRes.json();
-          pdfCloudinaryId = cd.public_id;
-          console.log(`[upload] Cloudinary OK: ${pdfCloudinaryId}, ${cd.pages} pages`);
-        } else {
-          console.error(`[upload] Cloudinary failed:`, (await cloudRes.text()).slice(0, 200));
-        }
-      } catch (e) { console.error('[upload] Cloudinary error:', e.message); }
-    }
+        if (r.ok) { const d = await r.json(); console.log(`[upload] Cloudinary OK: ${d.public_id}`); return d.public_id; }
+        console.error(`[upload] Cloudinary ${r.status}:`, (await r.text()).slice(0, 200));
+        return null;
+      } catch (e) { console.error('[upload] Cloudinary:', e.message); return null; }
+    })();
 
-    // ===== Step 2: Gemini Vision — analyze PDF, find MCQs, get positions =====
-    let questions = [];
-    const solBase64 = solFile ? Buffer.from(solFile.data).toString('base64') : null;
-
-    const geminiResult = await analyzeExamWithGemini(examBase64, solBase64);
-    if (geminiResult && geminiResult.length > 0) {
-      questions = geminiResult;
-      console.log(`[upload] Gemini Vision found ${questions.length} MCQs`);
-    } else {
-      console.warn('[upload] Gemini Vision returned no results, trying text fallback');
-      // Fallback: text extraction + regex parser
+    const geminiPromise = (async () => {
       try {
+        const result = await analyzeExamWithGemini(examBase64, solBase64);
+        if (result?.length) { console.log(`[upload] Gemini: ${result.length} MCQs found`); return result; }
+      } catch (e) { console.error('[upload] Gemini error:', e.message); }
+      // Fallback: regex
+      try {
+        console.log('[upload] Gemini failed, trying regex fallback...');
         const { extractText } = await import('unpdf');
-        const result = await extractText(new Uint8Array(examFile.data), { mergePages: true });
-        const examText = result?.text?.trim() || '';
+        const examText = (await extractText(new Uint8Array(examFile.data), { mergePages: true }))?.text?.trim() || '';
         const solText = solFile ? (await extractText(new Uint8Array(solFile.data), { mergePages: true }))?.text?.trim() || '' : '';
-        questions = parseQuestionsFromText(examText, solText);
-        console.log(`[upload] regex fallback found ${questions.length} questions`);
-      } catch (e) { console.warn('[upload] text fallback failed:', e.message); }
-    }
+        const qs = parseQuestionsFromText(examText, solText);
+        console.log(`[upload] regex fallback: ${qs.length} questions`);
+        return qs;
+      } catch (e) { console.warn('[upload] regex fallback failed:', e.message); return []; }
+    })();
+
+    // Wait for both to complete
+    const [cloudinaryId, questions_raw] = await Promise.all([cloudinaryPromise, geminiPromise]);
+    pdfCloudinaryId = cloudinaryId;
+    let questions = questions_raw || [];
 
     // ===== Step 3: Deduplicate =====
     const seen = new Set();
@@ -547,11 +546,19 @@ export default async function handler(req, res) {
       ok: true,
       exam_id: exam.id,
       question_count: questions.length,
-      mode: extractionMode,
+      mode: 'gemini-vision',
       ...(fileWarnings.length && { warnings: fileWarnings }),
     });
   } catch (err) {
-    console.error('[upload] fatal:', err?.message || err);
+    console.error('[upload] fatal:', err?.message || err, err?.stack?.split('\n')[1] || '');
+    // Mark exam as failed so it can be deleted
+    try {
+      if (auth?.db) {
+        const examId = err?._examId;
+        // Try to find and update any 'processing' exam for this user
+        await auth.db.from('ep_exams').update({ status: 'failed' }).eq('user_id', auth.userId).eq('status', 'processing');
+      }
+    } catch {}
     res.status(500).json({ error: 'שגיאה פנימית בהעלאה' });
   }
 }
