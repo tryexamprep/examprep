@@ -434,88 +434,58 @@ export default async function handler(req, res) {
       }
     }
 
-    // Render PDF pages as images and upload to Supabase Storage
+    // Upload exam PDF to Supabase Storage (for client-side page rendering)
     const admin = getAdmin();
-    let pageImages = {}; // pageNum → public URL
-
-    // Auto-create storage bucket if needed (idempotent)
+    let pdfStorageUrl = null;
     if (admin) {
-      try { await admin.storage.createBucket('exam-pages', { public: true }); } catch {}
-    }
-
-    try {
-      const { renderPageAsImage, getMeta } = await import('unpdf');
-      const pdfData = new Uint8Array(examFile.data);
-      const meta = await getMeta(pdfData);
-      const totalPages = meta.info?.pages || 0;
-      console.log(`[upload] rendering ${totalPages} PDF pages as images`);
-
-      // Find which pages have questions (from text extraction, find page breaks)
-      // For simplicity, render ALL pages (most exams are <30 pages)
-      const maxPagesToRender = Math.min(totalPages, 30);
-      for (let p = 1; p <= maxPagesToRender; p++) {
-        try {
-          const imgBuf = await renderPageAsImage(pdfData, p, { scale: 2 });
-          if (imgBuf && admin) {
-            const storagePath = `exams/${auth.userId}/${exam.id}/page-${p}.png`;
-            const { error: upErr } = await admin.storage
-              .from('exam-pages')
-              .upload(storagePath, imgBuf, { contentType: 'image/png', upsert: true });
-            if (!upErr) {
-              const { data: urlData } = admin.storage.from('exam-pages').getPublicUrl(storagePath);
-              pageImages[p] = urlData.publicUrl;
-            } else {
-              console.warn(`[upload] storage upload failed page ${p}:`, upErr.message);
-            }
-          }
-        } catch (pageErr) {
-          console.warn(`[upload] render page ${p} failed:`, pageErr.message);
-        }
-      }
-      console.log(`[upload] rendered ${Object.keys(pageImages).length} page images`);
-    } catch (renderErr) {
-      console.warn('[upload] page rendering skipped:', renderErr.message);
-    }
-
-    // Match questions to pages using text position analysis
-    let questionPages = {};
-    if (Object.keys(pageImages).length > 0) {
       try {
-        const { extractText: extractPerPage } = await import('unpdf');
-        // Extract text per page to find which page each question is on
-        const perPageResult = await extractPerPage(new Uint8Array(examFile.data), { mergePages: false });
-        const pages = perPageResult?.pages || perPageResult?.text?.split?.('\f') || [];
-        for (const q of questions) {
-          const qNum = q.n;
-          // Find page containing "שאלה X"
-          for (let i = 0; i < pages.length; i++) {
-            const pageText = typeof pages[i] === 'string' ? pages[i] : (pages[i]?.text || '');
-            if (pageText.includes(`שאלה ${qNum}`) || pageText.includes(`שאלה  ${qNum}`)) {
-              questionPages[qNum] = i + 1; // 1-based
-              break;
-            }
-          }
-          // Fallback: assign sequentially
-          if (!questionPages[qNum]) {
-            questionPages[qNum] = Math.min(qNum, Object.keys(pageImages).length) || 1;
-          }
-        }
+        // Auto-create bucket (idempotent)
+        await admin.storage.createBucket('exam-pages', { public: true }).catch(() => {});
+        const pdfPath = `exams/${auth.userId}/${exam.id}/exam.pdf`;
+        await admin.storage.from('exam-pages').upload(pdfPath, examFile.data, {
+          contentType: 'application/pdf', upsert: true,
+        });
+        const { data: urlData } = admin.storage.from('exam-pages').getPublicUrl(pdfPath);
+        pdfStorageUrl = urlData?.publicUrl || null;
+        console.log(`[upload] PDF stored at: ${pdfStorageUrl}`);
       } catch (e) {
-        console.warn('[upload] page matching failed:', e.message);
+        console.warn('[upload] PDF storage failed:', e.message);
       }
     }
 
-    // Store questions in DB — with page image URLs when available
+    // Match questions to PDF pages
+    let questionPages = {};
+    try {
+      const { getDocumentProxy } = await import('unpdf');
+      const doc = await getDocumentProxy(new Uint8Array(examFile.data));
+      for (let p = 1; p <= doc.numPages; p++) {
+        const page = await doc.getPage(p);
+        const tc = await page.getTextContent();
+        const pageText = tc.items.map(it => it.str).join(' ');
+        for (const q of questions) {
+          if (questionPages[q.n]) continue;
+          if (pageText.includes(`שאלה ${q.n}`) || pageText.includes(`שאלה  ${q.n}`)) {
+            questionPages[q.n] = p;
+          }
+        }
+      }
+      console.log(`[upload] matched ${Object.keys(questionPages).length}/${questions.length} questions to pages`);
+    } catch (e) {
+      console.warn('[upload] page matching failed:', e.message);
+    }
+
+    // Store questions in DB — with PDF page references for client-side rendering
     if (questions.length > 0) {
       const qRecords = questions.map((q, i) => {
         const pageNum = questionPages[q.n] || (i + 1);
-        const imgUrl = pageImages[pageNum];
+        // Format: "pdfpage:{pageNum}" — client renders the page using PDF.js
+        const imagePath = pdfStorageUrl ? `pdfpage:${pageNum}` : 'text-only';
         return {
           exam_id: exam.id,
           course_id: courseIdInt,
           user_id: auth.userId,
           question_number: q.n || (i + 1),
-          image_path: imgUrl || 'text-only',
+          image_path: imagePath,
           num_options: q.opts?.length || 4,
           correct_idx: q.correct || 1,
           option_labels: q.opts || null,

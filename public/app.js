@@ -622,6 +622,38 @@ function uploadWithProgress({ url, headers, body, onUploadProgress, onUploadDone
   return promise;
 }
 
+// Render a PDF page to a canvas element using PDF.js
+// Returns the canvas, or null on failure.
+const _pdfPageCache = {};
+async function renderPdfPage(pdfUrl, pageNum, scale = 1.5) {
+  const cacheKey = `${pdfUrl}:${pageNum}:${scale}`;
+  if (_pdfPageCache[cacheKey]) return _pdfPageCache[cacheKey].cloneNode(true);
+  try {
+    const pdfjsLib = window['pdfjs-dist/build/pdf'] || await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
+    if (pdfjsLib.GlobalWorkerOptions) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+    }
+    const doc = await pdfjsLib.getDocument(pdfUrl).promise;
+    const page = await doc.getPage(pageNum);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    _pdfPageCache[cacheKey] = canvas;
+    return canvas.cloneNode(true);
+  } catch (e) {
+    console.error('[renderPdfPage]', e.message);
+    return null;
+  }
+}
+
+// Build the PDF URL from Supabase for a given exam
+function examPdfUrl(userId, examId) {
+  const sbUrl = window._sbConfig?.SUPABASE_URL || window.APP_CONFIG?.SUPABASE_URL || '';
+  return `${sbUrl}/storage/v1/object/public/exam-pages/exams/${userId}/${examId}/exam.pdf`;
+}
+
 function pickRandom(arr, n) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -2299,16 +2331,42 @@ function showExamManagementModal(courseId) {
             if (!examQs.length) { grid.innerHTML = '<p class="muted" style="grid-column:1/-1;">אין שאלות.</p>'; return; }
 
             grid.innerHTML = examQs.map(q => `
-              <div class="em-q-thumb" data-q-id="${q.id}" style="border:1px solid var(--border-soft);border-radius:8px;overflow:hidden;position:relative;">
-                ${q.image_path === 'text-only'
-                  ? `<div style="padding:8px;font-size:11px;color:var(--text-muted);min-height:60px;">${(q.general_explanation || 'שאלה ' + q.question_number).slice(0, 50)}...</div>`
-                  : `<img src="${Data.imageUrl(q.image_path)}" alt="שאלה ${q.question_number}" style="width:100%;display:block;" loading="lazy" onerror="this.parentElement.innerHTML='<div style=padding:8px;font-size:11px>#${q.question_number}</div>'" />`}
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:var(--gray-50);font-size:11px;">
+              <div class="em-q-thumb" data-q-id="${q.id}" data-page="${(q.image_path || '').startsWith('pdfpage:') ? q.image_path.split(':')[1] : ''}" style="border:1px solid var(--border-soft);border-radius:8px;overflow:hidden;position:relative;min-height:80px;background:var(--gray-50);">
+                <div class="em-q-render" style="display:grid;place-items:center;min-height:70px;font-size:11px;color:var(--text-muted);">
+                  ${q.image_path === 'text-only'
+                    ? `<div style="padding:8px;">${(q.general_explanation || 'שאלה ' + q.question_number).slice(0, 50)}...</div>`
+                    : q.image_path?.startsWith('pdfpage:')
+                      ? `<div style="padding:12px;text-align:center;">📄 טוען עמוד ${q.image_path.split(':')[1]}...</div>`
+                      : `<img src="${Data.imageUrl(q.image_path)}" alt="שאלה ${q.question_number}" style="width:100%;display:block;" loading="lazy" />`}
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:var(--gray-100);font-size:11px;">
                   <span>#${q.question_number}</span>
                   <button class="em-q-delete" data-q-id="${q.id}" data-q-num="${q.question_number}" title="מחק שאלה" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:14px;">✕</button>
                 </div>
               </div>
             `).join('');
+
+            // Render PDF pages for pdfpage: questions
+            const pdfPageThumbs = grid.querySelectorAll('.em-q-thumb[data-page]');
+            if (pdfPageThumbs.length) {
+              const userId = state.user?.id;
+              const pdfUrl = examPdfUrl(userId, examId);
+              for (const thumb of pdfPageThumbs) {
+                const pageNum = parseInt(thumb.dataset.page);
+                if (!pageNum) continue;
+                const renderEl = thumb.querySelector('.em-q-render');
+                try {
+                  const canvas = await renderPdfPage(pdfUrl, pageNum, 1);
+                  if (canvas) {
+                    canvas.style.cssText = 'width:100%;display:block;border-radius:4px;';
+                    renderEl.innerHTML = '';
+                    renderEl.appendChild(canvas);
+                  }
+                } catch (e) {
+                  renderEl.innerHTML = `<div style="padding:8px;font-size:11px;">שאלה #${thumb.querySelector('span')?.textContent?.replace('#','') || ''}</div>`;
+                }
+              }
+            }
 
             // Wire question click → open viewer
             grid.querySelectorAll('.em-q-thumb').forEach(thumb => {
@@ -2386,7 +2444,8 @@ function showExamManagementModal(courseId) {
 // Question viewer lightbox — full-size image with delete option
 function showQuestionViewer(q, courseId, onDelete) {
   const isTextOnly = q.image_path === 'text-only';
-  const imgSrc = isTextOnly ? null : Data.imageUrl(q.image_path, courseId);
+  const isPdfPage = q.image_path?.startsWith?.('pdfpage:');
+  const imgSrc = (isTextOnly || isPdfPage) ? null : Data.imageUrl(q.image_path, courseId);
   const viewer = document.createElement('div');
   viewer.className = 'modal-backdrop';
   viewer.style.cssText = 'z-index:10000;display:flex;align-items:center;justify-content:center;';
@@ -2401,12 +2460,32 @@ function showQuestionViewer(q, courseId, onDelete) {
       </div>
       ${isTextOnly
         ? `<div style="padding:24px;font-size:15px;line-height:1.8;direction:rtl;">${escapeHtml(q.general_explanation || 'שאלה ללא תמונה')}</div>`
-        : `<img src="${imgSrc}" alt="שאלה" style="width:100%;display:block;border-radius:0 0 16px 16px;" />`}
+        : isPdfPage
+          ? `<div id="qv-pdf-container" style="display:grid;place-items:center;padding:24px;min-height:200px;"><p class="muted">📄 טוען עמוד...</p></div>`
+          : `<img src="${imgSrc}" alt="שאלה" style="width:100%;display:block;border-radius:0 0 16px 16px;" />`}
     </div>
   `;
   document.body.appendChild(viewer);
   viewer.querySelector('#qv-close').addEventListener('click', () => viewer.remove());
   viewer.addEventListener('click', (e) => { if (e.target === viewer) viewer.remove(); });
+
+  // Render PDF page in viewer
+  if (isPdfPage) {
+    const pageNum = parseInt(q.image_path.split(':')[1]) || 1;
+    const userId = state.user?.id || q.user_id;
+    const pdfUrl = examPdfUrl(userId, q.exam_id);
+    const container = viewer.querySelector('#qv-pdf-container');
+    renderPdfPage(pdfUrl, pageNum, 2).then(canvas => {
+      if (canvas && container) {
+        canvas.style.cssText = 'width:100%;display:block;border-radius:0 0 16px 16px;';
+        container.innerHTML = '';
+        container.style.padding = '0';
+        container.appendChild(canvas);
+      } else if (container) {
+        container.innerHTML = '<p class="muted">לא ניתן לטעון את העמוד.</p>';
+      }
+    });
+  }
 
   const delBtn = viewer.querySelector('#qv-delete');
   if (delBtn && onDelete) {
