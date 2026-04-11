@@ -1752,25 +1752,26 @@ async function renderCourseDashboard() {
     </div>
   `;
 
-  // Quick actions — 4 clear tiles
+  // Quick actions — 6 tiles, consistent for all courses
   const isUserCourse = !state.course.isBuiltin;
+  const examCount = questions.length;
+  const examFileCount = exams.length;
   document.getElementById('cd-actions').innerHTML = `
     <button class="action-tile action-tile-featured" data-action="practice">
       <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>
       <strong>תרגול חופשי</strong>
       <small>בחר גודל מקבץ והתחל לתרגל</small>
     </button>
-    ${isUserCourse ? `
-    <button class="action-tile action-tile-upload" data-action="upload">
-      <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
-      <strong>העלאת מבחן PDF</strong>
-      <small>העלה מבחן + פתרון</small>
-    </button>` : `
+    <button class="action-tile ${isUserCourse ? 'action-tile-upload' : ''}" data-action="${isUserCourse ? 'upload' : 'exams'}">
+      <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+      <strong>${isUserCourse ? 'ניהול מבחנים' : 'בנק השאלות'}</strong>
+      <small>${isUserCourse ? 'העלאה, צפייה ומחיקת מבחנים' : `${examFileCount} מבחנים · ${examCount} שאלות`}</small>
+    </button>
     <button class="action-tile" data-action="lab">
       <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.58 16.5h12.85"/></svg></span>
       <strong>מעבדה חכמה</strong>
       <small>מבחני דמה + יוצר שאלות</small>
-    </button>`}
+    </button>
     <button class="action-tile" data-action="insights">
       <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
       <strong>תובנות וניתוח</strong>
@@ -1781,43 +1782,25 @@ async function renderCourseDashboard() {
       <strong>ההתקדמות שלי</strong>
       <small>סטטיסטיקה, רצף וטיפים</small>
     </button>
+    <button class="action-tile" data-action="study">
+      <span class="action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+      <strong>לימוד מסיכום</strong>
+      <small>שאלות + כרטיסיות + מתאר</small>
+    </button>
   `;
 
   document.querySelectorAll('#cd-actions .action-tile').forEach(tile => {
     tile.addEventListener('click', () => {
       const action = tile.dataset.action;
-      if (action === 'upload') showUploadPdfModal(cid);
+      if (action === 'upload') showExamManagementModal(cid);
+      else if (action === 'exams') showExamManagementModal(cid);
       else if (action === 'practice') showBatchModal();
       else if (action === 'lab') navigate(`/course/${cid}/lab`);
       else if (action === 'insights') navigate(`/course/${cid}/insights`);
       else if (action === 'progress') navigate(`/course/${cid}/progress`);
+      else if (action === 'study') navigate('/study');
     });
   });
-
-  // ===== Exams section =====
-  const examsEl = document.getElementById('cd-exams');
-  const examsTitle = document.getElementById('cd-exams-title');
-  if (state.course.isBuiltin) {
-    if (examsTitle) examsTitle.textContent = 'מבחנים בקורס';
-    if (examsEl && Data.metadata?.exams?.length) {
-      examsEl.innerHTML = Data.metadata.exams.map(ex => `
-        <div class="exam-row">
-          <div class="batch-row">
-            <div class="batch-score" style="font-size:14px;">
-              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            </div>
-            <div class="batch-info" style="flex:1;">
-              <div class="batch-summary">${escapeHtml(ex.label)}</div>
-              <div class="batch-date">${ex.questions.length} שאלות</div>
-            </div>
-          </div>
-        </div>
-      `).join('');
-    }
-  } else {
-    if (examsTitle) examsTitle.textContent = 'מבחנים שהעליתי';
-    loadCourseExams(cid, examsEl);
-  }
 
   // ===== Recent batches section =====
   const batches = batchesForCourse(uid, cid);
@@ -2008,6 +1991,64 @@ async function loadCourseExams(courseId, containerEl) {
     });
   } catch (e) {
     pdfsEl.innerHTML = '<p class="muted">שגיאה בטעינת מבחנים.</p>';
+  }
+}
+
+// Exam management modal — shows exam list with upload, expand, delete
+function showExamManagementModal(courseId) {
+  const isBuiltin = state.course?.isBuiltin;
+  const html = `
+    <div class="modal-backdrop" id="exam-mgmt-modal">
+      <div class="modal" style="max-width:600px;">
+        <button class="modal-close" id="em-close">✕</button>
+        <h2>${isBuiltin ? 'בנק השאלות' : 'ניהול מבחנים'}</h2>
+        <p class="modal-sub">${isBuiltin ? 'כל המבחנים והשאלות בקורס' : 'העלאה, צפייה ומחיקת מבחנים'}</p>
+        ${!isBuiltin ? `<button class="btn btn-primary btn-block" id="em-upload" style="margin-bottom:16px;">📤 העלאת מבחן PDF חדש</button>` : ''}
+        <div id="em-list" style="max-height:50vh;overflow-y:auto;"></div>
+      </div>
+    </div>
+  `;
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  document.body.appendChild(container.firstElementChild);
+  const modal = document.getElementById('exam-mgmt-modal');
+  const close = () => modal.remove();
+  document.getElementById('em-close').addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+  // Upload button
+  const uploadBtn = document.getElementById('em-upload');
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', () => {
+      close();
+      showUploadPdfModal(courseId);
+    });
+  }
+
+  // Load exam list into modal
+  const listEl = document.getElementById('em-list');
+  if (isBuiltin) {
+    // Built-in: show static exams
+    if (Data.metadata?.exams?.length) {
+      listEl.innerHTML = Data.metadata.exams.map(ex => `
+        <div class="exam-row">
+          <div class="batch-row">
+            <div class="batch-score" style="font-size:14px;">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="batch-info" style="flex:1;">
+              <div class="batch-summary">${escapeHtml(ex.label)}</div>
+              <div class="batch-date">${ex.questions.length} שאלות</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      listEl.innerHTML = '<p class="muted" style="text-align:center;padding:20px;">אין מבחנים בקורס.</p>';
+    }
+  } else {
+    // User course: load from API
+    loadCourseExams(courseId, listEl);
   }
 }
 
@@ -2255,37 +2296,20 @@ function showUploadPdfModal(courseId) {
       await new Promise(r => setTimeout(r, 600));
       close();
 
-      // Refresh the exam list directly (simpler + more reliable than full re-render)
+      // Refresh data and reopen exam management modal
       Data._loadedSet.delete(courseId);
-      const newExamId = res.data.exam_id;
-
-      // If already on course page, just refresh the exam list in-place
-      if (document.getElementById('cd-exams')) {
-        await loadCourseExams(courseId);
-        // Animate the new exam row sliding in
-        const newRow = document.querySelector(`[data-exam-id="${newExamId}"]`);
-        if (newRow) {
-          newRow.style.animation = 'slideInDown 0.4s ease-out';
-          newRow.style.background = 'var(--brand-50, #eff6ff)';
-          setTimeout(() => { newRow.style.background = ''; }, 2000);
-          newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        // Also update the stats counters
-        try {
-          await Data.ensureLoaded(courseId);
-          const qs = questionsForCourse(courseId);
-          const exs = examsForCourse(courseId);
-          const statsEl = document.getElementById('cd-stats');
-          if (statsEl) {
-            const metricValues = statsEl.querySelectorAll('.metric-value');
-            const metricSubs = statsEl.querySelectorAll('.metric-sub');
-            if (metricValues[0]) metricValues[0].textContent = qs.length;
-            if (metricSubs[0]) metricSubs[0].textContent = `${exs.length} מבחנים`;
-          }
-        } catch {}
-      } else {
-        // Not on course page — navigate to it
-        navigate(`/course/${courseId}`);
+      try { await Data.ensureLoaded(courseId); } catch {}
+      // Reopen the exam management modal to show the new exam
+      showExamManagementModal(courseId);
+      // Update stats on course page if visible
+      const statsEl = document.getElementById('cd-stats');
+      if (statsEl) {
+        const qs = questionsForCourse(courseId);
+        const exs = examsForCourse(courseId);
+        const metricValues = statsEl.querySelectorAll('.metric-value');
+        const metricSubs = statsEl.querySelectorAll('.metric-sub');
+        if (metricValues[0]) metricValues[0].textContent = qs.length;
+        if (metricSubs[0]) metricSubs[0].textContent = `${exs.length} מבחנים`;
       }
     } catch (err) {
       if (processingInterval) clearInterval(processingInterval);

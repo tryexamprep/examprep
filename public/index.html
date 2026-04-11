@@ -13,7 +13,7 @@
   <meta property="og:image" content="/public/images/hero.png" />
   <meta property="og:type" content="website" />
   <link rel="manifest" href="/public/manifest.json" />
-  <link rel="stylesheet" href="/public/styles.css?v=20260411-1" />
+  <link rel="stylesheet" href="/public/styles.css?v=20260411-2" />
   <script src="/public/config.js"></script>
   <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -1014,12 +1014,7 @@
         </div>
         <div class="course-actions-grid cd-actions" id="cd-actions"></div>
 
-        <div class="section-h" id="cd-exams-header">
-          <h2 id="cd-exams-title">מבחנים בקורס</h2>
-        </div>
-        <div class="cd-card-section" id="cd-exams"></div>
-
-        <div class="section-h" id="cd-batches-header" style="display:none">
+        <div id="cd-batches-header" class="section-h" style="display:none">
           <h2>היסטוריית תרגול</h2>
         </div>
         <div class="cd-card-section" id="cd-batches"></div>
@@ -2026,7 +2021,7 @@
     })();
   </script>
 
-  <script src="/public/app.js?v=20260411-1" type="module"></script>
+  <script src="/public/app.js?v=20260411-2" type="module"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/public/sw.js').catch(function(){});
