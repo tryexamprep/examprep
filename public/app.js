@@ -7,6 +7,69 @@
 // real users.
 // =====================================================
 
+// ===== CSP-compatible inline style shim =====
+// Strict CSP blocks `style="..."` attributes (style-src without 'unsafe-inline').
+// This shim intercepts every `innerHTML = …` assignment, extracts the inline
+// style strings into a side table, replaces them with `data-xs="<idx>"`, lets
+// the browser parse the sanitized HTML, and then applies the captured styles
+// through the CSSStyleDeclaration API (which CSP does *not* gate). It also
+// sweeps any elements already in the DOM from the initial index.html parse.
+(function installStyleShim() {
+  const origDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+  if (!origDesc?.set) return;
+
+  function applyStyleString(el, styleText) {
+    for (const rule of styleText.split(';')) {
+      const colonIdx = rule.indexOf(':');
+      if (colonIdx === -1) continue;
+      const prop = rule.slice(0, colonIdx).trim();
+      const val = rule.slice(colonIdx + 1).trim();
+      if (!prop || !val) continue;
+      if (prop.startsWith('--')) {
+        el.style.setProperty(prop, val);
+      } else {
+        try { el.style[prop.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = val; } catch {}
+      }
+    }
+  }
+
+  Object.defineProperty(Element.prototype, 'innerHTML', {
+    set(html) {
+      const extracted = [];
+      const processed = String(html).replace(/style=(?:"([^"]*)"|'([^']*)')/g, (_, dq, sq) => {
+        const idx = extracted.length;
+        extracted.push(dq != null ? dq : sq);
+        return 'data-xs="' + idx + '"';
+      });
+      origDesc.set.call(this, processed);
+      if (!extracted.length) return;
+      const toProcess = this.querySelectorAll('[data-xs]');
+      for (const el of toProcess) {
+        const idx = Number(el.getAttribute('data-xs'));
+        const style = extracted[idx];
+        if (style != null) applyStyleString(el, style);
+        el.removeAttribute('data-xs');
+      }
+    },
+    get: origDesc.get,
+    configurable: true,
+  });
+
+  // One-shot sweep for any inline styles already present from the initial HTML parse.
+  // Runs as early as possible — module scripts are deferred, so the DOM is built
+  // by now, but first paint typically hasn't happened yet.
+  const sweepExisting = () => {
+    for (const el of document.querySelectorAll('[style]')) {
+      const s = el.getAttribute('style');
+      if (s) applyStyleString(el, s);
+    }
+  };
+  sweepExisting();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', sweepExisting, { once: true });
+  }
+})();
+
 // ===== Globals =====
 const $app = document.getElementById('app');
 
@@ -1746,7 +1809,12 @@ async function renderDashboard() {
         <button class="course-action-item danger" data-act="delete">🗑️ מחק קורס</button>
       `;
       // Position near button
-      menu.style.cssText = 'position:absolute;top:100%;left:8px;z-index:100;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:4px;min-width:160px;';
+      Object.assign(menu.style, {
+        position: 'absolute', top: '100%', left: '8px', zIndex: '100',
+        background: '#fff', border: '1px solid var(--border)',
+        borderRadius: '10px', boxShadow: 'var(--shadow-lg)',
+        padding: '4px', minWidth: '160px',
+      });
       btn.style.position = 'relative';
       btn.appendChild(menu);
 
@@ -2447,7 +2515,10 @@ function showQuestionViewer(q, courseId, onDelete) {
   const imgSrc = isTextOnly ? null : (q.image_path?.startsWith('http') ? q.image_path : Data.imageUrl(q.image_path, courseId));
   const viewer = document.createElement('div');
   viewer.className = 'modal-backdrop';
-  viewer.style.cssText = 'z-index:10000;display:flex;align-items:center;justify-content:center;';
+  Object.assign(viewer.style, {
+    zIndex: '10000', display: 'flex',
+    alignItems: 'center', justifyContent: 'center',
+  });
   viewer.innerHTML = `
     <div style="background:#fff;border-radius:16px;max-width:90vw;max-height:90vh;overflow:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.3);padding:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-soft);position:sticky;top:0;background:#fff;z-index:1;border-radius:16px 16px 0 0;">
