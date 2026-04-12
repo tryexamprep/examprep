@@ -13,7 +13,7 @@
   <meta property="og:image" content="/public/images/hero.webp" />
   <meta property="og:type" content="website" />
   <link rel="manifest" href="/public/manifest.json" />
-  <link rel="stylesheet" href="/public/styles.css?v=20260412-6" />
+  <link rel="stylesheet" href="/public/styles.css?v=20260412-7" />
   <script src="/public/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
@@ -2019,32 +2019,30 @@
     })();
   </script>
 
-  <script src="/public/app.js?v=20260412-6" type="module"></script>
+  <script src="/public/app.js?v=20260412-7" type="module"></script>
   <script>
-    // SW cleanup: unregister any existing service worker and delete all caches.
-    // Old versions had a network-first fetch handler that broke mobile on slow
-    // networks (returned undefined on cache miss + network fail). Until we have
-    // a reliable offline story, we run the browser's native network stack.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        var reloadAfter = false;
-        for (var i = 0; i < regs.length; i++) {
-          regs[i].unregister();
-          reloadAfter = true;
-        }
+    // SW cleanup: unregister any existing service worker and delete all caches,
+    // then (once per session) reload so the current page is no longer controlled
+    // by the old SW. Old versions had a network-first fetch handler that could
+    // intercept cross-origin Supabase calls and return undefined on slow networks,
+    // making login hang until our client-side timeout fired.
+    (async function swCleanup() {
+      if (!('serviceWorker' in navigator)) return;
+      try {
+        var regs = await navigator.serviceWorker.getRegistrations();
+        var hadSW = regs.length > 0 || !!navigator.serviceWorker.controller;
+        // Wait for every unregister to complete before reloading
+        await Promise.all(regs.map(function(r) { return r.unregister(); }));
         if ('caches' in window) {
-          caches.keys().then(function(keys) {
-            for (var i = 0; i < keys.length; i++) caches.delete(keys[i]);
-          });
+          var keys = await caches.keys();
+          await Promise.all(keys.map(function(k) { return caches.delete(k); }));
         }
-        // One-shot reload if we unregistered an old SW, so the current page
-        // stops being controlled by it. sessionStorage guards against a loop.
-        if (reloadAfter && !sessionStorage.getItem('sw_cleaned_v1')) {
-          sessionStorage.setItem('sw_cleaned_v1', '1');
+        if (hadSW && !sessionStorage.getItem('sw_cleaned_v2')) {
+          sessionStorage.setItem('sw_cleaned_v2', '1');
           location.reload();
         }
-      }).catch(function(){});
-    }
+      } catch (e) {}
+    })();
     // Capture beforeinstallprompt for later use
     window.__pwaPrompt = null;
     window.addEventListener('beforeinstallprompt', function(e) {
