@@ -246,6 +246,10 @@ const Auth = {
     try { return JSON.parse(localStorage.getItem(this.KEY)); } catch { return null; }
   },
   save(user) { localStorage.setItem(this.KEY, JSON.stringify(user)); },
+  // Local-only clear — removes cached user but does NOT call sb.auth.signOut().
+  // Use from inside the onAuthStateChange('SIGNED_OUT') handler to avoid an
+  // infinite loop (signOut → SIGNED_OUT → clear → signOut → ...).
+  clearLocal() { localStorage.removeItem(this.KEY); },
   clear() { localStorage.removeItem(this.KEY); const sb = getSbClient(); if (sb) sb.auth.signOut(); },
 
   async login(email, password) {
@@ -5398,7 +5402,7 @@ function updateSelfTestResult(answers) {
           navigate('/dashboard');
         }
       } else if (event === 'SIGNED_OUT') {
-        Auth.clear();
+        Auth.clearLocal();
         state.user = null;
         navigate('/');
       }
