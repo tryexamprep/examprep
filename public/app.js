@@ -233,7 +233,19 @@ let _sbClient = null;
 function getSbClient() {
   if (_sbClient) return _sbClient;
   if (_sbConfig.SUPABASE_URL && _sbConfig.SUPABASE_ANON_KEY && window.supabase) {
-    _sbClient = window.supabase.createClient(_sbConfig.SUPABASE_URL, _sbConfig.SUPABASE_ANON_KEY);
+    _sbClient = window.supabase.createClient(_sbConfig.SUPABASE_URL, _sbConfig.SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        // No-op lock: bypass Supabase's navigator.locks-based serialization.
+        // The default lock implementation has deadlocked in some browser states
+        // (incognito, strict storage policies, multi-tab races), leaving
+        // getSession() pending forever and blocking every subsequent auth call —
+        // including signInWithPassword — behind the same lock.
+        lock: (name, acquireTimeout, fn) => fn(),
+      },
+    });
   }
   return _sbClient;
 }
