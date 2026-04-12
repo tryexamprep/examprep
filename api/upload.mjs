@@ -591,31 +591,36 @@ async function analyzeExamWithGemini(examPdfBase64, solPdfBase64) {
   const apiKey = (process.env.GEMINI_API_KEY || '').replace(/\\n/g, '').trim();
   if (!apiKey) return null;
 
-  const prompt = `Analyze this Hebrew university exam PDF. Extract ONLY multiple-choice questions (שאלות סגורות / שאלות אמריקאיות).
+  const prompt = `Analyze this Hebrew university exam PDF. Find EVERY multiple-choice question (שאלות אמריקאיות / שאלות סגורות).
 
-WHAT IS AN MCQ:
-- Has "שאלה X:" or "סעיף X" header
-- Has 3-5 options labeled 1-4 or א-ד
-- Student picks ONE answer
+A multiple-choice question has ALL of:
+1. A question number (e.g. "שאלה 1", "שאלה 2", or "סעיף א")
+2. 3-5 answer options labeled either 1./2./3./4. OR א./ב./ג./ד.
+3. The student picks ONE answer
 
-SKIP:
-- Open questions (הוכיחו, הראו, הפריכו, חשבו, השלימו, הסבירו)
-- Proof/design questions
-- Instructions page (page 1)
-- Blank answer-box questions
+BE EXHAUSTIVE. Return EVERY question that matches. This is CRITICAL:
+- Do NOT skip a question because its stem contains words like הוכיחו, הראו, הפריכו, חשבו, השלימו, הסבירו — MCQs often use these words inside the stem or inside their answer options.
+- Include questions even if you are only ~80% sure they are MCQs.
+- Scan ALL pages, including page 1.
+- If questions are numbered 1..N, you should generally return N objects.
+
+ONLY skip a question if:
+- It has NO answer options at all (just a blank writing space)
+- It sits under an explicit "שאלות פתוחות" section header
+- It is pure instructions / cover page with no question stem
 
 For EACH MCQ return:
 {
-  "n": question number as printed,
-  "page": PDF page number (1-based),
-  "y_top": percentage from top of page where the question HEADER starts (0-100),
-  "y_bottom": percentage from top of page where the LAST option ends (0-100),
+  "n": question number (integer as printed),
+  "page": PDF page number (1-based integer),
+  "y_top": percentage from top where the "שאלה N" header starts (0-100),
+  "y_bottom": percentage from top where the LAST option ends (0-100),
   "correct": correct answer index (1-4) if known, else null,
-  "page_w": page width in points (typically 595 for A4),
-  "page_h": page height in points (typically 842 for A4)
+  "page_w": page width in points (usually 595),
+  "page_h": page height in points (usually 842)
 }
 
-Return a JSON array only.`;
+Return ONLY a JSON array. Be complete — if the exam has 10 questions, return 10 objects.`;
 
   const parts = [
     { text: prompt },
@@ -841,12 +846,20 @@ export default async function handler(req, res) {
       }
     }
 
-    // Update exam status — always 'ready' after processing (even with 0 questions)
+    // Update exam status — always 'ready' after processing (even with 0 questions).
+    // If detection looks incomplete, persist a one-line debug summary so we can
+    // diagnose post-hoc without relying on Vercel log surfacing.
+    const suspicious = mcqs.length < 3 ||
+      (geminiMcqs.length > 0 && mcqs.length < geminiMcqs.length);
+    const debugLine = `tl=${textLayerMcqs.length}[${textLayerMcqs.map(q => q.number).join(',')}] ` +
+                      `gem=${geminiMcqs.length}[${geminiMcqs.map(q => q.number).join(',')}] ` +
+                      `mode=${mode}`;
     await auth.db.from('ep_exams').update({
       status: 'ready',
       question_count: mcqs.length,
       total_pages: positions?.length || null,
       processed_at: new Date().toISOString(),
+      ...(suspicious && { error_message: debugLine }),
     }).eq('id', exam.id);
 
     // Update course counters
