@@ -265,29 +265,83 @@ const Auth = {
   clear() { localStorage.removeItem(this.KEY); const sb = getSbClient(); if (sb) sb.auth.signOut(); },
 
   async login(email, password) {
-    const sb = getSbClient();
-    if (!sb) throw new Error('מערכת האימות לא זמינה כרגע');
-    // Hard 15s timeout on the auth call — if gotrue-js's navigator.locks gets
-    // orphaned, the underlying promise can hang forever. This wrapper forces
-    // the button to revert to an actionable state instead of "מתחבר..." stuck.
-    const withTimeout = (p, ms, label) => Promise.race([
-      p,
-      new Promise((_, rej) => setTimeout(() => rej(new Error(label + ' לא הגיב — נסה שוב')), ms)),
-    ]);
-    const { data, error } = await withTimeout(
-      sb.auth.signInWithPassword({ email, password }),
-      15000, 'שרת האימות'
-    );
-    if (error) throw new Error(error.message === 'Invalid login credentials' ? 'אימייל או סיסמה שגויים' : error.message);
-    // Profile fetch is best-effort with a 5s cap — failure must NOT block login.
+    // Direct REST call to GoTrue, bypassing supabase-js entirely. Any stale
+    // service worker, gotrue navigator.locks deadlock, or session-restore
+    // promise can't interfere with this path because it goes straight through
+    // the browser's native fetch with an AbortController kill-switch.
+    const cfg = window.APP_CONFIG || {};
+    if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) {
+      throw new Error('מערכת האימות לא זמינה כרגע');
+    }
+    const ctrl = new AbortController();
+    const killer = setTimeout(() => ctrl.abort(), 15000);
+    let res;
+    try {
+      res = await fetch(`${cfg.SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': cfg.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${cfg.SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ email, password }),
+        signal: ctrl.signal,
+        cache: 'no-store',
+      });
+    } catch (e) {
+      clearTimeout(killer);
+      if (e.name === 'AbortError') throw new Error('שרת האימות לא הגיב — נסה שוב');
+      throw new Error('שגיאת רשת — בדוק חיבור לאינטרנט');
+    }
+    clearTimeout(killer);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = (body.error_description || body.msg || body.error || '').toLowerCase();
+      if (msg.includes('invalid') || msg.includes('credentials')) {
+        throw new Error('אימייל או סיסמה שגויים');
+      }
+      throw new Error(body.error_description || body.msg || 'שגיאת אימות');
+    }
+    // Persist the session into the same localStorage key supabase-js uses,
+    // so subsequent getSession()/API calls pick it up automatically. The key
+    // format is "sb-<project-ref>-auth-token".
+    try {
+      const ref = cfg.SUPABASE_URL.match(/https:\/\/([^.]+)\./)?.[1];
+      if (ref) {
+        const session = {
+          access_token: body.access_token,
+          refresh_token: body.refresh_token,
+          expires_at: Math.floor(Date.now() / 1000) + (body.expires_in || 3600),
+          expires_in: body.expires_in,
+          token_type: body.token_type || 'bearer',
+          user: body.user,
+        };
+        localStorage.setItem(`sb-${ref}-auth-token`, JSON.stringify(session));
+      }
+    } catch {}
+    // Best-effort profile fetch via raw fetch too (5s cap)
     let profile = null;
     try {
-      profile = await withTimeout(this._fetchProfile(data.user.id), 5000, 'טעינת פרופיל');
+      const profCtrl = new AbortController();
+      const profKiller = setTimeout(() => profCtrl.abort(), 5000);
+      const pRes = await fetch(`${cfg.SUPABASE_URL}/rest/v1/profiles?id=eq.${body.user.id}&select=*`, {
+        headers: {
+          'apikey': cfg.SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${body.access_token}`,
+        },
+        signal: profCtrl.signal,
+        cache: 'no-store',
+      });
+      clearTimeout(profKiller);
+      if (pRes.ok) {
+        const arr = await pRes.json();
+        profile = arr[0] || null;
+      }
     } catch (e) { console.warn('[auth] profile fetch failed:', e.message); }
     const u = {
-      id: data.user.id,
-      email: data.user.email,
-      name: profile?.display_name || data.user.user_metadata?.username || email.split('@')[0],
+      id: body.user.id,
+      email: body.user.email,
+      name: profile?.display_name || body.user.user_metadata?.username || email.split('@')[0],
       plan: profile?.plan || 'free',
       isAdmin: profile?.is_admin || false,
     };
