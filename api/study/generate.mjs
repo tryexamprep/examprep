@@ -10,12 +10,35 @@
 // GEMINI_API_KEY must be set in Vercel env vars (free tier OK).
 // =====================================================
 
+import { createClient } from '@supabase/supabase-js';
 import { checkIpThrottle } from '../../lib/ipThrottle.mjs';
 
 export const config = {
   api: { bodyParser: false },
-  maxDuration: 60,
+  maxDuration: 120,
 };
+
+// ----- Supabase helpers -------------------------------------------------------
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+function userClient(jwt) {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${jwt}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+async function authenticate(req) {
+  const auth = req.headers['authorization'];
+  if (!auth || !auth.startsWith('Bearer ')) return null;
+  const token = auth.substring(7);
+  const client = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE || SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data?.user) return null;
+  return { userId: data.user.id, userEmail: data.user.email, userJwt: token };
+}
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MIN_TEXT = 300;
@@ -141,12 +164,12 @@ ${safe}
 }
 
 דרישות:
-- 8-12 שאלות אמריקאיות ב-questions, ברמה אקדמית, עם 4 אופציות, הסבר למה הנכונה נכונה.
-- 12-20 כרטיסיות ב-flashcards, מושג→הגדרה.
-- 3-6 פרקים ב-outline, כל אחד עם 2-4 תת-נושאים.
-- 10-20 מושגים ב-glossary.
-- 4-8 שאלות פתוחות ב-openQuestions, עם תשובות מומלצות מפורטות (3-5 משפטים כל אחת).
-- 8-10 פריטים ב-selfTest (ערבוב mcq + flashcard).
+- 5-7 שאלות אמריקאיות ב-questions, ברמה אקדמית, עם 4 אופציות, הסבר למה הנכונה נכונה.
+- 8-12 כרטיסיות ב-flashcards, מושג→הגדרה.
+- 2-4 פרקים ב-outline, כל אחד עם 2-4 תת-נושאים.
+- 6-12 מושגים ב-glossary.
+- 3-5 שאלות פתוחות ב-openQuestions, עם תשובות מומלצות מפורטות (3-5 משפטים כל אחת).
+- 5-7 פריטים ב-selfTest (ערבוב mcq + flashcard).
 - correctIdx הוא 1-בסיסי (1, 2, 3, או 4).
 - הכל בעברית. אם הסיכום באנגלית - כתוב את כל החומר באנגלית במקום.
 - אסור להמציא עובדות שלא בסיכום. הסתמך על מה שהמשתמש כתב.`;
@@ -155,7 +178,7 @@ ${safe}
 async function callGemini(summaryText, title) {
   const apiKey = process.env.GEMINI_API_KEY;
   // Try models in order of preference; each has a separate daily quota pool
-  const models = (process.env.GEMINI_MODEL || 'gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash,gemini-flash-latest').split(',');
+  const models = (process.env.GEMINI_MODEL || 'gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash,gemini-flash-latest').split(',').slice(0, 2);
   if (!apiKey) {
     throw Object.assign(new Error('GEMINI_API_KEY not configured'), { http: 503, code: 'no_api_key' });
   }
@@ -167,7 +190,7 @@ async function callGemini(summaryText, title) {
     const m = model.trim();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 55_000);
+    const t = setTimeout(() => controller.abort(), 22_000);
     let aiRes;
     try {
       console.log(`[study] trying model: ${m}`);
@@ -312,11 +335,15 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'הגעת למכסת הבקשות. נסה שוב מאוחר יותר.', reason: throttle.reason });
   }
 
+  // Authenticate user (best-effort — used for DB save; generation continues even if anonymous)
+  const authUser = await authenticate(req).catch(() => null);
+
   try {
     const ct = String(req.headers['content-type'] || '');
     let summaryText = '';
     let title = '';
     let kind = 'paste';
+    let courseId = null;
 
     const body = await rawBody(req);
     console.log(`[study] received ${body.length} bytes, content-type: ${ct.slice(0, 60)}`);
@@ -326,6 +353,7 @@ export default async function handler(req, res) {
       const parts = parseMultipart(body, ct);
       const pdfPart = parts.find(p => p.name === 'pdf' && p.filename);
       const titlePart = parts.find(p => p.name === 'title');
+      const courseIdPart = parts.find(p => p.name === 'courseId');
 
       if (!pdfPart || !pdfPart.data.length) {
         return res.status(400).json({ error: 'חסר קובץ PDF' });
@@ -350,6 +378,8 @@ export default async function handler(req, res) {
       kind = 'pdf';
       title = (titlePart?.data?.toString('utf8')?.trim()) ||
               (pdfPart.filename || 'סיכום ללא שם').replace(/\.pdf$/i, '').slice(0, 120);
+      const rawCourseId = courseIdPart?.data?.toString('utf8')?.trim();
+      if (rawCourseId && /^\d+$/.test(rawCourseId)) courseId = parseInt(rawCourseId, 10);
     } else {
       // JSON body
       let parsed;
@@ -361,6 +391,9 @@ export default async function handler(req, res) {
       }
       summaryText = parsed.text;
       title = String(parsed.title || 'סיכום ללא שם').slice(0, 120);
+      if (parsed.courseId && Number.isInteger(Number(parsed.courseId))) {
+        courseId = parseInt(parsed.courseId, 10);
+      }
     }
 
     summaryText = String(summaryText || '').trim();
@@ -371,12 +404,41 @@ export default async function handler(req, res) {
       summaryText = summaryText.slice(0, MAX_TEXT);
     }
 
-    console.log(`[study] calling AI with ${summaryText.length} chars, title: "${title}"`);
+    console.log(`[study] calling AI with ${summaryText.length} chars, title: "${title}", courseId: ${courseId}`);
     const materials = await callGemini(summaryText, title);
+
+    // Best-effort save to DB
+    let packId = null;
+    if (authUser) {
+      try {
+        const db = userClient(authUser.userJwt);
+        const { data: dbData, error: dbErr } = await db
+          .from('ep_study_packs')
+          .insert({
+            user_id: authUser.userId,
+            title,
+            source_kind: kind,
+            course_id: courseId || null,
+            materials,
+            status: 'ready',
+            processed_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+        if (dbErr) {
+          console.warn('[study] DB save failed (non-fatal):', dbErr.message);
+        } else {
+          packId = dbData?.id || null;
+          console.log(`[study] saved pack to DB with id=${packId}`);
+        }
+      } catch (e) {
+        console.warn('[study] DB save threw (non-fatal):', e?.message || e);
+      }
+    }
 
     return res.status(200).json({
       ok: true,
-      pack_id: null,
+      pack_id: packId,
       title,
       source_kind: kind,
       materials,

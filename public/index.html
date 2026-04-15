@@ -964,10 +964,10 @@
           </a>
           <nav class="topbar-nav">
             <a href="#/dashboard" class="active" data-route="/dashboard">מסך הבית</a>
-            <a href="#/study" data-route="/study">לימוד מסיכום</a>
-            <a href="#/progress" data-route="/progress">ההתקדמות שלי</a>
-            <a href="#/insights" data-route="/insights">תובנות</a>
-            <a href="#/lab" data-route="/lab">מעבדה חכמה</a>
+            <a href="#/study" data-route="/study" data-course-nav="1">לימוד מסיכום</a>
+            <a href="#/progress" data-route="/progress" data-course-nav="1">ההתקדמות שלי</a>
+            <a href="#/insights" data-route="/insights" data-course-nav="1">תובנות</a>
+            <a href="#/lab" data-route="/lab" data-course-nav="1">מעבדה חכמה</a>
           </nav>
           <div class="app-user">
             <span class="app-user-plan" id="user-plan">free</span>
@@ -987,8 +987,8 @@
         <div id="dash-stats"></div>
 
         <div class="section-h">
-          <h2>הקורסים שלי</h2>
-          <button class="btn btn-soft btn-sm" id="btn-add-course">+ הוסף קורס</button>
+          <h2>התחומים שלי</h2>
+          <button class="btn btn-soft btn-sm" id="btn-add-course">+ הוסף תחום</button>
         </div>
         <div class="courses-grid" id="dash-courses"></div>
       </main>
@@ -1117,8 +1117,168 @@
               <button class="color-swatch" data-color="#84cc16" style="background:#84cc16" title="ליים"></button>
             </div>
           </div>
+          <div class="field">
+            <label for="ac-image-url">תמונה (אופציונלי)</label>
+            <input type="url" id="ac-image-url" placeholder="https://... (קישור לתמונה מהאינטרנט)" maxlength="500" />
+            <small style="color:var(--text-muted);font-size:12px;">תמונה קטנה שתופיע על כרטיס הקורס</small>
+          </div>
           <p class="auth-error" id="ac-error"></p>
           <button class="btn btn-primary btn-block" id="ac-submit">צור קורס</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============================ -->
+  <!--   DEGREE DASHBOARD          -->
+  <!-- ============================ -->
+  <template id="tmpl-degree-dash">
+    <div class="app-screen">
+      <header class="app-topbar">
+        <div class="app-topbar-inner">
+          <a href="#/dashboard" class="logo" data-route="/dashboard">
+            <img src="/public/images/logo.png?v=20260410-8" alt="ExamPrep" class="logo-img" />
+          </a>
+          <nav class="topbar-nav">
+            <a href="#/dashboard" data-route="/dashboard" class="active">מסך הבית</a>
+          </nav>
+          <div class="app-user">
+            <span class="app-user-plan" id="user-plan">free</span>
+            <span class="app-user-name" id="user-name"></span>
+            <div class="app-user-avatar" id="user-avatar">U</div>
+            <button class="btn btn-ghost btn-sm" id="btn-logout">יציאה</button>
+          </div>
+          <button class="topbar-mobile-toggle" id="topbar-mobile-toggle" aria-label="תפריט">☰</button>
+        </div>
+      </header>
+      <main class="app-content">
+        <div class="degree-dash-header" id="degree-dash-header">
+          <a href="#/dashboard" class="cd-back" data-route="/dashboard">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            חזרה לכל התחומים
+          </a>
+          <div class="degree-dash-title-row">
+            <div class="degree-dash-color-bar" id="degree-color-bar"></div>
+            <div>
+              <h1 id="degree-dash-title">תחום</h1>
+              <p id="degree-dash-desc"></p>
+            </div>
+          </div>
+        </div>
+        <div class="section-h">
+          <h2>הקורסים בתחום</h2>
+          <button class="btn btn-soft btn-sm" id="btn-add-sub-course">+ הוסף קורס</button>
+        </div>
+        <div class="courses-grid" id="degree-courses"></div>
+      </main>
+    </div>
+  </template>
+
+  <!-- ============================ -->
+  <!--   ADD DEGREE MODAL (Chooser) -->
+  <!-- ============================ -->
+  <template id="tmpl-add-degree">
+    <div class="modal-backdrop" id="add-degree-modal">
+      <div class="modal modal-degree-chooser">
+        <button class="modal-close" id="add-degree-close">✕</button>
+        <div id="add-degree-step-choose">
+          <h2>הוסף תחום לימוד</h2>
+          <p class="modal-sub">בחר מהרשימה או צור תחום מותאם אישית</p>
+          <div class="degree-categories" id="degree-categories"></div>
+          <div class="degree-request-row">
+            <span>לא מצאת את התחום שלך?</span>
+            <button class="btn btn-ghost btn-sm" id="btn-degree-request">שלח בקשה →</button>
+            <button class="btn btn-soft btn-sm" id="btn-degree-custom">+ תחום מותאם</button>
+          </div>
+        </div>
+        <div id="add-degree-step-request" style="display:none">
+          <h2>בקשה להוספת תחום</h2>
+          <p class="modal-sub">נוסיף אותו בהקדם</p>
+          <div class="auth-form">
+            <div class="field">
+              <label for="degree-req-name">שם התחום / הקורס *</label>
+              <input type="text" id="degree-req-name" placeholder="למשל: הנדסת חשמל" maxlength="100" />
+            </div>
+            <div class="field">
+              <label for="degree-req-email">האימייל שלך (לעדכון)</label>
+              <input type="email" id="degree-req-email" placeholder="your@email.com" maxlength="320" />
+            </div>
+            <p class="auth-error" id="degree-req-error"></p>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost" id="btn-degree-req-back">חזרה</button>
+              <button class="btn btn-primary" id="btn-degree-req-send">שלח בקשה</button>
+            </div>
+          </div>
+        </div>
+        <div id="add-degree-step-custom" style="display:none">
+          <h2>תחום מותאם אישית</h2>
+          <p class="modal-sub">הגדר שם, תיאור וצבע</p>
+          <div class="auth-form">
+            <div class="field">
+              <label for="dc-name">שם התחום *</label>
+              <input type="text" id="dc-name" placeholder="למשל: מדעי החיים" maxlength="100" required />
+            </div>
+            <div class="field">
+              <label for="dc-desc">תיאור (אופציונלי)</label>
+              <textarea id="dc-desc" rows="2" placeholder="תיאור קצר" maxlength="1000"></textarea>
+            </div>
+            <div class="field">
+              <label>צבע</label>
+              <div class="color-picker" id="dc-colors">
+                <button class="color-swatch active" data-color="#3b82f6" style="background:#3b82f6" title="כחול"></button>
+                <button class="color-swatch" data-color="#10b981" style="background:#10b981" title="ירוק"></button>
+                <button class="color-swatch" data-color="#f59e0b" style="background:#f59e0b" title="כתום"></button>
+                <button class="color-swatch" data-color="#ef4444" style="background:#ef4444" title="אדום"></button>
+                <button class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6" title="סגול"></button>
+                <button class="color-swatch" data-color="#ec4899" style="background:#ec4899" title="ורוד"></button>
+                <button class="color-swatch" data-color="#06b6d4" style="background:#06b6d4" title="תכלת"></button>
+                <button class="color-swatch" data-color="#84cc16" style="background:#84cc16" title="ליים"></button>
+              </div>
+            </div>
+            <p class="auth-error" id="dc-error"></p>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost" id="btn-dc-back">חזרה</button>
+              <button class="btn btn-primary" id="dc-submit">צור תחום</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- ============================ -->
+  <!--   ADD SUB-COURSE MODAL       -->
+  <!-- ============================ -->
+  <template id="tmpl-add-sub-course">
+    <div class="modal-backdrop" id="add-sub-course-modal">
+      <div class="modal">
+        <button class="modal-close" id="asc-close">✕</button>
+        <h2>הוסף קורס לתחום</h2>
+        <p class="modal-sub" id="asc-degree-name"></p>
+        <div class="auth-form">
+          <div class="field">
+            <label for="asc-name">שם הקורס *</label>
+            <input type="text" id="asc-name" placeholder="למשל: תוכנה 1" maxlength="100" required />
+          </div>
+          <div class="field">
+            <label for="asc-desc">תיאור (אופציונלי)</label>
+            <textarea id="asc-desc" rows="2" placeholder="תיאור קצר של הקורס" maxlength="1000"></textarea>
+          </div>
+          <div class="field">
+            <label>צבע</label>
+            <div class="color-picker" id="asc-colors">
+              <button class="color-swatch active" data-color="#3b82f6" style="background:#3b82f6" title="כחול"></button>
+              <button class="color-swatch" data-color="#10b981" style="background:#10b981" title="ירוק"></button>
+              <button class="color-swatch" data-color="#f59e0b" style="background:#f59e0b" title="כתום"></button>
+              <button class="color-swatch" data-color="#ef4444" style="background:#ef4444" title="אדום"></button>
+              <button class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6" title="סגול"></button>
+              <button class="color-swatch" data-color="#ec4899" style="background:#ec4899" title="ורוד"></button>
+              <button class="color-swatch" data-color="#06b6d4" style="background:#06b6d4" title="תכלת"></button>
+              <button class="color-swatch" data-color="#84cc16" style="background:#84cc16" title="ליים"></button>
+            </div>
+          </div>
+          <p class="auth-error" id="asc-error"></p>
+          <button class="btn btn-primary btn-block" id="asc-submit">צור קורס</button>
         </div>
       </div>
     </div>
@@ -1906,16 +2066,29 @@
                 </div>
                 <div class="settings-form">
                   <div class="field">
-                    <label for="settings-name-input">שם מלא</label>
+                    <label for="settings-name-input">שם תצוגה</label>
                     <input type="text" id="settings-name-input" placeholder="השם שלך" />
-                  </div>
-                  <div class="field">
-                    <label for="settings-email-input">אימייל</label>
-                    <input type="email" id="settings-email-input" disabled />
-                    <small>האימייל לא ניתן לשינוי בשלב זה</small>
                   </div>
                   <button class="btn btn-primary" id="settings-save-profile">שמור שינויים</button>
                   <span class="settings-save-status" id="settings-save-status"></span>
+                </div>
+                <!-- Password change — hidden for Google/OAuth users, shown by JS -->
+                <div id="settings-password-section" hidden style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border-soft);">
+                  <h3 style="font-size:15px;font-weight:700;margin:0 0 4px;">שינוי סיסמה</h3>
+                  <p class="settings-help" style="margin:0 0 16px;">בחר סיסמה חדשה לחשבון שלך.</p>
+                  <div class="settings-form">
+                    <div class="field">
+                      <label for="settings-new-password">סיסמה חדשה</label>
+                      <input type="password" id="settings-new-password" placeholder="לפחות 8 תווים" autocomplete="new-password" />
+                      <span class="pw-strength-label" id="settings-pw-strength"></span>
+                    </div>
+                    <div class="field">
+                      <label for="settings-new-password2">אימות סיסמה</label>
+                      <input type="password" id="settings-new-password2" placeholder="חזור על הסיסמה" autocomplete="new-password" />
+                    </div>
+                    <button class="btn btn-outline" id="settings-save-password">שנה סיסמה</button>
+                    <span class="settings-save-status" id="settings-password-status"></span>
+                  </div>
                 </div>
               </div>
             </div>

@@ -2,35 +2,20 @@
 // Vercel Serverless Function — POST /api/client-error
 // =====================================================
 // Tiny error sink: receives client-side errors (window.onerror +
-// unhandledrejection) and logs them. No DB writes, no Supabase dependency.
-// Logs go to `console.error` which shows up in Vercel function logs.
+// unhandledrejection) and logs them. No DB writes for the error itself,
+// only a Supabase-backed throttle counter.
 //
-// Rate limiting is opportunistic: per-IP bucket in function memory. Serverless
-// instances are short-lived so this doesn't survive cold starts, but it's
-// enough to block abuse bursts within a warm container.
+// Rate limiting is global (not per-instance) via the ep_check_ip_throttle
+// RPC in lib/ipThrottle.mjs, so an attacker cannot multiply the limit by
+// hitting different Vercel instances.
 // =====================================================
+
+import { checkIpThrottle, getClientIp } from '../lib/ipThrottle.mjs';
 
 export const config = { maxDuration: 5 };
 
 const MAX_BODY_BYTES = 8 * 1024;
 const MAX_FIELD_LEN = 2000;
-const RATE_LIMIT_PER_IP = 60; // per minute
-const _ipBuckets = new Map();
-
-function clientIp(req) {
-  const fwd = req.headers['x-forwarded-for'];
-  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
-  return req.socket?.remoteAddress || 'unknown';
-}
-
-function rateLimited(ip) {
-  const now = Date.now();
-  const bucket = _ipBuckets.get(ip) || { count: 0, resetAt: now + 60_000 };
-  if (now > bucket.resetAt) { bucket.count = 0; bucket.resetAt = now + 60_000; }
-  bucket.count += 1;
-  _ipBuckets.set(ip, bucket);
-  return bucket.count > RATE_LIMIT_PER_IP;
-}
 
 function truncate(s) {
   if (typeof s !== 'string') return '';
@@ -59,15 +44,18 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'method not allowed' });
   }
-  const ip = clientIp(req);
-  if (rateLimited(ip)) {
+
+  const throttle = await checkIpThrottle(req, 'client_error', { maxDay: 200, maxWeek: 1000, blockHours: 1 });
+  if (!throttle.allowed) {
     return res.status(429).json({ error: 'rate limited' });
   }
+
   const body = await readJson(req);
   if (!body || typeof body !== 'object') {
     return res.status(400).json({ error: 'invalid body' });
   }
 
+  const ip = getClientIp(req);
   const type = truncate(body.type || 'unknown');
   const msg = truncate(body.msg || '');
   const stack = truncate(body.stack || '');

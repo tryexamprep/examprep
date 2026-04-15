@@ -94,19 +94,21 @@ function matchRoute(method, url) {
   if (method === 'POST' && p === '/attempt') return { r: 'attempt' };
   if (method === 'GET'  && p === '/study/packs') return { r: 'list-packs' };
   if (method === 'POST' && p === '/admin/switch-plan') return { r: 'admin-switch-plan' };
-  if (method === 'POST' && p === '/account/delete') return { r: 'account-delete' };
+  if ((method === 'POST' || method === 'DELETE') && p === '/account/delete') return { r: 'account-delete' };
   if (method === 'POST' && p === '/ai/generate-similar') return { r: 'ai-similar' };
 
   if (s[0] === 'courses' && s.length >= 2) {
     const cid = parseInt(s[1], 10) || s[1]; // integer for DB, fallback to string for safety
     if (s.length === 2 && method === 'DELETE') return { r: 'delete-course', cid };
     if (s.length === 2 && method === 'PATCH') return { r: 'update-course', cid };
+    if (s.length === 3 && s[2] === 'courses' && method === 'GET') return { r: 'list-sub-courses', cid };
     if (s.length === 3 && s[2] === 'exams' && method === 'GET') return { r: 'list-exams', cid };
     if (s.length === 3 && s[2] === 'questions' && method === 'GET') return { r: 'list-questions', cid };
     if (s.length === 3 && s[2] === 'review-queue' && method === 'GET') return { r: 'review-queue', cid };
     if (s.length === 3 && s[2] === 'trash' && method === 'GET') return { r: 'list-trash', cid };
     if (s.length === 4 && s[2] === 'exams' && method === 'DELETE') return { r: 'delete-exam', cid, eid: parseInt(s[3], 10) || s[3] };
     if (s.length === 4 && s[2] === 'questions' && method === 'DELETE') return { r: 'delete-question', cid, qid: parseInt(s[3], 10) || s[3] };
+    if (s.length === 4 && s[2] === 'questions' && method === 'PATCH') return { r: 'update-question', cid, qid: parseInt(s[3], 10) || s[3] };
     if (s.length === 4 && s[2] === 'trash' && s[3] === 'restore-exam' && method === 'POST') return { r: 'restore-exam', cid };
     if (s.length === 4 && s[2] === 'trash' && s[3] === 'restore-question' && method === 'POST') return { r: 'restore-question', cid };
   }
@@ -134,13 +136,14 @@ export default async function handler(req, res) {
         const exists = buckets?.some(b => b.name === 'exam-pages');
         if (!exists) {
           const { error } = await admin.storage.createBucket('exam-pages', { public: false, fileSizeLimit: 52428800 });
-          storageStatus = error ? `create failed: ${error.message}` : 'bucket created';
+          if (error) { console.error('[health] bucket create:', error.message); storageStatus = 'create failed'; }
+          else storageStatus = 'bucket created';
         } else {
           storageStatus = 'bucket exists';
         }
-      } catch (e) { storageStatus = `error: ${e.message}`; }
+      } catch (e) { console.error('[health]', e?.message || e); storageStatus = 'error'; }
     }
-    return res.json({ status: 'ok', supabase: !!admin, storage: storageStatus, quotas: Object.keys(QUOTAS) });
+    return res.json({ status: 'ok', supabase: !!admin, storage: storageStatus });
   }
 
   const auth = await authenticate(req);
@@ -153,31 +156,91 @@ export default async function handler(req, res) {
       return res.json({ profile: publicProfile(profile), quotas: QUOTAS[profile.plan || 'free'] });
     }
     case 'list-courses': {
-      const { data, error } = await auth.db.from('ep_courses').select('*').order('created_at', { ascending: false });
-      if (error) return dbErr(res, 'list courses', error);
+      // Prefer top-level only (parent_id IS NULL). Falls back to all courses if
+      // the column doesn't exist yet (migration not applied).
+      let { data, error } = await auth.db.from('ep_courses').select('*').is('parent_id', null).order('created_at', { ascending: false });
+      if (error) {
+        // Column may not exist — fall back to returning everything
+        ({ data, error } = await auth.db.from('ep_courses').select('*').order('created_at', { ascending: false }));
+        if (error) return dbErr(res, 'list courses', error);
+      }
+      try {
+        const [{ data: qRows }, { data: eRows }] = await Promise.all([
+          auth.db.from('ep_questions').select('course_id').is('deleted_at', null),
+          auth.db.from('ep_exams').select('course_id').is('deleted_at', null),
+        ]);
+        const qByCourse = {}, eByCourse = {};
+        for (const r of qRows || []) qByCourse[r.course_id] = (qByCourse[r.course_id] || 0) + 1;
+        for (const r of eRows || []) eByCourse[r.course_id] = (eByCourse[r.course_id] || 0) + 1;
+        // child_count — only attempt if column exists (migration applied)
+        let childCount = {};
+        try {
+          const { data: childRows } = await auth.db.from('ep_courses').select('parent_id').not('parent_id', 'is', null);
+          for (const r of childRows || []) childCount[r.parent_id] = (childCount[r.parent_id] || 0) + 1;
+        } catch {}
+        for (const c of data || []) {
+          c.total_questions = qByCourse[c.id] || 0;
+          c.total_pdfs = eByCourse[c.id] || 0;
+          c.child_count = childCount[c.id] || 0;
+        }
+      } catch (e) {
+        console.warn('[list-courses] recompute failed:', e?.message || e);
+      }
+      return res.json(data || []);
+    }
+    case 'list-sub-courses': {
+      // Returns [] if parent_id column doesn't exist yet
+      const { data, error } = await auth.db.from('ep_courses').select('*')
+        .eq('parent_id', m.cid).eq('user_id', auth.userId)
+        .order('created_at', { ascending: false });
+      if (error) return res.json([]); // column may not exist yet
+      try {
+        const ids = (data || []).map(c => c.id);
+        if (ids.length) {
+          const [{ data: qRows }, { data: eRows }] = await Promise.all([
+            auth.db.from('ep_questions').select('course_id').in('course_id', ids).is('deleted_at', null),
+            auth.db.from('ep_exams').select('course_id').in('course_id', ids).is('deleted_at', null),
+          ]);
+          const qByCourse = {}, eByCourse = {};
+          for (const r of qRows || []) qByCourse[r.course_id] = (qByCourse[r.course_id] || 0) + 1;
+          for (const r of eRows || []) eByCourse[r.course_id] = (eByCourse[r.course_id] || 0) + 1;
+          for (const c of data || []) {
+            c.total_questions = qByCourse[c.id] || 0;
+            c.total_pdfs = eByCourse[c.id] || 0;
+          }
+        }
+      } catch (e) { console.warn('[list-sub-courses] recompute failed:', e?.message || e); }
       return res.json(data || []);
     }
     case 'create-course': {
-      const { name, description, color } = req.body || {};
+      const { name, description, color, image_url, parent_id, is_degree } = req.body || {};
       if (typeof name !== 'string' || name.length < 2 || name.length > 100)
         return res.status(400).json({ error: 'שם קורס לא תקין' });
       if (description != null && (typeof description !== 'string' || description.length > 1000))
         return res.status(400).json({ error: 'תיאור לא תקין' });
       if (color != null && (typeof color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color)))
         return res.status(400).json({ error: 'צבע לא תקין' });
+      if (image_url != null && (typeof image_url !== 'string' || image_url.length > 500 || !/^https?:\/\//.test(image_url)))
+        return res.status(400).json({ error: 'כתובת תמונה לא תקינה' });
+      if (parent_id != null) {
+        const { data: parent } = await auth.db.from('ep_courses').select('id').eq('id', parent_id).eq('user_id', auth.userId).maybeSingle();
+        if (!parent) return res.status(400).json({ error: 'קורס האב לא נמצא' });
+      }
 
       const profile = await getUserProfile(auth.userId, auth.db);
-      if (profile) {
+      if (profile && !parent_id) {
+        // Quota only counts top-level degrees/courses
         const quota = QUOTAS[profile.plan || 'free'];
-        const { count, error: ce } = await auth.db.from('ep_courses').select('id', { count: 'exact', head: true });
+        const { count, error: ce } = await auth.db.from('ep_courses').select('id', { count: 'exact', head: true }).is('parent_id', null);
         if (ce) return dbErr(res, 'count courses', ce);
         if (quota.courses !== -1 && count >= quota.courses)
           return res.status(403).json({ error: `הגעת למגבלת הקורסים (${quota.courses}). שדרג לחבילה גדולה יותר.` });
       }
 
-      const { data, error } = await auth.db.from('ep_courses')
-        .insert({ user_id: auth.userId, name, description: description || null, color: color || '#3b82f6' })
-        .select().single();
+      const insertData = { user_id: auth.userId, name, description: description || null, color: color || '#3b82f6', image_url: image_url || null };
+      if (parent_id) insertData.parent_id = parent_id;
+      if (is_degree) insertData.is_degree = true;
+      const { data, error } = await auth.db.from('ep_courses').insert(insertData).select().single();
       if (error) return dbErr(res, 'insert course', error);
       return res.json(data);
     }
@@ -214,7 +277,7 @@ export default async function handler(req, res) {
         await auth.db.from('ep_questions').delete()
           .eq('course_id', m.cid).not('deleted_at', 'is', null).lt('deleted_at', purgeDate);
         const { data, error } = await auth.db.from('ep_questions')
-          .select('id, exam_id, course_id, user_id, question_number, section_label, image_path, num_options, correct_idx, option_labels, general_explanation, topic, created_at')
+          .select('*')
           .eq('course_id', m.cid).is('deleted_at', null)
           .order('exam_id', { ascending: true }).order('question_number', { ascending: true });
         if (error) return dbErr(res, 'list-questions', error);
@@ -247,14 +310,14 @@ export default async function handler(req, res) {
     case 'delete-exam': {
       try {
         const { data: exam, error: fe } = await auth.db.from('ep_exams').select('*')
-          .eq('id', m.eid).eq('course_id', m.cid).is('deleted_at', null).maybeSingle();
+          .eq('id', m.eid).eq('course_id', m.cid).eq('user_id', auth.userId).is('deleted_at', null).maybeSingle();
         if (fe) return dbErr(res, 'fetch exam', fe);
         if (!exam) return res.status(404).json({ error: 'מבחן לא נמצא' });
         // Soft-delete: mark exam and all its questions with deleted_at timestamp
         const now = new Date().toISOString();
         const [{ error: de }, { error: dq }] = await Promise.all([
-          auth.db.from('ep_exams').update({ deleted_at: now }).eq('id', m.eid).eq('course_id', m.cid),
-          auth.db.from('ep_questions').update({ deleted_at: now }).eq('exam_id', m.eid).eq('course_id', m.cid),
+          auth.db.from('ep_exams').update({ deleted_at: now }).eq('id', m.eid).eq('course_id', m.cid).eq('user_id', auth.userId),
+          auth.db.from('ep_questions').update({ deleted_at: now }).eq('exam_id', m.eid).eq('course_id', m.cid).eq('user_id', auth.userId),
         ]);
         if (de) return dbErr(res, 'soft-delete exam', de);
         const [{ count: qc }, { count: pc }] = await Promise.all([
@@ -273,10 +336,10 @@ export default async function handler(req, res) {
         const { examId } = req.body || {};
         if (!examId) return res.status(400).json({ error: 'חסר examId' });
         const { error: re } = await auth.db.from('ep_exams')
-          .update({ deleted_at: null }).eq('id', examId).eq('course_id', m.cid);
+          .update({ deleted_at: null }).eq('id', examId).eq('course_id', m.cid).eq('user_id', auth.userId);
         if (re) return dbErr(res, 'restore exam', re);
         // Restore its questions too
-        await auth.db.from('ep_questions').update({ deleted_at: null }).eq('exam_id', examId).eq('course_id', m.cid);
+        await auth.db.from('ep_questions').update({ deleted_at: null }).eq('exam_id', examId).eq('course_id', m.cid).eq('user_id', auth.userId);
         const [{ count: qc }, { count: pc }] = await Promise.all([
           auth.db.from('ep_questions').select('id', { count: 'exact', head: true }).eq('course_id', m.cid).is('deleted_at', null),
           auth.db.from('ep_exams').select('id', { count: 'exact', head: true }).eq('course_id', m.cid).is('deleted_at', null),
@@ -290,12 +353,19 @@ export default async function handler(req, res) {
     }
     case 'delete-course': {
       try {
-        const { data: course, error: fe } = await auth.db.from('ep_courses').select('id').eq('id', m.cid).maybeSingle();
+        const { data: course, error: fe } = await auth.db.from('ep_courses')
+          .select('id, user_id').eq('id', m.cid).maybeSingle();
         if (fe) return dbErr(res, 'fetch course', fe);
-        if (!course) return res.status(404).json({ error: 'קורס לא נמצא' });
-        // Delete all exams (CASCADE deletes questions, attempts, review_queue)
-        await auth.db.from('ep_exams').delete().eq('course_id', m.cid);
-        const { error: de } = await auth.db.from('ep_courses').delete().eq('id', m.cid);
+        if (!course || course.user_id !== auth.userId) return res.status(404).json({ error: 'קורס לא נמצא' });
+        // Cascade-delete sub-courses first (their exams/questions)
+        const { data: subs } = await auth.db.from('ep_courses').select('id').eq('parent_id', m.cid).eq('user_id', auth.userId);
+        for (const sub of subs || []) {
+          await auth.db.from('ep_exams').delete().eq('course_id', sub.id).eq('user_id', auth.userId);
+          await auth.db.from('ep_courses').delete().eq('id', sub.id).eq('user_id', auth.userId);
+        }
+        // Delete all direct exams
+        await auth.db.from('ep_exams').delete().eq('course_id', m.cid).eq('user_id', auth.userId);
+        const { error: de } = await auth.db.from('ep_courses').delete().eq('id', m.cid).eq('user_id', auth.userId);
         if (de) return dbErr(res, 'delete course', de);
         return res.json({ ok: true });
       } catch (err) {
@@ -304,35 +374,92 @@ export default async function handler(req, res) {
       }
     }
     case 'update-course': {
-      const { archived } = req.body || {};
+      const { archived, image_url: updImgUrl, name: updName, description: updDesc, color: updColor, is_degree: updIsDegree } = req.body || {};
       const update = {};
       if (typeof archived === 'boolean') update.archived = archived;
+      if (updImgUrl !== undefined) {
+        if (updImgUrl !== null && (typeof updImgUrl !== 'string' || updImgUrl.length > 500 || !/^https?:\/\//.test(updImgUrl)))
+          return res.status(400).json({ error: 'כתובת תמונה לא תקינה' });
+        update.image_url = updImgUrl || null;
+      }
+      if (updName !== undefined) {
+        if (typeof updName !== 'string' || updName.length < 2 || updName.length > 100)
+          return res.status(400).json({ error: 'שם לא תקין' });
+        update.name = updName;
+      }
+      if (updDesc !== undefined) {
+        if (updDesc !== null && (typeof updDesc !== 'string' || updDesc.length > 1000))
+          return res.status(400).json({ error: 'תיאור לא תקין' });
+        update.description = updDesc || null;
+      }
+      if (updColor !== undefined) {
+        if (updColor !== null && (typeof updColor !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(updColor)))
+          return res.status(400).json({ error: 'צבע לא תקין' });
+        update.color = updColor || '#3b82f6';
+      }
+      if (typeof updIsDegree === 'boolean') update.is_degree = updIsDegree;
       if (!Object.keys(update).length) return res.status(400).json({ error: 'אין שדות לעדכון' });
-      const { error } = await auth.db.from('ep_courses').update(update).eq('id', m.cid);
+      const { error } = await auth.db.from('ep_courses').update(update).eq('id', m.cid).eq('user_id', auth.userId);
       if (error) return dbErr(res, 'update course', error);
       return res.json({ ok: true });
     }
     case 'delete-question': {
       const now = new Date().toISOString();
       const { error } = await auth.db.from('ep_questions')
-        .update({ deleted_at: now }).eq('id', m.qid).eq('course_id', m.cid).is('deleted_at', null);
+        .update({ deleted_at: now }).eq('id', m.qid).eq('course_id', m.cid).eq('user_id', auth.userId).is('deleted_at', null);
       if (error) return dbErr(res, 'delete question', error);
       const { count } = await auth.db.from('ep_questions').select('id', { count: 'exact', head: true })
         .eq('course_id', m.cid).is('deleted_at', null);
-      await auth.db.from('ep_courses').update({ total_questions: count }).eq('id', m.cid);
+      await auth.db.from('ep_courses').update({ total_questions: count }).eq('id', m.cid).eq('user_id', auth.userId);
       return res.json({ ok: true });
+    }
+    case 'update-question': {
+      // Manual override for correct_idx (used when Gemini answer extraction failed).
+      // Only accepts correct_idx (integer 1-4); sets answer_confidence='manual'.
+      const body = req.body || {};
+      const correctIdx = parseInt(body.correct_idx, 10);
+      if (!correctIdx || correctIdx < 1 || correctIdx > 4) {
+        return res.status(400).json({ error: 'correct_idx חייב להיות 1-4' });
+      }
+      const { error } = await auth.db.from('ep_questions')
+        .update({ correct_idx: correctIdx, answer_confidence: 'manual' })
+        .eq('id', m.qid).eq('course_id', m.cid).eq('user_id', auth.userId).is('deleted_at', null);
+      if (error) return dbErr(res, 'update question', error);
+      return res.json({ ok: true, correct_idx: correctIdx, answer_confidence: 'manual' });
     }
     case 'restore-question': {
       try {
         const { questionId } = req.body || {};
         if (!questionId) return res.status(400).json({ error: 'חסר questionId' });
+        // Fetch the question first to get its exam_id
+        const { data: qRow, error: qFetch } = await auth.db.from('ep_questions')
+          .select('id, exam_id').eq('id', questionId).eq('course_id', m.cid).eq('user_id', auth.userId).maybeSingle();
+        if (qFetch) return dbErr(res, 'fetch question', qFetch);
+        if (!qRow) return res.status(404).json({ error: 'שאלה לא נמצאה' });
+
         const { error: rq } = await auth.db.from('ep_questions')
-          .update({ deleted_at: null }).eq('id', questionId).eq('course_id', m.cid);
+          .update({ deleted_at: null }).eq('id', questionId).eq('course_id', m.cid).eq('user_id', auth.userId);
         if (rq) return dbErr(res, 'restore question', rq);
-        const { count } = await auth.db.from('ep_questions').select('id', { count: 'exact', head: true })
-          .eq('course_id', m.cid).is('deleted_at', null);
-        await auth.db.from('ep_courses').update({ total_questions: count }).eq('id', m.cid);
-        return res.json({ ok: true });
+
+        // If the question belonged to a soft-deleted exam, restore that exam too
+        let restoredExam = false;
+        if (qRow.exam_id) {
+          const { data: parentExam } = await auth.db.from('ep_exams')
+            .select('id, deleted_at').eq('id', qRow.exam_id).eq('course_id', m.cid).eq('user_id', auth.userId).maybeSingle();
+          if (parentExam?.deleted_at) {
+            await auth.db.from('ep_exams').update({ deleted_at: null }).eq('id', qRow.exam_id).eq('course_id', m.cid).eq('user_id', auth.userId);
+            // Also restore all other questions of this exam
+            await auth.db.from('ep_questions').update({ deleted_at: null }).eq('exam_id', qRow.exam_id).eq('course_id', m.cid).eq('user_id', auth.userId);
+            restoredExam = true;
+          }
+        }
+
+        const [{ count: qc }, { count: pc }] = await Promise.all([
+          auth.db.from('ep_questions').select('id', { count: 'exact', head: true }).eq('course_id', m.cid).is('deleted_at', null),
+          auth.db.from('ep_exams').select('id', { count: 'exact', head: true }).eq('course_id', m.cid).is('deleted_at', null),
+        ]);
+        await auth.db.from('ep_courses').update({ total_questions: qc, total_pdfs: pc }).eq('id', m.cid);
+        return res.json({ ok: true, restoredExam });
       } catch (err) {
         console.error('[restore question]', err?.message || err);
         return res.status(500).json({ error: 'שגיאה בשחזור השאלה' });
@@ -374,9 +501,18 @@ export default async function handler(req, res) {
       return res.json({ ok: true, plan: newPlan, quotas: QUOTAS[newPlan] });
     }
     case 'account-delete': {
-      if (req.body?.confirm !== 'DELETE') return res.status(400).json({ error: 'confirm field must equal "DELETE"' });
       const admin = getAdmin();
       if (!admin) return res.status(500).json({ error: 'Server not configured' });
+      // Cascade-delete all user data before removing auth entry
+      try {
+        await admin.from('ep_questions').delete().eq('user_id', auth.userId);
+        await admin.from('ep_exams').delete().eq('user_id', auth.userId);
+        await admin.from('ep_courses').delete().eq('user_id', auth.userId);
+        await admin.from('ep_ai_cost_log').delete().eq('user_id', auth.userId);
+        await admin.from('profiles').delete().eq('id', auth.userId);
+      } catch (e) {
+        console.warn('[delete account] partial data cleanup error:', e?.message);
+      }
       const { error } = await admin.auth.admin.deleteUser(auth.userId);
       if (error) { console.error('[delete account]', error.message); return res.status(500).json({ error: 'שגיאה במחיקת החשבון' }); }
       return res.json({ ok: true });

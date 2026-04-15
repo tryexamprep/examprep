@@ -210,16 +210,16 @@ const Data = {
     };
   },
   imageUrl(relImage, courseId) {
+    if (!relImage) return '';
+    // Root-relative paths (e.g. /public/images/tohna1/...) — use as-is
+    if (relImage.startsWith('/')) return relImage;
+    // Full URLs (Cloudinary, Supabase storage, etc.) — use as-is
+    if (relImage.startsWith('http')) return relImage;
     const cid = courseId || state.course?.id || 'tohna1';
     // Built-in tohna1 images are shipped inside examprep itself at
-    // /public/images/tohna1/<exam_id>/<file>.png. Previously we pointed at
-    // the sibling tohna1-quiz.vercel.app deployment, but keeping examprep
-    // self-contained means the app can't break if that deployment is
-    // retired / paused / renamed.
+    // /public/images/tohna1/<exam_id>/<file>.png.
     if (cid === 'tohna1') return `/public/images/tohna1/${encodeURI(relImage)}`;
-    // Cloud courses: images stored in Cloudinary or Supabase, path is either
-    // a full URL or a relative storage key.
-    if (relImage.startsWith('http')) return relImage;
+    // Cloud courses: relative storage key
     return `/storage/${encodeURI(relImage)}`;
   },
   allQuestions() {
@@ -232,7 +232,9 @@ const Data = {
 const state = {
   user: null, // { email, name, plan, isAdmin }
   course: null, // currently selected course { id, name, color, ... }
-  courses: [], // all user courses (cached from API)
+  courses: [], // top-level user courses/degrees (cached from API)
+  subCourses: [], // cached sub-courses for the currently-open degree
+  degree: null, // currently selected degree { id, name, color, ... }
   quiz: null, // current quiz session
   lastBatch: null, // for the mistake review screen
 };
@@ -259,33 +261,96 @@ const CourseRegistry = {
   },
 
   list() {
-    // Always include the built-in course first, then user-created ones
-    return [this.BUILTIN, ...state.courses];
+    // Built-in tohna1 course is admin-only
+    if (state.user?.isAdmin) return [this.BUILTIN, ...state.courses];
+    return [...state.courses];
   },
 
   get(courseId) {
-    if (courseId === 'tohna1') return this.BUILTIN;
-    return state.courses.find(c => String(c.id) === String(courseId)) || null;
+    if (courseId === 'tohna1') return state.user?.isAdmin ? this.BUILTIN : null;
+    return state.courses.find(c => String(c.id) === String(courseId))
+      || state.subCourses.find(c => String(c.id) === String(courseId))
+      || null;
   },
 
-  async create(name, description, color) {
+  async create(name, description, color, image_url, options = {}) {
     const token = await Auth.getToken();
+    const body = { name, description, color, image_url: image_url || null };
+    if (options.parent_id) body.parent_id = options.parent_id;
+    if (options.is_degree) body.is_degree = true;
     const res = await fetch('/api/courses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ name, description, color }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || 'שגיאה ביצירת קורס');
     }
     const course = await res.json();
-    state.courses.unshift(course);
+    if (options.parent_id) {
+      state.subCourses.unshift(course);
+    } else {
+      state.courses.unshift(course);
+    }
     return course;
   },
 
+  async listSubCourses(degreeId) {
+    const token = await Auth.getToken();
+    if (!token) return [];
+    const res = await fetch(`/api/courses/${degreeId}/courses`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return [];
+    const subs = await res.json();
+    // Cache in state so setCourseContext can find sub-course objects
+    for (const sc of subs) {
+      if (!state.subCourses.find(c => String(c.id) === String(sc.id))) {
+        state.subCourses.push(sc);
+      } else {
+        const idx = state.subCourses.findIndex(c => String(c.id) === String(sc.id));
+        state.subCourses[idx] = sc;
+      }
+    }
+    return subs;
+  },
+
   invalidate() { this._loaded = false; },
+
+  // Force a fresh fetch from the server so course stats (total_questions,
+  // total_pdfs) reflect the current database state.
+  async refresh() {
+    this._loaded = false;
+    await this.ensureLoaded();
+  },
 };
+
+// Central helper: call this after ANY mutation that changes a course's
+// questions, exams, or stats (upload, delete, restore, rename) so the UI
+// picks up the new state from the database immediately.
+//
+// What it does, in order:
+//   1. Drops the cached data for this course (forces re-fetch next time)
+//   2. Re-fetches the courses list so total_questions/total_pdfs are live
+//   3. Re-fetches this course's data so lists re-render from DB
+//   4. If the user is currently looking at the global dashboard or this
+//      course's dashboard, re-renders that view silently so it updates
+//      without a page reload.
+async function refreshCourseState(courseId) {
+  const cid = String(courseId);
+  try {
+    Data._loadedSet.delete(cid);
+    await CourseRegistry.refresh();
+    await Data.ensureLoaded(cid).catch(() => {});
+  } catch (e) {
+    console.warn('[refreshCourseState]', e?.message || e);
+  }
+  const route = getRoute();
+  if (route === '/dashboard' || route === `/course/${cid}` || route === `/course/${cid}/dashboard`) {
+    renderRoute();
+  }
+}
 
 // ===== Theme (light / dark / auto) =====
 // Persists in localStorage; applied to <html data-theme="..."> on boot. Auto
@@ -670,6 +735,10 @@ const Auth = {
         });
       } catch {}
     }
+    // No access_token = email confirmation required
+    if (!body.access_token) {
+      return { id: userId, email, name: name || email.split('@')[0], needsConfirmation: true };
+    }
     const u = {
       id: userId,
       email,
@@ -748,6 +817,7 @@ const Auth = {
       plan: profile?.plan || 'free',
       isAdmin: profile?.is_admin || false,
       daysLeft,
+      planExpiresAt: profile?.plan_expires_at || null,
       trialUsed: profile?.trial_used || false,
     };
     this.save(u);
@@ -1158,11 +1228,20 @@ function pickRandom(arr, n) {
   return a.slice(0, Math.min(n, a.length));
 }
 function toast(msg, type = '', duration = 3000) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    document.body.appendChild(container);
+  }
   const el = document.createElement('div');
   el.className = 'toast ' + type;
   el.textContent = msg;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), duration);
+  container.appendChild(el);
+  setTimeout(() => {
+    el.remove();
+    if (!container.hasChildNodes()) container.remove();
+  }, duration);
 }
 
 // Render explanation text with inline `code` and **bold** support
@@ -1197,46 +1276,43 @@ function renderExplanation(text) {
 function renderTrialBanner(container) {
   if (!container || !state.user) return;
   const plan = state.user.plan;
+  const isAdmin = state.user.isAdmin;
+  if (isAdmin) return;
   if (plan === 'trial') {
-    const daysLeft = state.user.daysLeft != null ? state.user.daysLeft : 14;
-    const pct = Math.round((daysLeft / 14) * 100);
+    let daysLeft = (state.user.planExpiresAt)
+      ? Math.max(0, Math.ceil((new Date(state.user.planExpiresAt) - Date.now()) / 86400000))
+      : (state.user.daysLeft != null ? state.user.daysLeft : 14);
     const urgency = daysLeft <= 3 ? 'urgent' : (daysLeft <= 7 ? 'warning' : '');
+    const clockIcon = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+    // 14 pill segments — first daysLeft are "on" (remaining), rest are dim
+    const segs = Array.from({ length: 14 }, (_, i) =>
+      `<span class="trial-seg${i < daysLeft ? ' on' : ''}"></span>`
+    ).join('');
     const banner = document.createElement('div');
     banner.className = `trial-banner ${urgency}`;
     banner.innerHTML = `
       <div class="trial-banner-content">
-        <div class="trial-banner-text">
-          <strong>Trial</strong> — נותרו ${daysLeft} ימים מתוך 14
+        <div class="trial-banner-info">
+          <div class="trial-banner-title">${clockIcon}<strong>תקופת ניסיון חינם</strong></div>
+          <div class="trial-banner-sub">נותרו <strong>${daysLeft}</strong> ימים</div>
         </div>
-        <div class="trial-banner-bar">
-          <div class="trial-banner-fill" style="width:${pct}%"></div>
-        </div>
-        <a href="#pricing" class="btn btn-sm btn-primary trial-banner-cta" data-route="/">שדרג ל-Basic ₪19.90/חודש</a>
+        <div class="trial-segs" role="img" aria-label="נותרו ${daysLeft} מתוך 14 ימים">${segs}</div>
+        <span class="trial-banner-cta">שדרוג בקרוב</span>
       </div>
     `;
     container.prepend(banner);
-    banner.querySelector('.trial-banner-cta')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      location.hash = '#pricing';
-      navigate('/');
-    });
   } else if (plan === 'free' && state.user.trialUsed) {
     const banner = document.createElement('div');
-    banner.className = 'trial-banner urgent';
+    banner.className = 'trial-banner';
     banner.innerHTML = `
       <div class="trial-banner-content">
-        <div class="trial-banner-text">
-          <strong>ה-Trial נגמר</strong> — שדרג כדי להמשיך להעלות PDFs וליצור חומרי לימוד
+        <div class="trial-banner-info">
+          <div class="trial-banner-title"><strong>חשבון חינמי</strong></div>
+          <div class="trial-banner-sub">אפשרויות שדרוג יהיו זמינות בקרוב</div>
         </div>
-        <a href="#pricing" class="btn btn-sm btn-primary trial-banner-cta" data-route="/">שדרג עכשיו</a>
       </div>
     `;
     container.prepend(banner);
-    banner.querySelector('.trial-banner-cta')?.addEventListener('click', (e) => {
-      e.preventDefault();
-      location.hash = '#pricing';
-      navigate('/');
-    });
   }
 }
 
@@ -1298,6 +1374,10 @@ function renderRoute() {
     if (path === '/study/new') return renderStudyCreate();
     if (path.startsWith('/study/')) return renderStudyPack(path.split('/')[2]);
 
+    // Degree dashboard: /degree/{degreeId}
+    const degreeMatch = path.match(/^\/degree\/([^/]+)$/);
+    if (degreeMatch) return renderDegreeDashboard(degreeMatch[1]);
+
     // Course-scoped routes: /course/{courseId}/{page}
     const courseMatch = path.match(/^\/course\/([^/]+)(?:\/(.*))?$/);
     if (courseMatch) {
@@ -1311,6 +1391,7 @@ function renderRoute() {
       if (page === 'insights') return renderInsights();
       if (page === 'lab') return renderLab();
       if (page === 'progress') return renderProgress();
+      if (page === 'study') return renderStudyList();
       return renderCourseDashboard();
     }
 
@@ -1318,17 +1399,19 @@ function renderRoute() {
   if (path === '/quiz') { setCourseContext('tohna1'); return state.quiz ? renderQuiz() : navigate('/course/tohna1'); }
   if (path === '/summary') { setCourseContext('tohna1'); return renderSummary(); }
   if (path === '/review') { setCourseContext('tohna1'); return renderMistakeReview(); }
-  if (path === '/insights') return navigate('/course/tohna1/insights');
-  if (path === '/lab') return navigate('/course/tohna1/lab');
-  if (path === '/progress') return navigate('/course/tohna1/progress');
+  if (path === '/insights') return navigate(`/course/${state.course?.id || 'tohna1'}/insights`);
+  if (path === '/lab') return navigate(`/course/${state.course?.id || 'tohna1'}/lab`);
+  if (path === '/progress') return navigate(`/course/${state.course?.id || 'tohna1'}/progress`);
 
   return renderLanding();
   } catch (err) {
     console.error('[renderRoute] crash:', err);
+    try { window.__reportClientError?.('error', { msg: String(err?.message || err), stack: String(err?.stack || '') }); } catch {}
     // Prevent blank page — show a recovery message
     $app.innerHTML = `<div style="text-align:center;padding:60px 20px;direction:rtl;">
       <h2>משהו השתבש</h2>
       <p style="margin:16px 0;color:#666;">אירעה שגיאה בטעינת הדף.</p>
+      <details style="margin:8px 0 16px;font-size:12px;color:#999;text-align:left;direction:ltr;"><summary>פרטי שגיאה</summary><pre style="white-space:pre-wrap;word-break:break-all">${String(err?.stack || err)}</pre></details>
       <button onclick="location.hash='#/dashboard';location.reload()" class="btn btn-primary">חזרה לדף הבית</button>
     </div>`;
   }
@@ -1338,16 +1421,16 @@ function renderRoute() {
 // Every analysis function below works on a *course-scoped* slice of questions
 // so the same code runs for each course the user adds in the future.
 function questionsForCourse(courseId) {
-  // Local-files phase: the only course is "tohna1" and all 85 questions belong
-  // to it. When we move to the cloud, exam.courseId will be a real FK and we'll
-  // filter on it here. The function signature is already course-aware so the
-  // analysis pipeline doesn't change.
-  if (!Data.metadata) return [];
-  return Data.metadata.exams.flatMap(e => e.questions);
+  // Use the cache entry for this specific courseId rather than relying on
+  // state.course as a side-channel — prevents stale cross-course data.
+  const meta = Data._cache[courseId]?.metadata ?? Data._cache[String(courseId)]?.metadata;
+  if (!meta) return [];
+  return meta.exams.flatMap(e => e.questions);
 }
 function examsForCourse(courseId) {
-  if (!Data.metadata) return [];
-  return Data.metadata.exams;
+  const meta = Data._cache[courseId]?.metadata ?? Data._cache[String(courseId)]?.metadata;
+  if (!meta) return [];
+  return meta.exams;
 }
 function attemptsForCourse(uid, courseId) {
   return Progress.history(uid, courseId);
@@ -2115,6 +2198,14 @@ function renderAuth(signupMode = false) {
       } else {
         user = await Auth.login(email, password);
       }
+      if (user.needsConfirmation) {
+        // Email confirmation required — show message, don't navigate
+        errEl.classList.add('success');
+        errEl.textContent = '📧 שלחנו לך אימייל אימות — לחץ על הקישור בדואר כדי להשלים את ההרשמה.';
+        btn.disabled = false;
+        btn.textContent = 'יצירת חשבון';
+        return;
+      }
       state.user = user;
       errEl.classList.add('success');
       errEl.textContent = mode === 'signup' ? 'נרשמת בהצלחה — מעבירים אותך...' : 'התחברת בהצלחה — מעבירים אותך...';
@@ -2151,8 +2242,12 @@ async function renderDashboard() {
   if (!state.user) state.user = Auth.current();
   if (!state.user) return navigate('/login');
 
-  await Data.ensureLoaded('tohna1');
   await CourseRegistry.ensureLoaded();
+  // Load data for all registered courses so per-course stats and progress bars
+  // on the global dashboard are accurate across all courses.
+  await Promise.all(
+    CourseRegistry.list().map(c => Data.ensureLoaded(c.id).catch(() => {}))
+  );
 
   // For the admin user, ensure demo data is seeded so the new screens have
   // realistic content even on the very first dashboard visit.
@@ -2160,54 +2255,104 @@ async function renderDashboard() {
     DemoSeed.build(state.user.email);
   }
 
+  // For demo@examprep.co: seed fake progress so dashboard stats look used
+  if (state.user.email === 'demo@examprep.co') {
+    seedDemoProgress(state.user.email, CourseRegistry.list());
+  }
+
   $app.innerHTML = '';
   $app.appendChild(tmpl('tmpl-dash'));
+  $app.firstElementChild?.classList.add('page-enter');
 
-  wireTopbar();
-  document.getElementById('dash-greet-title').textContent = `שלום ${state.user.name}`;
+  wireTopbar(null);   // null = global dashboard — hides course-specific nav items
 
   // Trial countdown banner
   renderTrialBanner(document.querySelector('.app-content'));
 
-  // Stats — aggregate from the built-in course for now
-  const stats = Progress.stats(state.user.email, 'tohna1');
-  const accuracy = stats.unique > 0 ? Math.round((stats.correct / stats.unique) * 100) : 0;
+  // Daily motivational quotes (cycling by day)
+  const QUOTES = [
+    'כל שאלה שאתה פותר היום — היא בחינה שאתה עוקף מחר.',
+    'חזרה קצרה כל יום שווה יותר ממרתון לימוד ביום אחד.',
+    'אתה לא לומד לזכור — אתה לומד להבין.',
+    'ההצלחה היא סכום של מאמצים קטנים, חוזרים ונשנים יום אחר יום.',
+    'תרגל כאילו הבחינה מחר. תנוח כאילו עשית הכל.',
+    'כל שאלה קשה היום הופכת לשאלה קלה בבחינה.',
+    'המוח שלך מתחזק בכל שאלה שאתה פותר.',
+  ];
+  const todayQuote = QUOTES[Math.floor(Date.now() / 86400000) % QUOTES.length];
+
+  // Aggregate stats across ALL courses
+  const allCourseIds = CourseRegistry.list().map(c => String(c.id));
+  const aggStats = allCourseIds.reduce((acc, cid) => {
+    const s = Progress.stats(state.user.email, cid);
+    acc.total += s.total; acc.unique += s.unique;
+    acc.correct += s.correct; acc.wrong += s.wrong;
+    acc.reviewCount += s.reviewCount;
+    return acc;
+  }, { total: 0, unique: 0, correct: 0, wrong: 0, reviewCount: 0 });
+  const accuracy = aggStats.unique > 0 ? Math.round((aggStats.correct / aggStats.unique) * 100) : 0;
+  const hasActivity = aggStats.total > 0;
+  const hasCourses = allCourseIds.length > 0;
+
+  // Update greeting
+  document.getElementById('dash-greet-title').textContent = `שלום ${state.user.name}`;
+  const greetEl = document.querySelector('.dash-greet p');
+  if (greetEl) greetEl.textContent = hasActivity
+    ? `"${todayQuote}"`
+    : 'ברוך הבא! בחר קורס כדי להתחיל לתרגל שאלות אמריקאיות.';
+  if (greetEl && hasActivity) greetEl.style.cssText = 'font-style:italic;color:var(--text-muted);font-size:14px;margin-top:6px;max-width:600px;';
+
   const sg = document.getElementById('dash-stats');
-  sg.className = 'metric-grid';
-  sg.innerHTML = `
-    <div class="metric-card">
-      <div class="metric-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        סך ניסיונות
+  if (!hasCourses) {
+    // Only show the welcome banner when the user has ZERO courses.
+    // Showing it alongside existing courses was confusing users.
+    sg.className = '';
+    sg.innerHTML = `
+      <div class="dash-welcome-banner">
+        <div class="dash-welcome-icon">🎓</div>
+        <h2>ברוך הבא ל-ExamPrep!</h2>
+        <p>הוסף את הקורס הראשון שלך כדי להתחיל לתרגל שאלות אמריקאיות.</p>
+        <button class="btn btn-primary btn-lg" id="btn-welcome-add-course">+ הוסף קורס ראשון</button>
       </div>
-      <div class="metric-value">${stats.total}</div>
-      <div class="metric-sub">${stats.unique} שאלות ייחודיות</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        תשובות נכונות
+    `;
+    sg.querySelector('#btn-welcome-add-course')?.addEventListener('click', () => showAddCourseModal());
+  } else {
+    sg.className = 'metric-grid dash-metric-grid';
+    sg.innerHTML = `
+      <div class="metric-card" style="--card-color:#3b82f6">
+        <div class="metric-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          סך ניסיונות
+        </div>
+        <div class="metric-value">${aggStats.total}</div>
+        <div class="metric-sub">${aggStats.unique} שאלות ייחודיות</div>
       </div>
-      <div class="metric-value">${stats.correct}</div>
-      <div class="metric-sub">דיוק כללי <strong>${accuracy}%</strong></div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-        טעיתי / הוצגו
+      <div class="metric-card" style="--card-color:#22c55e">
+        <div class="metric-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          תשובות נכונות
+        </div>
+        <div class="metric-value">${aggStats.correct}</div>
+        <div class="metric-sub">דיוק כללי <strong>${accuracy}%</strong></div>
       </div>
-      <div class="metric-value">${stats.wrong}</div>
-      <div class="metric-sub">שאלות שצריך לחזור עליהן</div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
-        בתור החזרה
+      <div class="metric-card" style="--card-color:#f97316">
+        <div class="metric-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          טעיתי / הוצגו
+        </div>
+        <div class="metric-value">${aggStats.wrong}</div>
+        <div class="metric-sub">שאלות שצריך לחזור עליהן</div>
       </div>
-      <div class="metric-value">${stats.reviewCount}</div>
-      <div class="metric-sub">בהמתנה לתרגול חוזר</div>
-    </div>
-  `;
+      <div class="metric-card" style="--card-color:#a855f7">
+        <div class="metric-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+          בתור החזרה
+        </div>
+        <div class="metric-value">${aggStats.reviewCount}</div>
+        <div class="metric-sub">בהמתנה לתרגול חוזר</div>
+      </div>
+    `;
+  }
 
   // Courses — dynamic list from CourseRegistry
   const cg = document.getElementById('dash-courses');
@@ -2220,19 +2365,40 @@ async function renderDashboard() {
     if (c.id === 'tohna1') {
       qCount = Data.allQuestions().length;
       eCount = Data.metadata?.exams?.length || 0;
+    } else if (c.is_degree) {
+      // Degree card: show sub-course count instead of question/exam counts
+      qCount = 0; eCount = 0;
     } else {
       qCount = c.total_questions || 0;
       eCount = c.total_pdfs || 0;
     }
+    const cStats = Progress.stats(state.user.email, String(c.id));
+    const covPct = qCount > 0 ? Math.min(100, Math.round((cStats.unique / qCount) * 100)) : 0;
+    const accPct = cStats.unique > 0 ? Math.round((cStats.correct / cStats.unique) * 100) : 0;
+    const hasProgress = cStats.total > 0;
+    const cid = String(c.id);
+    const childCount = c.child_count || 0;
     return `
-      <div class="course-card" style="--course-color:${escapeHtml(c.color || '#3b82f6')}" data-course="${escapeHtml(String(c.id))}">
+      <div class="course-card${c.is_degree ? ' degree-card' : ''}" style="--course-color:${escapeHtml(c.color || '#3b82f6')}" data-course="${escapeHtml(cid)}" data-is-degree="${c.is_degree ? '1' : '0'}">
         ${!c.isBuiltin ? `<button class="course-menu-btn" data-course-id="${c.id}" data-course-name="${escapeHtml(c.name)}" data-archived="${c.archived || false}" title="אפשרויות">⋯</button>` : ''}
-        <h3>${escapeHtml(c.name)}</h3>
+        ${c.is_degree ? `<div class="degree-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>תחום לימוד</div>` : ''}
+        <div class="course-card-header">
+          ${c.image_url ? `<img class="course-img" src="${escapeHtml(c.image_url)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+          <h3>${escapeHtml(c.name)}</h3>
+        </div>
         <div class="desc">${escapeHtml(c.description || '')}</div>
+        ${!c.is_degree && qCount > 0 ? `
+        <div class="course-card-progress">
+          <div class="course-card-progress-bar" style="width:${covPct}%;background:var(--course-color,#3b82f6);"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:2px;margin-bottom:6px;">
+          <span>כיסוי: ${covPct}%</span>
+          ${hasProgress ? `<span>דיוק: ${accPct}%</span>` : ''}
+        </div>` : ''}
         <div class="meta">
-          <span>${qCount} שאלות</span>
-          <span>${eCount} מבחנים</span>
-          ${c.isBuiltin ? '<span class="ready-pill">מוכן לתרגול</span>' : (qCount > 0 ? '<span class="ready-pill">מוכן לתרגול</span>' : '<span class="ready-pill empty">ריק</span>')}
+          ${c.is_degree
+            ? `<span class="degree-courses-count">${childCount} קורסים</span><span class="ready-pill course-cta-pill">כנס לתחום ←</span>`
+            : `<span>${qCount} שאלות</span><span>${eCount} מבחנים</span>${c.isBuiltin || qCount > 0 ? `<span class="ready-pill course-cta-pill">${hasProgress ? 'המשך ←' : 'התחל ←'}</span>` : '<span class="ready-pill empty">ריק</span>'}`}
         </div>
       </div>
     `;
@@ -2243,8 +2409,8 @@ async function renderDashboard() {
     <div class="course-card add" id="btn-add-course-card">
       <div class="add-card-content">
         <div class="add-icon">+</div>
-        <strong>הוסף קורס חדש</strong>
-        <small>הגדר שם ותיאור</small>
+        <strong>הוסף תחום לימוד</strong>
+        <small>בגרות, תואר, פסיכומטרי ועוד</small>
       </div>
     </div>
   `;
@@ -2265,17 +2431,58 @@ async function renderDashboard() {
 
   cg.innerHTML = coursesHtml;
 
+  // "מה ללמוד היום?" widget — find weakest course with questions
+  const studyCourses = CourseRegistry.list().filter(c => !c.archived).map(c => {
+    const qCount = c.id === 'tohna1' ? Data.allQuestions().length : (c.total_questions || 0);
+    if (qCount === 0) return null;
+    const s = Progress.stats(state.user.email, String(c.id));
+    const acc = s.unique > 0 ? Math.round((s.correct / s.unique) * 100) : (s.total > 0 ? 0 : -1);
+    return { c, qCount, acc, total: s.total };
+  }).filter(Boolean);
+
+  const appContent = document.querySelector('.app-content');
+  const existingWidget = document.getElementById('dash-study-tip');
+  if (existingWidget) existingWidget.remove();
+
+  if (studyCourses.length > 0 && appContent) {
+    // Pick: lowest accuracy if has activity, else first course
+    const withActivity = studyCourses.filter(x => x.total > 0);
+    const pick = withActivity.length > 0
+      ? withActivity.sort((a, b) => a.acc - b.acc)[0]
+      : studyCourses[0];
+    const tipEl = document.createElement('div');
+    tipEl.id = 'dash-study-tip';
+    tipEl.className = 'dash-study-tip';
+    tipEl.innerHTML = `
+      <div class="dash-study-tip-inner">
+        <div class="dash-study-tip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <div class="dash-study-tip-text">
+          <strong>מה ללמוד היום?</strong>
+          <span>${pick.c.name} — ${pick.total > 0 ? `דיוק ${pick.acc}%, יש מה לשפר` : 'טרם התחלת, זה הזמן!'}</span>
+        </div>
+        <button class="btn btn-primary dash-study-tip-btn" data-course="${escapeHtml(String(pick.c.id))}">תרגל עכשיו ←</button>
+      </div>
+    `;
+    appContent.appendChild(tipEl);
+    tipEl.querySelector('.dash-study-tip-btn').addEventListener('click', () => {
+      navigate(`/course/${pick.c.id}/quiz`);
+    });
+  }
+
   // Toggle archived
   document.getElementById('dash-show-archived')?.addEventListener('click', () => {
     const el = document.getElementById('dash-archived');
     if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
   });
 
-  // Course card click → navigate
+  // Course/degree card click → navigate with instant visual feedback
   cg.querySelectorAll('.course-card:not(.add)').forEach(card => {
     card.addEventListener('click', (e) => {
       if (e.target.closest('.course-menu-btn')) return;
-      navigate(`/course/${card.dataset.course}`);
+      card.style.transition = 'opacity 0.1s';
+      card.style.opacity = '0.6';
+      const isDegree = card.dataset.isDegree === '1';
+      navigate(isDegree ? `/degree/${card.dataset.course}` : `/course/${card.dataset.course}`);
     });
   });
 
@@ -2287,7 +2494,7 @@ async function renderDashboard() {
       const courseName = btn.dataset.courseName;
       const isArchived = btn.dataset.archived === 'true';
 
-      // Simple action menu
+      // Simple action menu — appended to body to escape card's overflow:hidden
       const menu = document.createElement('div');
       menu.className = 'course-action-menu';
       menu.innerHTML = `
@@ -2296,10 +2503,9 @@ async function renderDashboard() {
         </button>
         <button class="course-action-item danger" data-act="delete">🗑️ מחק קורס</button>
       `;
-      // Position near button
-      menu.style.cssText = 'position:absolute;top:100%;left:8px;z-index:100;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:4px;min-width:160px;';
-      btn.style.position = 'relative';
-      btn.appendChild(menu);
+      const r = btn.getBoundingClientRect();
+      menu.style.cssText = `position:fixed;top:${r.bottom + 4}px;left:${r.left}px;z-index:9999;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:4px;min-width:160px;`;
+      document.body.appendChild(menu);
 
       const closeMenu = () => menu.remove();
       setTimeout(() => document.addEventListener('click', closeMenu, { once: true }), 10);
@@ -2344,8 +2550,366 @@ async function renderDashboard() {
     });
   });
 
-  document.getElementById('btn-add-course-card')?.addEventListener('click', () => showAddCourseModal());
-  document.getElementById('btn-add-course')?.addEventListener('click', () => showAddCourseModal());
+  document.getElementById('btn-add-course-card')?.addEventListener('click', () => showAddDegreeModal());
+  document.getElementById('btn-add-course')?.addEventListener('click', () => showAddDegreeModal());
+
+  // Show onboarding tour for new users (first time only)
+  if (!localStorage.getItem('ep_onboarding_v2')) {
+    setTimeout(() => showOnboardingTour(), 600);
+  }
+
+  // Admin-only: button to preview the onboarding tour as a new user would see it
+  if (state.user.isAdmin) {
+    const demoBtn = document.createElement('button');
+    demoBtn.className = 'admin-demo-btn';
+    demoBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      תצוגת משתמש חדש
+    `;
+    demoBtn.addEventListener('click', () => {
+      localStorage.removeItem('ep_onboarding_v2');
+      showOnboardingTour();
+    });
+    document.querySelector('.app-content')?.appendChild(demoBtn);
+  }
+}
+
+// ===== Degree Dashboard =====
+async function renderDegreeDashboard(degreeId) {
+  if (!state.user) state.user = Auth.current();
+  if (!state.user) return navigate('/login');
+
+  await CourseRegistry.ensureLoaded();
+  const degree = CourseRegistry.get(degreeId);
+  if (!degree) return navigate('/dashboard');
+
+  state.degree = degree;
+  const subCourses = await CourseRegistry.listSubCourses(degreeId);
+
+  // Seed demo progress for sub-courses
+  if (state.user.email === 'demo@examprep.co') seedDemoProgress(state.user.email, subCourses);
+
+  // Load data for sub-courses so progress bars are accurate
+  await Promise.all(subCourses.map(c => Data.ensureLoaded(c.id).catch(() => {})));
+
+  $app.innerHTML = '';
+  $app.appendChild(tmpl('tmpl-degree-dash'));
+  $app.firstElementChild?.classList.add('page-enter');
+  wireTopbar(null);
+
+  document.getElementById('degree-dash-title').textContent = degree.name;
+  document.getElementById('degree-dash-desc').textContent = degree.description || '';
+  document.getElementById('degree-color-bar').style.background = degree.color || '#3b82f6';
+
+  const cg = document.getElementById('degree-courses');
+
+  function renderSubCourseCard(c) {
+    const qCount = c.total_questions || 0;
+    const eCount = c.total_pdfs || 0;
+    const cStats = Progress.stats(state.user.email, String(c.id));
+    const covPct = qCount > 0 ? Math.min(100, Math.round((cStats.unique / qCount) * 100)) : 0;
+    const accPct = cStats.unique > 0 ? Math.round((cStats.correct / cStats.unique) * 100) : 0;
+    const hasProgress = cStats.total > 0;
+    const cid = String(c.id);
+    return `
+      <div class="course-card" style="--course-color:${escapeHtml(c.color || degree.color || '#3b82f6')}" data-course="${escapeHtml(cid)}" data-is-degree="0">
+        <div class="course-card-header">
+          ${c.image_url ? `<img class="course-img" src="${escapeHtml(c.image_url)}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+          <h3>${escapeHtml(c.name)}</h3>
+        </div>
+        <div class="desc">${escapeHtml(c.description || '')}</div>
+        ${qCount > 0 ? `
+        <div class="course-card-progress">
+          <div class="course-card-progress-bar" style="width:${covPct}%;background:var(--course-color,#3b82f6);"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:2px;margin-bottom:6px;">
+          <span>כיסוי: ${covPct}%</span>
+          ${hasProgress ? `<span>דיוק: ${accPct}%</span>` : ''}
+        </div>` : ''}
+        <div class="meta">
+          <span>${qCount} שאלות</span>
+          <span>${eCount} מבחנים</span>
+          ${qCount > 0 ? `<span class="ready-pill course-cta-pill">${hasProgress ? 'המשך ←' : 'התחל ←'}</span>` : '<span class="ready-pill empty">ריק</span>'}
+        </div>
+      </div>`;
+  }
+
+  let html = subCourses.filter(c => !c.archived).map(renderSubCourseCard).join('');
+  html += `
+    <div class="course-card add" id="btn-add-sub-course-card">
+      <div class="add-card-content">
+        <div class="add-icon">+</div>
+        <strong>הוסף קורס</strong>
+        <small>הוסף קורס לתחום זה</small>
+      </div>
+    </div>`;
+  cg.innerHTML = html;
+
+  cg.querySelectorAll('.course-card:not(.add)').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.course-menu-btn')) return;
+      card.style.transition = 'opacity 0.1s';
+      card.style.opacity = '0.6';
+      navigate(`/course/${card.dataset.course}`);
+    });
+  });
+
+  const addSubCourseFn = () => showAddSubCourseModal(degree);
+  document.getElementById('btn-add-sub-course')?.addEventListener('click', addSubCourseFn);
+  document.getElementById('btn-add-sub-course-card')?.addEventListener('click', addSubCourseFn);
+}
+
+// ===== Demo progress seeding (only for demo@examprep.co) =====
+function seedDemoProgress(email, courses) {
+  if (email !== 'demo@examprep.co') return;
+  const FLAG = 'ep_demo_seeded_v2';
+  if (localStorage.getItem(FLAG)) return;
+  const fakeUUID = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+  for (const course of (courses || [])) {
+    const totalQ = course.total_questions || 0;
+    if (totalQ === 0) continue;
+    const coverage = 0.35 + Math.random() * 0.40;
+    const accuracy = 0.58 + Math.random() * 0.22;
+    const uniqueAttempted = Math.max(1, Math.floor(totalQ * coverage));
+    const qids = Array.from({ length: uniqueAttempted }, () => fakeUUID());
+    const attempts = [];
+    for (const qid of qids) {
+      const correct = Math.random() < accuracy;
+      attempts.push({ qid, correct, revealed: false, ts: Date.now() - Math.floor(Math.random() * 10 * 86400000) });
+      if (Math.random() < 0.25) {
+        attempts.push({ qid, correct: Math.random() < (accuracy + 0.08), revealed: false, ts: Date.now() - Math.floor(Math.random() * 4 * 86400000) });
+      }
+    }
+    const key = `ep_progress_${email}_${course.id}`;
+    if (!localStorage.getItem(key)) {
+      try { localStorage.setItem(key, JSON.stringify({ attempts, reviewQueue: [], batches: [] })); } catch {}
+    }
+  }
+  localStorage.setItem(FLAG, '1');
+}
+
+// ===== Add Degree Modal (pre-built chooser) =====
+const _UNS = (id) => `https://images.unsplash.com/photo-${id}?w=88&h=88&fit=crop&auto=format`;
+const DEGREE_CATEGORIES = [
+  {
+    label: 'בגרויות', icon: '📚',
+    degrees: [
+      { name: 'מתמטיקה',  desc: 'אלגברה, גאומטריה, הסתברות וסטטיסטיקה', color: '#2563eb', image: _UNS('1635070041078-e363dbe005cb') },
+      { name: 'אנגלית',   desc: 'קריאה, כתיבה, דקדוק ואוצר מילים',       color: '#0891b2', image: _UNS('1456513080510-7bf3a84b82f8') },
+      { name: 'פיזיקה',   desc: 'מכניקה, חשמל, אופטיקה',                  color: '#d97706', image: _UNS('1636466497217-26a8cbeaf0aa') },
+      { name: 'כימיה',    desc: 'כימיה אורגנית, אנאורגנית וגרעינית',      color: '#7c3aed', image: _UNS('1532187863486-abf9dbad1b69') },
+      { name: 'ביולוגיה', desc: 'תאים, גנטיקה, אבולוציה ופיזיולוגיה',   color: '#16a34a', image: _UNS('1530026186672-2cd00ffc50fe') },
+      { name: 'היסטוריה', desc: 'היסטוריה עולמית וישראלית',               color: '#dc2626', image: _UNS('1501785888041-af3ef285b470') },
+      { name: 'ספרות',    desc: 'סיפורת, שירה וביקורת ספרות',             color: '#9333ea', image: _UNS('1481627834876-b7833e8f5570') },
+      { name: 'גיאוגרפיה',desc: 'גיאוגרפיה פיזית, אנושית וסביבה',       color: '#059669', image: _UNS('1524661135-423995f22d0b') },
+      { name: 'אזרחות',   desc: 'מדינת ישראל, דמוקרטיה ומשפט',           color: '#64748b', image: _UNS('1589829545856-d10d557cf95f') },
+    ],
+  },
+  {
+    label: 'פסיכומטרי', icon: '🧠',
+    degrees: [
+      { name: 'הסקה כמותית',       desc: 'מתמטיקה, אלגברה, גאומטריה',  color: '#2563eb', image: _UNS('1635070041078-e363dbe005cb') },
+      { name: 'אנגלית (פסיכומטרי)',desc: 'אוצר מילים, הבנת הנקרא',      color: '#0891b2', image: _UNS('1456513080510-7bf3a84b82f8') },
+      { name: 'חשיבה מילולית',     desc: 'אנלוגיות, השלמת משפטים',      color: '#7c3aed', image: _UNS('1507003211169-0a1dd7228f2d') },
+    ],
+  },
+  {
+    label: 'אמירם', icon: '✍️',
+    degrees: [
+      { name: 'לשון ודקדוק',        desc: 'תחביר, מורפולוגיה, כתיב',  color: '#dc2626', image: _UNS('1456735190827-d1262f71b8a3') },
+      { name: 'הבנת הנקרא (עברית)', desc: 'ניתוח טקסטים, הסקה',       color: '#16a34a', image: _UNS('1481627834876-b7833e8f5570') },
+    ],
+  },
+  {
+    label: 'לימודים אקדמיים', icon: '🎓',
+    degrees: [
+      { name: 'מדעי המחשב',        desc: 'תכנות, אלגוריתמים, מבנה נתונים',     color: '#2563eb', image: _UNS('1461749280684-dccba630e2f6') },
+      { name: 'מתמטיקה',           desc: 'חשבון אינפיניטסימלי, אלגברה לינארית, משוואות דיפרנציאליות', color: '#0ea5e9', image: _UNS('1635070041078-e363dbe005cb') },
+      { name: 'פיזיקה',            desc: 'מכניקה, קוונטים, אלקטרומגנטיות',     color: '#d97706', image: _UNS('1636466497217-26a8cbeaf0aa') },
+      { name: 'כימיה',             desc: 'כימיה אורגנית, אנאורגנית ופיזיקלית', color: '#7c3aed', image: _UNS('1532187863486-abf9dbad1b69') },
+      { name: 'ביולוגיה',          desc: 'גנטיקה, מיקרוביולוגיה, אנטומיה',    color: '#16a34a', image: _UNS('1530026186672-2cd00ffc50fe') },
+      { name: 'משפטים',            desc: 'דיני חוזים, נזיקין, מנהלי',          color: '#dc2626', image: _UNS('1589829545856-d10d557cf95f') },
+      { name: 'כלכלה',             desc: 'מיקרואקונומיה, מאקרו, פיננסים',      color: '#0891b2', image: _UNS('1611974789855-9c2a0a7236a3') },
+      { name: 'פסיכולוגיה',        desc: 'קוגניציה, פרסונליות, מחקר',          color: '#ec4899', image: _UNS('1507003211169-0a1dd7228f2d') },
+      { name: 'ניהול ומנהל עסקים', desc: 'שיווק, חשבונאות, ניהול',             color: '#f59e0b', image: _UNS('1454165804606-c3d57bc86b40') },
+      { name: 'הנדסה',             desc: 'מתמטיקה הנדסית, פיזיקה, תכנות',      color: '#64748b', image: _UNS('1518770660439-4636190af475') },
+      { name: 'רפואה',             desc: 'אנטומיה, פיזיולוגיה, ביוכימיה',      color: '#ef4444', image: _UNS('1505751172876-fa1923c5c528') },
+      { name: 'סוציולוגיה',        desc: 'חברה, תרבות, מחקר חברתי',           color: '#8b5cf6', image: _UNS('1529156069898-49953e39b3ac') },
+      { name: 'תקשורת',            desc: 'מדיה, עיתונאות, תקשורת שיווקית',    color: '#06b6d4', image: _UNS('1495020689067-958852a7765e') },
+    ],
+  },
+];
+
+function showAddDegreeModal() {
+  const plan = state.user?.plan || 'free';
+  const planDef = PLANS[plan] || PLANS.free;
+  if (planDef.maxCourses !== -1 && state.courses.length >= planDef.maxCourses) {
+    showPaywallModal('course_limit');
+    return;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.appendChild(tmpl('tmpl-add-degree'));
+  document.body.appendChild(wrap.firstElementChild);
+  const modal = document.getElementById('add-degree-modal');
+  const close = () => modal.remove();
+  document.getElementById('add-degree-close').addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+
+  function showStep(step) {
+    ['choose', 'request', 'custom'].forEach(s => {
+      document.getElementById(`add-degree-step-${s}`).style.display = s === step ? '' : 'none';
+    });
+  }
+
+  // Render categories
+  const catEl = document.getElementById('degree-categories');
+  catEl.innerHTML = DEGREE_CATEGORIES.map(cat => `
+    <div class="degree-category">
+      <div class="degree-category-label">${cat.icon} ${escapeHtml(cat.label)}</div>
+      <div class="degree-options">
+        ${cat.degrees.map(d => `
+          <button class="degree-option-btn" data-name="${escapeHtml(d.name)}" data-desc="${escapeHtml(d.desc)}" data-color="${escapeHtml(d.color)}" data-image="${escapeHtml(d.image || '')}">
+            ${d.image ? `<img src="${escapeHtml(d.image)}" alt="" width="22" height="22" style="border-radius:5px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : `<span class="degree-option-dot" style="background:${escapeHtml(d.color)}"></span>`}
+            ${escapeHtml(d.name)}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // Preset degree click → create immediately
+  catEl.querySelectorAll('.degree-option-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = btn.dataset.name;
+      const desc = btn.dataset.desc;
+      const color = btn.dataset.color;
+      const image = btn.dataset.image || null;
+      btn.disabled = true;
+      btn.textContent = 'יוצר...';
+      try {
+        const degree = await CourseRegistry.create(name, desc, color, image, { is_degree: true });
+        close();
+        toast(`התחום "${degree.name}" נוצר בהצלחה!`, 'success');
+        navigate(`/degree/${degree.id}`);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = name;
+        toast(err.message || 'שגיאה ביצירת תחום', 'error');
+      }
+    });
+  });
+
+  document.getElementById('btn-degree-request').addEventListener('click', () => showStep('request'));
+  document.getElementById('btn-degree-custom').addEventListener('click', () => showStep('custom'));
+  document.getElementById('btn-degree-req-back').addEventListener('click', () => showStep('choose'));
+  document.getElementById('btn-dc-back').addEventListener('click', () => showStep('choose'));
+
+  // Request form
+  document.getElementById('btn-degree-req-send').addEventListener('click', async () => {
+    const degName = document.getElementById('degree-req-name').value.trim();
+    const reqEmail = document.getElementById('degree-req-email').value.trim();
+    const errEl = document.getElementById('degree-req-error');
+    errEl.textContent = '';
+    if (!degName || degName.length < 2) { errEl.textContent = 'אנא הזן שם תחום'; return; }
+    const btn = document.getElementById('btn-degree-req-send');
+    btn.disabled = true; btn.textContent = 'שולח...';
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: reqEmail || 'משתמש ExamPrep',
+          email: reqEmail || 'no-reply@examprep.co',
+          subject: 'other',
+          message: `בקשה להוספת תחום לימוד:\n\nתחום: ${degName}\nאימייל: ${reqEmail || 'לא צוין'}`,
+        }),
+      });
+      if (!res.ok) throw new Error('שגיאה בשליחה');
+      close();
+      toast('הבקשה נשלחה! נוסיף את התחום בקרוב.', 'success');
+    } catch {
+      btn.disabled = false; btn.textContent = 'שלח בקשה';
+      errEl.textContent = 'שגיאה בשליחה, נסה שוב';
+    }
+  });
+
+  // Custom degree form
+  let customColor = '#3b82f6';
+  document.querySelectorAll('#dc-colors .color-swatch').forEach(sw => {
+    sw.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('#dc-colors .color-swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+      customColor = sw.dataset.color;
+    });
+  });
+  document.getElementById('dc-submit').addEventListener('click', async () => {
+    const name = document.getElementById('dc-name').value.trim();
+    const desc = document.getElementById('dc-desc').value.trim();
+    const errEl = document.getElementById('dc-error');
+    errEl.textContent = '';
+    if (!name || name.length < 2) { errEl.textContent = 'שם התחום חייב להיות לפחות 2 תווים'; return; }
+    const btn = document.getElementById('dc-submit');
+    btn.disabled = true; btn.textContent = 'יוצר...';
+    try {
+      const degree = await CourseRegistry.create(name, desc || null, customColor, null, { is_degree: true });
+      close();
+      toast(`התחום "${degree.name}" נוצר בהצלחה!`, 'success');
+      if (getRoute() === '/dashboard') renderDashboard();
+      navigate(`/degree/${degree.id}`);
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'צור תחום';
+      errEl.textContent = err.message || 'שגיאה ביצירת תחום';
+    }
+  });
+}
+
+// ===== Add Sub-Course Modal =====
+function showAddSubCourseModal(degree) {
+  const wrap = document.createElement('div');
+  wrap.appendChild(tmpl('tmpl-add-sub-course'));
+  document.body.appendChild(wrap.firstElementChild);
+  const modal = document.getElementById('add-sub-course-modal');
+  const close = () => modal.remove();
+  document.getElementById('asc-close').addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  document.getElementById('asc-degree-name').textContent = `בתוך התחום: ${degree.name}`;
+
+  let selectedColor = degree.color || '#3b82f6';
+  // Pre-select the swatch closest to degree color
+  document.querySelectorAll('#asc-colors .color-swatch').forEach(sw => {
+    if (sw.dataset.color === selectedColor) sw.classList.add('active');
+    else sw.classList.remove('active');
+    sw.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('#asc-colors .color-swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+      selectedColor = sw.dataset.color;
+    });
+  });
+
+  document.getElementById('asc-submit').addEventListener('click', async () => {
+    const name = document.getElementById('asc-name').value.trim();
+    const desc = document.getElementById('asc-desc').value.trim();
+    const errEl = document.getElementById('asc-error');
+    errEl.textContent = '';
+    if (!name || name.length < 2) { errEl.textContent = 'שם הקורס חייב להיות לפחות 2 תווים'; return; }
+    const btn = document.getElementById('asc-submit');
+    btn.disabled = true; btn.textContent = 'יוצר קורס...';
+    try {
+      const course = await CourseRegistry.create(name, desc || null, selectedColor, null, { parent_id: degree.id });
+      close();
+      toast(`הקורס "${course.name}" נוצר בהצלחה!`, 'success');
+      renderDegreeDashboard(degree.id);
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'צור קורס';
+      errEl.textContent = err.message || 'שגיאה ביצירת קורס';
+    }
+  });
 }
 
 // ===== Course actions modal =====
@@ -2367,7 +2931,7 @@ function showCourseActionsModal(course) {
       else if (action === 'lab') navigate(`/course/${cid}/lab`);
       else if (action === 'insights') navigate(`/course/${cid}/insights`);
       else if (action === 'progress') navigate(`/course/${cid}/progress`);
-      else if (action === 'study') navigate('/study');
+      else if (action === 'study') navigate(`/course/${cid}/study`);
     });
   });
 }
@@ -2387,8 +2951,14 @@ async function renderCourseDashboard() {
   const cid = state.course.id;
   try { await Data.ensureLoaded(cid); } catch (e) { console.warn('[course] data load failed:', e.message); }
 
+  // Seed realistic tohna1 history for demo user so explanations and history are visible
+  if (state.user.email === 'demo@examprep.co' && cid === 'tohna1' && DemoSeed.shouldSeed(state.user.email)) {
+    try { DemoSeed.build(state.user.email); } catch {}
+  }
+
   $app.innerHTML = '';
   $app.appendChild(tmpl('tmpl-course-dash'));
+  $app.firstElementChild?.classList.add('page-enter');
   wireTopbar();
 
   // Trial countdown banner
@@ -2488,7 +3058,7 @@ async function renderCourseDashboard() {
       else if (action === 'lab') navigate(`/course/${cid}/lab`);
       else if (action === 'insights') navigate(`/course/${cid}/insights`);
       else if (action === 'progress') navigate(`/course/${cid}/progress`);
-      else if (action === 'study') navigate('/study');
+      else if (action === 'study') navigate(`/course/${cid}/study`);
     });
   });
 
@@ -2594,8 +3164,8 @@ async function loadCourseExams(courseId, containerEl) {
             });
             if (r.ok) {
               toast('המבחן נמחק בהצלחה', 'success');
-              // Refresh course data so stats update
-              Data._loadedSet.delete(courseId);
+              // Refresh course data + stats from DB + re-render any open dashboard
+              await refreshCourseState(courseId);
               loadCourseExams(courseId);
             } else {
               const d = await r.json().catch(() => ({}));
@@ -2914,19 +3484,195 @@ function showExamManagementModal(courseId) {
             const examQs = (Array.isArray(allQs) ? allQs : []).filter(q => String(q.exam_id) === String(examId));
             if (!examQs.length) { grid.innerHTML = '<p class="muted" style="grid-column:1/-1;">אין שאלות.</p>'; return; }
 
-            grid.innerHTML = examQs.map(q => `
-              <div class="em-q-thumb" data-q-id="${q.id}" style="border:1px solid var(--border-soft);border-radius:8px;overflow:hidden;position:relative;min-height:80px;background:var(--gray-50);">
+            // Count how many questions already have AI explanations
+            const withExpl = examQs.filter(q => q.general_explanation && String(q.general_explanation).trim()).length;
+            const allDone = withExpl === examQs.length;
+            const noneDone = withExpl === 0;
+            const genBtnLabel = allDone
+              ? '✓ כל השאלות כוללות הסברים מפורטים'
+              : noneDone
+                ? `✨ צור הסברים מפורטים עם AI (${examQs.length} שאלות)`
+                : `✨ צור הסברים מפורטים ל-${examQs.length - withExpl} שאלות נוספות`;
+            const genBtnDisabled = allDone ? 'disabled' : '';
+            const genBtnTitle = allDone ? '' : 'AI ינתח כל שאלה ויפיק הסבר מפורט לתשובה הנכונה ולכל התשובות הלא נכונות. כ-15 שניות.';
+
+            const unknownCount = examQs.filter(q => q.answer_confidence === 'unknown' || q.answer_confidence === 'uncertain').length;
+            const revBtnLabel = `🔍 בדוק תשובות עם AI${unknownCount > 0 ? ` (${unknownCount} לא ודאיות)` : ''}`;
+
+            const genBar = `
+              <div class="em-gen-bar" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:6px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #fcd34d;border-radius:10px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#92400e;flex-shrink:0;"><path d="M12 2l2.4 7.4H22l-6 4.6 2.4 7.4L12 17l-6.4 4.4L8 14 2 9.4h7.6z"/></svg>
+                <div style="flex:1;font-size:13px;color:#78350f;">
+                  <strong>פתרונות מפורטים עם AI</strong>
+                  <div style="font-size:11px;color:#92400e;opacity:0.9;" title="${genBtnTitle}">ה-AI יצור הסבר מפורט לתשובה נכונה ולכל התשובות השגויות, על סמך קובץ הפתרון שהעלית.</div>
+                </div>
+                <button class="btn btn-primary btn-sm em-gen-btn" data-exam-id="${examId}" ${genBtnDisabled} style="white-space:nowrap;">${genBtnLabel}</button>
+              </div>
+              <div class="em-rev-bar" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:10px 12px;margin-bottom:8px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #93c5fd;border-radius:10px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#1d4ed8;flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <div style="flex:1;font-size:13px;color:#1e40af;">
+                  <strong>בדיקת תשובות עם AI</strong>
+                  <div style="font-size:11px;color:#1d4ed8;opacity:0.85;">AI ינתח כל שאלה על פי תמונתה ויאמת / יתקן תשובות לא ודאיות.</div>
+                </div>
+                <button class="btn btn-sm em-rev-btn" data-exam-id="${examId}" style="white-space:nowrap;background:#2563eb;color:#fff;border:none;">${revBtnLabel}</button>
+              </div>
+            `;
+
+            grid.innerHTML = genBar + examQs.map(q => {
+              const hasSolution = !!q.general_explanation;
+              const needsReview = q.answer_confidence === 'unknown';
+              const isUncertain = q.answer_confidence === 'uncertain';
+              const badgeStyle = 'position:absolute;top:4px;right:4px;color:white;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;';
+              const badge = needsReview
+                ? `<div style="${badgeStyle}background:#dc2626;" title="תשובה לא זוהתה אוטומטית - לחץ על השאלה לקבוע ידנית">⚠ תשובה?</div>`
+                : isUncertain
+                  ? `<div style="${badgeStyle}background:#ea580c;" title="הזיהוי לא ודאי - לחץ על השאלה לאמת">⚠ לא ודאי</div>`
+                  : (hasSolution ? `<div style="${badgeStyle}background:var(--green-500);">✓ פתרון</div>` : '');
+              const borderColor = needsReview ? '#dc2626' : (isUncertain ? '#ea580c' : 'var(--border-soft)');
+              return `
+              <div class="em-q-thumb" data-q-id="${q.id}" style="border:1px solid ${borderColor};border-radius:8px;overflow:hidden;position:relative;min-height:80px;background:var(--gray-50);">
                 <div class="em-q-render" style="display:grid;place-items:center;min-height:70px;font-size:11px;color:var(--text-muted);">
                   ${q.image_path === 'text-only'
                     ? `<div style="padding:8px;">${(q.general_explanation || 'שאלה ' + q.question_number).slice(0, 50)}...</div>`
                     : `<img src="${q.image_path.startsWith('http') ? q.image_path : Data.imageUrl(q.image_path)}" alt="שאלה ${q.question_number}" style="width:100%;display:block;" loading="lazy" onerror="this.parentElement.innerHTML='<div style=padding:8px>#${q.question_number}</div>'" />`}
                 </div>
+                ${badge}
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:var(--gray-100);font-size:11px;">
                   <span>#${q.question_number}</span>
                   <button class="em-q-delete" data-q-id="${q.id}" data-q-num="${q.question_number}" title="מחק שאלה" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:14px;">✕</button>
                 </div>
               </div>
-            `).join('');
+            `;}).join('');
+
+            // Wire the "Generate AI solutions" button
+            const genBtn = grid.querySelector('.em-gen-btn');
+            if (genBtn && !allDone) {
+              genBtn.addEventListener('click', async (ev) => {
+                ev.stopPropagation();
+                if (genBtn.disabled) return;
+                genBtn.disabled = true;
+                const origLabel = genBtn.textContent;
+                const restoreBtn = () => { genBtn.disabled = false; genBtn.textContent = origLabel; };
+                genBtn.innerHTML = '<span class="qv-spinner"></span> מייצר הסברים...';
+                try {
+                  const tk = await Auth.getToken();
+                  if (!tk) {
+                    toast('תוקף ההתחברות פג. התחבר שוב כדי להמשיך.', 'error');
+                    restoreBtn();
+                    return;
+                  }
+                  let r;
+                  try {
+                    r = await fetch('/api/exams/generate-solutions', {
+                      method: 'POST',
+                      headers: { Authorization: `Bearer ${tk}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ examId }),
+                    });
+                  } catch (netErr) {
+                    console.error('[create-solutions] network:', netErr);
+                    toast('שגיאת רשת. בדוק חיבור לאינטרנט ונסה שוב.', 'error');
+                    restoreBtn();
+                    return;
+                  }
+                  let data = {};
+                  try {
+                    data = await r.json();
+                  } catch (parseErr) {
+                    console.error('[create-solutions] json parse:', parseErr, 'status:', r.status);
+                    toast(`השרת החזיר תשובה לא תקינה (${r.status}). נסה שוב בעוד דקה.`, 'error');
+                    restoreBtn();
+                    return;
+                  }
+                  if (r.status === 401) {
+                    toast('תוקף ההתחברות פג. התחבר שוב.', 'error');
+                    restoreBtn();
+                    return;
+                  }
+                  if (r.status === 402) {
+                    // Trial expired or plan doesn't include this feature → show paywall
+                    restoreBtn();
+                    showPaywallModal(data.trial_expired ? 'trial_ended' : 'ai_quota');
+                    return;
+                  }
+                  if (r.status === 429) {
+                    toast(data.guidance || 'הגעת למגבלה היומית', 'error');
+                    restoreBtn();
+                    return;
+                  }
+                  if (!r.ok || !data.ok) {
+                    const msg = data.error || data.guidance || `שגיאה ביצירת הפתרונות (${r.status})`;
+                    console.error('[create-solutions] api error:', r.status, data);
+                    toast(msg, 'error');
+                    restoreBtn();
+                    return;
+                  }
+                  const elapsedSec = ((data.elapsed_ms || 0) / 1000).toFixed(1);
+                  if (data.generated === 0) {
+                    toast(data.message || 'כל השאלות כבר כוללות הסברים', 'info');
+                  } else {
+                    toast(`נוצרו ${data.generated} הסברים מפורטים (${elapsedSec} שניות)`, 'success');
+                    if (data.errors && data.errors.length > 0) {
+                      console.warn('[create-solutions] partial errors:', data.errors);
+                    }
+                  }
+                  // Refresh the expansion so it reflects new state
+                  grid.style.display = 'none';
+                  chevron.style.transform = '';
+                  setTimeout(() => header.click(), 100);
+                } catch (e) {
+                  console.error('[create-solutions] uncaught:', e);
+                  toast('שגיאה לא צפויה ביצירת הפתרונות', 'error');
+                  restoreBtn();
+                }
+              });
+            }
+
+            // Wire the "Verify answers" button
+            const revBtn = grid.querySelector('.em-rev-btn');
+            if (revBtn) {
+              revBtn.addEventListener('click', async (ev) => {
+                ev.stopPropagation();
+                if (revBtn.disabled) return;
+                revBtn.disabled = true;
+                const origLabel = revBtn.textContent;
+                const restoreRevBtn = () => { revBtn.disabled = false; revBtn.textContent = origLabel; };
+                revBtn.innerHTML = '<span class="qv-spinner"></span> בודק תשובות...';
+                try {
+                  const tk = await Auth.getToken();
+                  if (!tk) { toast('תוקף ההתחברות פג. התחבר שוב.', 'error'); restoreRevBtn(); return; }
+                  let r, data = {};
+                  try {
+                    r = await fetch('/api/exams/reverify-answers', {
+                      method: 'POST',
+                      headers: { Authorization: `Bearer ${tk}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ examId }),
+                    });
+                    data = await r.json();
+                  } catch (netErr) {
+                    console.error('[reverify] network:', netErr);
+                    toast('שגיאת רשת. בדוק חיבור לאינטרנט ונסה שוב.', 'error');
+                    restoreRevBtn();
+                    return;
+                  }
+                  if (!r.ok) { toast(data.error || `שגיאה (${r.status})`, 'error'); restoreRevBtn(); return; }
+                  const parts = [];
+                  if (data.resolved > 0)  parts.push(`${data.resolved} תשובות נפתרו`);
+                  if (data.promoted > 0)  parts.push(`${data.promoted} אומתו`);
+                  if (data.demoted > 0)   parts.push(`${data.demoted} הורדו לבדיקה`);
+                  if (data.agreed > 0)    parts.push(`${data.agreed} אושרו`);
+                  const summary = parts.length ? parts.join(' · ') : 'אין שינויים';
+                  toast(`בדיקת תשובות הסתיימה — ${summary}`, data.demoted > 0 ? 'warning' : 'success');
+                  // Refresh the expansion to show updated confidence badges
+                  grid.style.display = 'none';
+                  chevron.style.transform = '';
+                  setTimeout(() => header.click(), 100);
+                } catch (e) {
+                  console.error('[reverify] uncaught:', e);
+                  toast('שגיאה לא צפויה בבדיקת התשובות', 'error');
+                  restoreRevBtn();
+                }
+              });
+            }
 
             // Images load automatically via <img> tags — Cloudinary URLs are regular image URLs
 
@@ -2985,7 +3731,7 @@ function showExamManagementModal(courseId) {
               if (r.ok) {
                 btn.closest('.em-exam-row')?.remove();
                 toast('המבחן הועבר לסל המחזור — ניתן לשחזרו תוך 3 ימים', 'success', 6000);
-                Data._loadedSet.delete(courseId);
+                await refreshCourseState(courseId);
               } else toast('שגיאה בהסרה', 'error');
             },
           });
@@ -3045,25 +3791,53 @@ async function showTrashModal(courseId) {
       return Math.max(0, d);
     };
 
+    const examIds = new Set(exams.map(ex => String(ex.id)));
+    const grouped = questions.filter(q => q.exam_id && examIds.has(String(q.exam_id)));
+    const orphans = questions.filter(q => !q.exam_id || !examIds.has(String(q.exam_id)));
+
+    // Group questions by exam
+    const qByExam = {};
+    grouped.forEach(q => {
+      const key = String(q.exam_id);
+      (qByExam[key] = qByExam[key] || []).push(q);
+    });
+
     let html = '';
     if (exams.length) {
       html += `<div style="font-size:12px;font-weight:600;color:var(--text-muted);padding:8px 0 4px;text-transform:uppercase;letter-spacing:.5px;">מבחנים</div>`;
-      html += exams.map(ex => `
-        <div class="em-exam-row" style="border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:12px;padding:10px 4px;">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(ex.name)}</div>
-            <div style="font-size:12px;color:var(--text-muted);">${ex.question_count || 0} שאלות · נמחק ${daysLeft(ex.deleted_at)} ימים לפני מחיקה סופית</div>
+      html += exams.map(ex => {
+        const eqs = qByExam[String(ex.id)] || [];
+        const hasQs = eqs.length > 0;
+        return `
+        <div class="trash-exam-block" data-exam-id="${ex.id}">
+          <div class="em-exam-row trash-exam-header" style="border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:10px;padding:10px 4px;cursor:${hasQs ? 'pointer' : 'default'};" data-exam-id="${ex.id}">
+            ${hasQs ? `<span class="trash-chevron" style="font-size:11px;color:var(--text-muted);transition:transform .2s;user-select:none;" data-exam-id="${ex.id}">▶</span>` : '<span style="width:14px;display:inline-block;"></span>'}
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(ex.name)}</div>
+              <div style="font-size:12px;color:var(--text-muted);">${ex.question_count || 0} שאלות · נמחק ${daysLeft(ex.deleted_at)} ימים לפני מחיקה סופית${hasQs ? ` · לחץ לצפייה בשאלות` : ''}</div>
+            </div>
+            <button class="btn btn-sm trash-restore-exam" data-exam-id="${ex.id}" style="font-family:inherit;white-space:nowrap;">↩ שחזר</button>
           </div>
-          <button class="btn btn-sm trash-restore-exam" data-exam-id="${ex.id}" style="font-family:inherit;white-space:nowrap;">↩ שחזר</button>
+          ${hasQs ? `
+          <div class="trash-exam-questions" data-exam-id="${ex.id}" style="display:none;border-bottom:1px solid var(--border-soft);background:var(--surface-alt,rgba(0,0,0,.03));border-radius:0 0 6px 6px;padding:4px 4px 4px 28px;">
+            ${eqs.map(q => `
+              <div class="trash-q-row" style="display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid var(--border-soft);">
+                <span style="font-size:13px;color:var(--text-muted);min-width:70px;">שאלה #${q.question_number}</span>
+                <div style="flex:1;font-size:12px;color:var(--text-muted);">${daysLeft(q.deleted_at)} ימים לפני מחיקה סופית</div>
+                <button class="btn btn-sm trash-restore-q" data-q-id="${q.id}" data-exam-id="${ex.id}" style="font-family:inherit;white-space:nowrap;">↩ שחזר</button>
+              </div>
+            `).join('')}
+          </div>` : ''}
         </div>
-      `).join('');
+        `;
+      }).join('');
     }
-    if (questions.length) {
-      html += `<div style="font-size:12px;font-weight:600;color:var(--text-muted);padding:12px 0 4px;text-transform:uppercase;letter-spacing:.5px;">שאלות בודדות</div>`;
-      html += questions.map(q => `
-        <div style="border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:12px;padding:10px 4px;">
-          <span style="font-size:13px;color:var(--text-muted);min-width:60px;">שאלה #${q.question_number}</span>
+    if (orphans.length) {
+      html += `<div style="font-size:12px;font-weight:600;color:var(--text-muted);padding:12px 0 4px;text-transform:uppercase;letter-spacing:.5px;">שאלות שנמחקו בנפרד</div>`;
+      html += orphans.map(q => `
+        <div class="trash-q-row" style="border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:12px;padding:10px 4px;">
+          <span style="font-size:13px;color:var(--text-muted);min-width:70px;">שאלה #${q.question_number}</span>
           <div style="flex:1;font-size:12px;color:var(--text-muted);">${daysLeft(q.deleted_at)} ימים לפני מחיקה סופית</div>
           <button class="btn btn-sm trash-restore-q" data-q-id="${q.id}" style="font-family:inherit;white-space:nowrap;">↩ שחזר</button>
         </div>
@@ -3071,6 +3845,20 @@ async function showTrashModal(courseId) {
     }
 
     listEl.innerHTML = html;
+
+    // Chevron toggle — expand/collapse questions under each exam
+    listEl.querySelectorAll('.trash-exam-header').forEach(header => {
+      header.addEventListener('click', (e) => {
+        if (e.target.closest('.trash-restore-exam')) return; // don't toggle when clicking restore
+        const eid = header.dataset.examId;
+        const qBlock = listEl.querySelector(`.trash-exam-questions[data-exam-id="${eid}"]`);
+        const chevron = listEl.querySelector(`.trash-chevron[data-exam-id="${eid}"]`);
+        if (!qBlock) return;
+        const isOpen = qBlock.style.display !== 'none';
+        qBlock.style.display = isOpen ? 'none' : '';
+        if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+      });
+    });
 
     listEl.querySelectorAll('.trash-restore-exam').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -3081,10 +3869,10 @@ async function showTrashModal(courseId) {
           body: JSON.stringify({ examId: btn.dataset.examId }),
         });
         if (r2.ok) {
-          btn.closest('.em-exam-row')?.remove();
+          btn.closest('.trash-exam-block')?.remove();
           toast('המבחן שוחזר בהצלחה', 'success');
-          Data._loadedSet.delete(courseId);
-          if (!listEl.querySelector('.em-exam-row,.trash-restore-q'))
+          await refreshCourseState(courseId);
+          if (!listEl.querySelector('.trash-exam-block,.trash-q-row'))
             listEl.innerHTML = '<p class="muted" style="text-align:center;padding:30px;">סל המחזור ריק</p>';
         } else { btn.disabled = false; btn.textContent = '↩ שחזר'; toast('שגיאה בשחזור', 'error'); }
       });
@@ -3099,8 +3887,21 @@ async function showTrashModal(courseId) {
           body: JSON.stringify({ questionId: btn.dataset.qId }),
         });
         if (r2.ok) {
-          btn.closest('div')?.remove();
-          toast('השאלה שוחזרה בהצלחה', 'success');
+          const resData = await r2.json().catch(() => ({}));
+          // Remove the question row
+          btn.closest('.trash-q-row')?.remove();
+          const msg = resData.restoredExam ? 'השאלה והמבחן שוחזרו בהצלחה' : 'השאלה שוחזרה בהצלחה';
+          toast(msg, 'success');
+          await refreshCourseState(courseId);
+          // If the parent exam block is now empty of questions, remove its questions block
+          if (btn.dataset.examId) {
+            const examQBlock = listEl.querySelector(`.trash-exam-questions[data-exam-id="${btn.dataset.examId}"]`);
+            const examBlock = listEl.querySelector(`.trash-exam-block[data-exam-id="${btn.dataset.examId}"]`);
+            if (resData.restoredExam && examBlock) examBlock.remove();
+            else if (examQBlock && !examQBlock.querySelector('.trash-q-row')) examQBlock.remove();
+          }
+          if (!listEl.querySelector('.trash-exam-block,.trash-q-row'))
+            listEl.innerHTML = '<p class="muted" style="text-align:center;padding:30px;">סל המחזור ריק</p>';
         } else { btn.disabled = false; btn.textContent = '↩ שחזר'; toast('שגיאה בשחזור', 'error'); }
       });
     });
@@ -3167,10 +3968,191 @@ function showQuestionViewer(qOrArr, courseIdOrStartIndex, onDeleteOrCourseId, ma
     nextBtn.disabled = currentIndex === questions.length - 1;
     prevBtn.style.opacity = currentIndex === 0 ? '0.3' : '1';
     nextBtn.style.opacity = currentIndex === questions.length - 1 ? '0.3' : '1';
-    bodyEl.innerHTML = isTextOnly
+    const imageHtml = isTextOnly
       ? `<div style="padding:24px;font-size:15px;line-height:1.8;direction:rtl;">${escapeHtml(q.general_explanation || 'שאלה ללא תמונה')}</div>`
       : `<img src="${imgSrc}" alt="שאלה" style="width:100%;display:block;" />`;
+    bodyEl.innerHTML = `
+      <div class="qv-image-wrap">${imageHtml}</div>
+      <div class="qv-solution-section">
+        <button class="qv-solution-toggle" id="qv-sol-toggle" type="button">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1v.2h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
+          <span class="qv-sol-label">הצג פתרון מפורט</span>
+          <svg class="qv-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="qv-solution-panel" id="qv-sol-panel" hidden></div>
+      </div>
+    `;
     if (onDelete) { delBtn.style.display = ''; } else { delBtn.style.display = 'none'; }
+    wireSolutionToggle(q);
+    // Auto-open solution panel immediately on question load
+    setTimeout(() => {
+      const toggleBtn = viewer.querySelector('#qv-sol-toggle');
+      if (toggleBtn) toggleBtn.click();
+    }, 0);
+  }
+
+  function wireSolutionToggle(q) {
+    const toggleBtn = viewer.querySelector('#qv-sol-toggle');
+    const panel = viewer.querySelector('#qv-sol-panel');
+    const labelEl = viewer.querySelector('.qv-sol-label');
+    if (!toggleBtn || !panel) return;
+    toggleBtn.addEventListener('click', () => {
+      const isOpen = !panel.hidden;
+      if (isOpen) {
+        panel.hidden = true;
+        toggleBtn.classList.remove('open');
+        if (labelEl) labelEl.textContent = 'הצג פתרון מפורט';
+      } else {
+        if (!panel.dataset.rendered) {
+          panel.innerHTML = renderSolutionPanel(q);
+          panel.dataset.rendered = '1';
+          wireSolutionPanelActions(q, panel);
+        }
+        panel.hidden = false;
+        toggleBtn.classList.add('open');
+        if (labelEl) labelEl.textContent = 'הסתר פתרון מפורט';
+      }
+    });
+  }
+
+  function wireSolutionPanelActions(q, panel) {
+    // Event delegation for "תקן תשובה" toggle — survives innerHTML re-renders
+    panel.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action="correct-toggle"]');
+      if (!btn) return;
+      const pane = panel.querySelector('[data-panel="correct"]');
+      if (!pane) return;
+      const hidden = pane.style.display === 'none';
+      pane.style.display = hidden ? 'block' : 'none';
+      btn.textContent = hidden ? '✖ סגור' : '✏️ תקן תשובה';
+    });
+
+    // Wire the manual answer save button (present in both 'unknown' and collapsible panel)
+    const manualSaveBtn = panel.querySelector('#qv-manual-save');
+    if (manualSaveBtn) {
+      manualSaveBtn.addEventListener('click', async () => {
+        const selected = panel.querySelector('input[name="qv-manual-answer"]:checked');
+        if (!selected) { toast('בחר תשובה לפני השמירה', 'error'); return; }
+        const newIdx = parseInt(selected.value, 10);
+        manualSaveBtn.disabled = true;
+        const orig = manualSaveBtn.textContent;
+        manualSaveBtn.innerHTML = '<span class="qv-spinner"></span>';
+        try {
+          const tk = await Auth.getToken();
+          const r = await fetch(`/api/courses/${courseId}/questions/${q.id}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${tk}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ correct_idx: newIdx }),
+          });
+          const data = await r.json();
+          if (!r.ok) {
+            toast(data.error || 'שגיאה בשמירה', 'error');
+            manualSaveBtn.disabled = false; manualSaveBtn.textContent = orig;
+            return;
+          }
+          q.correct_idx = newIdx;
+          q.answer_confidence = 'manual';
+          panel.innerHTML = renderSolutionPanel(q);
+          wireSolutionPanelActions(q, panel);
+          toast('התשובה נשמרה בהצלחה', 'success');
+        } catch (e) {
+          toast('שגיאה בשמירה', 'error');
+          manualSaveBtn.disabled = false; manualSaveBtn.textContent = orig;
+        }
+      });
+    }
+
+    // Wire the AI enhance button (not present when rich explanations already loaded)
+    const enhanceBtn = panel.querySelector('#qv-sol-enhance');
+    if (!enhanceBtn) return;
+    const doEnhance = async (fromAuto = false) => {
+      if (enhanceBtn.disabled) return;
+      enhanceBtn.disabled = true;
+      const orig = enhanceBtn.innerHTML;
+      const restore = () => { enhanceBtn.disabled = false; enhanceBtn.innerHTML = orig; };
+      enhanceBtn.innerHTML = '<span class="qv-spinner"></span> מייצר הסבר מפורט...';
+      try {
+        const tk = await Auth.getToken();
+        if (!tk) {
+          if (!fromAuto) toast('תוקף ההתחברות פג. התחבר שוב.', 'error');
+          restore();
+          return;
+        }
+        const callEndpoint = async (endpoint) => {
+          let res, json;
+          try {
+            res = await fetch(endpoint, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${tk}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ questionId: q.id }),
+            });
+          } catch (netErr) {
+            console.error('[enhance] network:', netErr);
+            return { netError: true };
+          }
+          try {
+            json = await res.json();
+          } catch (parseErr) {
+            console.error('[enhance] json parse:', parseErr, 'status:', res.status);
+            return { parseError: true, status: res.status };
+          }
+          return { res, data: json };
+        };
+        // Tier-2 text-only endpoint (cheap, fast)
+        let out = await callEndpoint('/api/questions/enhance-solution');
+        if (out.netError) {
+          if (!fromAuto) toast('שגיאת רשת. נסה שוב.', 'error');
+          restore();
+          return;
+        }
+        if (out.parseError) {
+          if (!fromAuto) toast(`השרת החזיר תשובה לא תקינה (${out.status}).`, 'error');
+          restore();
+          return;
+        }
+        let { res: r, data } = out;
+        // Fallback: if the question has no text (scanned PDF), use image-based tier-3
+        if (r.status === 422 && data?.fallback === 'image') {
+          console.log('[enhance] falling back to image-based generate-solution');
+          out = await callEndpoint('/api/questions/generate-solution');
+          if (out.netError || out.parseError) {
+            if (!fromAuto) toast('שגיאת תקשורת. נסה שוב.', 'error');
+            restore();
+            return;
+          }
+          r = out.res;
+          data = out.data;
+        }
+        if (r.status === 401) {
+          if (!fromAuto) toast('תוקף ההתחברות פג. התחבר שוב.', 'error');
+          restore();
+          return;
+        }
+        if (r.status === 402) {
+          // Trial expired or plan doesn't include AI enhancement — show paywall
+          restore();
+          if (!fromAuto) showPaywallModal(data.trial_expired ? 'trial_ended' : 'ai_quota');
+          return;
+        }
+        if (!r.ok || !data.ok) {
+          if (!fromAuto) toast(data.error || data.guidance || `שגיאה ביצירת הפתרון (${r.status})`, 'error');
+          console.error('[enhance] api error:', r.status, data);
+          restore();
+          return;
+        }
+        q.general_explanation = data.general_explanation;
+        q.option_explanations = data.option_explanations;
+        if (data.correct_idx) q.correct_idx = data.correct_idx;
+        panel.innerHTML = renderSolutionPanel(q);
+        wireSolutionPanelActions(q, panel);
+        if (!fromAuto) toast('הפתרון נוצר בהצלחה', 'success');
+      } catch (e) {
+        console.error('[enhance] uncaught:', e);
+        if (!fromAuto) toast('שגיאה לא צפויה ביצירת הפתרון', 'error');
+        restore();
+      }
+    };
+    enhanceBtn.addEventListener('click', () => doEnhance(false));
   }
 
   render();
@@ -3209,6 +4191,198 @@ function showQuestionViewer(qOrArr, courseIdOrStartIndex, onDeleteOrCourseId, ma
   }
 }
 
+function renderSolutionPanel(q) {
+  const hasGeneral = !!(q.general_explanation && String(q.general_explanation).trim());
+  const opts = Array.isArray(q.option_explanations) ? q.option_explanations : [];
+  const hasOpts = opts.length > 0 && opts.some(o => o && o.explanation);
+  const letters = ['א', 'ב', 'ג', 'ד', 'ה'];
+  const correctIdx = parseInt(q.correct_idx, 10) || (opts.find(o => o?.isCorrect)?.idx) || 1;
+  const correctLetter = letters[correctIdx - 1] || String(correctIdx);
+  const needsReview = q.answer_confidence === 'unknown';
+  const isUncertain = q.answer_confidence === 'uncertain';
+
+  // Radio buttons — pre-select current answer when confidence is known
+  const radioBorderColor = needsReview ? '#fca5a5' : (isUncertain ? '#fed7aa' : 'var(--border-soft)');
+  const radios = [1,2,3,4].map(i => `
+    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:6px 12px;border:1px solid ${radioBorderColor};border-radius:6px;background:white;">
+      <input type="radio" name="qv-manual-answer" value="${i}" ${!needsReview && i === correctIdx ? 'checked' : ''} style="margin:0;" />
+      <span>${letters[i-1]}</span>
+    </label>
+  `).join('');
+  const saveBtn = `<button class="btn btn-primary btn-sm" id="qv-manual-save" type="button" data-q-id="${q.id}">שמור</button>`;
+
+  // Three states:
+  //   'unknown'   — red warning, radios visible immediately, user MUST set manually
+  //   'uncertain' — orange warning, AI picked an answer but second model disagreed;
+  //                 radios visible, user should verify
+  //   'confirmed'/'manual' — green badge, collapsed correction panel
+  let answerBlock = '';
+  if (needsReview) {
+    answerBlock = `
+      <div class="qv-answer-review" style="margin-bottom:16px;padding:14px 16px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
+        <p style="margin:0 0 10px;font-size:13px;color:#991b1b;font-weight:600;">⚠ התשובה הנכונה לא זוהתה אוטומטית</p>
+        <p style="margin:0 0 10px;font-size:12px;color:#7f1d1d;">בחר את התשובה הנכונה מתוך ארבעת האפשרויות:</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${radios}${saveBtn}</div>
+      </div>`;
+  } else if (isUncertain) {
+    answerBlock = `
+      <div class="qv-answer-uncertain" style="margin-bottom:16px;padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;">
+        <p style="margin:0 0 6px;font-size:13px;color:#9a3412;font-weight:600;">⚠️ הזיהוי האוטומטי לא ודאי</p>
+        <p style="margin:0 0 10px;font-size:12px;color:#9a3412;">ה-AI זיהה את התשובה כ-<strong>${correctLetter}</strong>, אבל מודל אימות שני לא הסכים. אנא ודא שהתשובה הנכונה היא ${correctLetter}, או תקן לפי הצורך:</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${radios}${saveBtn}</div>
+      </div>`;
+  } else {
+    answerBlock = `
+      <div class="qv-sol-correct" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <span class="qv-sol-badge">תשובה נכונה: ${correctLetter}</span>
+        <button data-action="correct-toggle" type="button" style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:4px 0;text-decoration:underline;">✏️ תקן תשובה</button>
+      </div>
+      <div data-panel="correct" style="display:none;margin-bottom:16px;padding:12px 14px;background:var(--gray-50);border:1px solid var(--border-soft);border-radius:10px;">
+        <p style="margin:0 0 8px;font-size:12px;color:var(--text-muted);">בחר תשובה נכונה:</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${radios}${saveBtn}</div>
+      </div>`;
+  }
+
+  // Cached rich explanations — show them immediately.
+  if (hasGeneral || hasOpts) {
+    const optsHtml = opts.length > 0 ? opts.map(o => {
+      const idx = parseInt(o.idx, 10);
+      const letter = letters[idx - 1] || String(idx);
+      const cls = o.isCorrect ? 'qv-sol-opt--correct' : 'qv-sol-opt--wrong';
+      const mark = o.isCorrect ? '✓ נכונה' : '✗ שגויה';
+      return `
+        <div class="qv-sol-opt ${cls}">
+          <div class="qv-sol-opt-head">
+            <span class="qv-sol-opt-letter">${letter}</span>
+            <span class="qv-sol-opt-mark">${mark}</span>
+          </div>
+          <p>${escapeHtml(o.explanation || '')}</p>
+        </div>`;
+    }).join('') : '';
+    return `
+      ${answerBlock}
+      ${hasGeneral ? `
+        <div class="qv-sol-general">
+          <h4>הסבר כללי</h4>
+          <p>${escapeHtml(q.general_explanation)}</p>
+        </div>` : ''}
+      ${optsHtml ? `
+        <div class="qv-sol-options">
+          <h4>ניתוח האפשרויות</h4>
+          ${optsHtml}
+        </div>` : ''}
+    `;
+  }
+
+  // No rich explanation yet — show answer block + enhance button
+  return `
+    ${answerBlock}
+    <div class="qv-enhance-wrap">
+      <button class="btn btn-primary btn-sm" id="qv-sol-enhance" type="button">שפר הסבר עם AI</button>
+      <p class="qv-no-solution-hint">ה-AI ייצר הסבר מפורט לכל אפשרות (כולל הלא-נכונות). כ-3-5 שניות.</p>
+    </div>
+  `;
+}
+
+// =====================================================
+// New-user onboarding tour — 4-step spotlight walkthrough
+// =====================================================
+function showOnboardingTour() {
+  if (localStorage.getItem('ep_onboarding_v2')) return;
+
+  const steps = [
+    {
+      title: 'ברוך הבא ל-ExamPrep',
+      body: 'כאן תתרגל שאלות אמריקאיות מבחינות אמיתיות ותעקוב אחר ההתקדמות שלך. הנה סיור קצר שיעזור לך להתחיל.',
+      anchor: null,
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`,
+    },
+    {
+      title: 'הוסף קורס',
+      body: 'לחץ על "הוסף קורס חדש" כדי ליצור קורס ולהעלות קבצי מבחן PDF. המערכת תחלץ שאלות אוטומטית.',
+      anchor: '#btn-add-course-card',
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+    },
+    {
+      title: 'העלה מבחן PDF',
+      body: 'לאחר יצירת קורס, לחץ על הקורס ואז על "העלה מבחן PDF". ניתן להוסיף גם קובץ פתרון — ה-AI יזהה את התשובות הנכונות.',
+      anchor: null,
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>`,
+    },
+    {
+      title: 'תרגל ועקוב אחר ההתקדמות',
+      body: 'בתוך כל קורס תמצא: תרגול שאלות, ביקורת טעויות, תובנות מותאמות אישית, ומעבדת מבחן מדומה. בהצלחה!',
+      anchor: null,
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
+    },
+  ];
+
+  let current = 0;
+  const overlay = document.createElement('div');
+  overlay.className = 'onboarding-overlay';
+
+  function render() {
+    const step = steps[current];
+    const isLast = current === steps.length - 1;
+    const progressPct = Math.round(((current + 1) / steps.length) * 100);
+
+    // Spotlight target
+    let spotlightStyle = '';
+    let anchorRect = null;
+    if (step.anchor) {
+      const el = document.querySelector(step.anchor);
+      if (el) {
+        anchorRect = el.getBoundingClientRect();
+        const pad = 8;
+        spotlightStyle = `
+          --sp-top:${anchorRect.top - pad}px;
+          --sp-left:${anchorRect.left - pad}px;
+          --sp-width:${anchorRect.width + pad * 2}px;
+          --sp-height:${anchorRect.height + pad * 2}px;
+        `;
+      }
+    }
+
+    overlay.style.cssText = spotlightStyle;
+    overlay.className = 'onboarding-overlay' + (anchorRect ? ' onboarding-has-spotlight' : '');
+    overlay.innerHTML = `
+      ${anchorRect ? `<div class="onboarding-spotlight" style="top:${anchorRect.top - 8}px;left:${anchorRect.left - 8}px;width:${anchorRect.width + 16}px;height:${anchorRect.height + 16}px;"></div>` : ''}
+      <div class="onboarding-tooltip ${anchorRect ? 'onboarding-tooltip--anchored' : 'onboarding-tooltip--center'}"
+           ${anchorRect ? `style="top:${Math.min(anchorRect.bottom + 18, window.innerHeight - 200)}px;left:${Math.max(8, Math.min(anchorRect.left, window.innerWidth - 360))}px;"` : ''}>
+        <div class="onboarding-header">
+          <div class="onboarding-step-icon">${step.icon}</div>
+          <div class="onboarding-step-counter">שלב <span>${current + 1}</span> מתוך ${steps.length}</div>
+        </div>
+        <h3 class="onboarding-title">${escapeHtml(step.title)}</h3>
+        <p class="onboarding-body">${escapeHtml(step.body)}</p>
+        <div class="onboarding-footer">
+          <div class="onboarding-progress">
+            <div class="onboarding-progress-fill" style="width:${progressPct}%"></div>
+          </div>
+          <div class="onboarding-actions">
+            <button class="btn btn-ghost btn-sm onboarding-skip">דלג</button>
+            <button class="btn btn-primary onboarding-next">${isLast ? 'בוא נתחיל' : 'הבא ←'}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    overlay.querySelector('.onboarding-skip').onclick = done;
+    overlay.querySelector('.onboarding-next').onclick = () => {
+      if (isLast) { done(); } else { current++; render(); }
+    };
+  }
+
+  function done() {
+    localStorage.setItem('ep_onboarding_v2', '1');
+    overlay.classList.add('onboarding-exit');
+    setTimeout(() => overlay.remove(), 400);
+  }
+
+  render();
+  document.body.appendChild(overlay);
+}
+
 // Generic confirmation modal
 function showConfirmModal({ title, body, confirmLabel, danger, onConfirm }) {
   const html = `
@@ -3241,6 +4415,10 @@ function showConfirmModal({ title, body, confirmLabel, danger, onConfirm }) {
 
 // Upload PDF modal
 function showUploadPdfModal(courseId) {
+  if (courseId === 'tohna1') {
+    showConfirmModal({ title: 'העלאה לקורס מובנה', body: 'תוכן "תוכנה 1" מנוהל דרך קבצים מקומיים ולא ניתן להעלות אליו דרך הממשק.<br><br>לבדיקת זרימת ההעלאה — צור קורס חדש ועלה אליו.', confirmLabel: 'הבנתי', onConfirm: () => {} });
+    return;
+  }
   const html = `
     <div class="modal-backdrop" id="upload-pdf-modal">
       <div class="modal">
@@ -3411,8 +4589,8 @@ function showUploadPdfModal(courseId) {
       { at: 6, text: '📐 מזהה מבנה שאלות בדף...' },
       { at: 10, text: '✂️ חותך שאלות מהמבחן...' },
       { at: 15, text: '🎨 מעבד תמונות שאלה באיכות גבוהה...' },
-      { at: 20, text: '🔎 מחפש תשובות מסומנות בפתרון...' },
-      { at: 28, text: '🟡 מנתח סימוני צהוב בקובץ הפתרון...' },
+      { at: 20, text: '🤖 מנתח קובץ פתרון עם AI...' },
+      { at: 28, text: '📋 AI מחפש את התשובות הנכונות לכל שאלה...' },
       { at: 35, text: '✅ מתאים תשובות לשאלות...' },
       { at: 42, text: '💾 שומר שאלות ותמונות בענן...' },
       { at: 50, text: '📊 מעדכן סטטיסטיקות הקורס...' },
@@ -3486,14 +4664,19 @@ function showUploadPdfModal(courseId) {
       if (res.data.warnings && res.data.warnings.length) {
         res.data.warnings.forEach((w, i) => setTimeout(() => toast(w, 'warning', 8000), 1500 + i * 2000));
       }
+      if (res.data.trashWarning) {
+        setTimeout(() => toast(res.data.trashWarning, 'info', 6000), 800);
+      }
 
       // Brief pause so user sees "הושלם" before modal closes
       await new Promise(r => setTimeout(r, 600));
       close();
 
-      // Refresh data and reopen exam management modal
-      Data._loadedSet.delete(courseId);
-      try { await Data.ensureLoaded(courseId); } catch {}
+      // Refresh data and reopen exam management modal.
+      // refreshCourseState re-fetches the courses list (so total_questions /
+      // total_pdfs on the dashboard are live) AND re-renders the dashboard or
+      // course view if one of them is currently showing.
+      await refreshCourseState(courseId);
       // Reopen the exam management modal to show the new exam
       showExamManagementModal(courseId);
       // Update stats on course page if visible
@@ -3563,9 +4746,14 @@ function showAddCourseModal() {
     btn.disabled = true;
     btn.textContent = 'יוצר קורס...';
     try {
-      const course = await CourseRegistry.create(name, desc || null, selectedColor);
+      const imageUrl = document.getElementById('ac-image-url')?.value.trim() || null;
+      const course = await CourseRegistry.create(name, desc || null, selectedColor, imageUrl);
       close();
       toast(`הקורס "${course.name}" נוצר בהצלחה!`, 'success');
+      // If the user is on the dashboard, re-render it so the new course card
+      // appears (and the welcome banner disappears) BEFORE they navigate away.
+      // This way if they hit back, they land on a correct dashboard.
+      if (getRoute() === '/dashboard') renderDashboard();
       navigate(`/course/${course.id}`);
     } catch (err) {
       errEl.textContent = err.message || 'שגיאה ביצירת הקורס';
@@ -3735,10 +4923,9 @@ function renderQuiz() {
   }
   refreshAnswerVisual();
 
-  // Reveal button (hidden in exam mode)
+  // Reveal button — always hidden now that clicking an answer auto-reveals.
   const revealBtn = document.getElementById('btn-reveal');
-  revealBtn.classList.toggle('hidden', state.quiz.examMode);
-  revealBtn.addEventListener('click', revealSolution);
+  revealBtn.classList.add('hidden');
 
   // Nav buttons
   const prevBtn = document.getElementById('btn-prev');
@@ -3829,6 +5016,7 @@ function selectAnswer(i) {
   state.quiz.selections[q.id] = i;
   refreshAnswerVisual();
   renderQuizNav();
+  if (!state.quiz.examMode) revealSolution();
 }
 
 async function revealSolution() {
@@ -4013,6 +5201,15 @@ function renderSummary() {
   $app.appendChild(tmpl('tmpl-summary'));
 
   const b = state.lastBatch;
+  const cid = state.course?.id || 'tohna1';
+
+  // Reconstruct questions array when coming from history (state.quiz not set)
+  const batchQuestions = state.quiz?.questions || (() => {
+    const allQs = Data.allQuestions();
+    const qMap = Object.fromEntries(allQs.map(q => [q.id, q]));
+    return (b.qids || []).map(id => qMap[id]).filter(Boolean);
+  })();
+
   const score = Math.round((b.correct / b.size) * 100);
   document.getElementById('summary-score-num').textContent = score + '%';
 
@@ -4036,7 +5233,7 @@ function renderSummary() {
   // Pills
   const pillsEl = document.getElementById('summary-pills');
   pillsEl.innerHTML = '';
-  state.quiz.questions.forEach((qq, i) => {
+  batchQuestions.forEach((qq, i) => {
     const p = document.createElement('div');
     p.className = 'q-pill';
     if (b.selections[qq.id] == null) p.classList.add('skipped');
@@ -4046,9 +5243,8 @@ function renderSummary() {
     pillsEl.appendChild(p);
   });
 
-  const cid = state.course?.id || 'tohna1';
-  document.getElementById('btn-mistake-review').addEventListener('click', () => navigate(`/course/${cid}/review`));
-  document.getElementById('btn-summary-home').addEventListener('click', () => navigate(`/course/${cid}`));
+  document.getElementById('btn-mistake-review').addEventListener('click', (e) => { e.preventDefault(); navigate(`/course/${cid}/review`); });
+  document.getElementById('btn-summary-home').addEventListener('click', (e) => { e.preventDefault(); navigate(`/course/${cid}`); });
 
   // If no mistakes, hide review button
   if (b.wrong === 0 && b.skipped === 0) {
@@ -4063,8 +5259,16 @@ function renderMistakeReview() {
   $app.appendChild(tmpl('tmpl-review'));
 
   const b = state.lastBatch;
+  // Reconstruct questions array when coming from history (state.quiz not set)
+  const batchQuestions = state.quiz?.questions || (() => {
+    const allQs = Data.allQuestions();
+    const qMap = Object.fromEntries(allQs.map(q => [q.id, q]));
+    return (b.qids || []).map(id => qMap[id]).filter(Boolean);
+  })();
+  // Ensure explanations are loaded (may not be if coming from history)
+  try { Data.prefetchExplanationsForQuestions(batchQuestions); } catch {}
   // Get all questions that were wrong or skipped
-  const wrongQs = state.quiz.questions.filter(q => {
+  const wrongQs = batchQuestions.filter(q => {
     const sel = b.selections[q.id];
     return sel == null || !b.correctMap[q.id];
   });
@@ -4087,15 +5291,15 @@ function renderMistakeReview() {
     const labels = ap.optionLabels || [];
     const numOpts = ap.numOptions || 4;
     const sel = b.selections[q.id];
-    const correctIdx = data.correctIdx;
-    const exam = Data.metadata.exams.find(e => e.id === q.examId);
+    const correctIdx = data.correctIdx ?? (b.correctIdxByQ?.[q.id]);
+    const exam = Data.metadata?.exams?.find(e => e.id === q.examId);
     const exp = data.explanation;
 
     document.getElementById('review-pos').textContent = `שאלה ${idx + 1} מתוך ${wrongQs.length}`;
     document.getElementById('review-sub').textContent = sel == null ? 'שאלה שדילגת עליה' : 'שאלה שטעית בה';
 
     const yourLabel = sel == null ? 'דילגת' : (labels[sel - 1] || `אפשרות ${sel}`);
-    const correctLabel = labels[correctIdx - 1] || `אפשרות ${correctIdx}`;
+    const correctLabel = correctIdx != null ? (labels[correctIdx - 1] || `אפשרות ${correctIdx}`) : '—';
 
     let html = `
       <div class="review-question-card">
@@ -4238,11 +5442,16 @@ function buildMockExam(courseId, opts) {
 async function renderInsights() {
   if (!state.user) state.user = Auth.current();
   if (!state.user) return navigate('/login');
-  if (!state.course) state.course = CourseRegistry.BUILTIN;
+  if (!state.course) return navigate('/dashboard');
+
+  await CourseRegistry.ensureLoaded();
+  const _regCourse = CourseRegistry.get(state.course.id);
+  if (_regCourse) state.course = _regCourse;
 
   await Data.ensureLoaded(state.course.id);
   $app.innerHTML = '';
   $app.appendChild(tmpl('tmpl-insights'));
+  $app.firstElementChild?.classList.add('page-enter');
   wireTopbar();
 
   const uid = state.user.email;
@@ -4356,11 +5565,16 @@ async function renderInsights() {
 async function renderLab() {
   if (!state.user) state.user = Auth.current();
   if (!state.user) return navigate('/login');
-  if (!state.course) state.course = CourseRegistry.BUILTIN;
+  if (!state.course) return navigate('/dashboard');
+
+  await CourseRegistry.ensureLoaded();
+  const _regCourse = CourseRegistry.get(state.course.id);
+  if (_regCourse) state.course = _regCourse;
 
   await Data.ensureLoaded(state.course.id);
   $app.innerHTML = '';
   $app.appendChild(tmpl('tmpl-lab'));
+  $app.firstElementChild?.classList.add('page-enter');
   wireTopbar();
 
   const uid = state.user.email;
@@ -4705,11 +5919,16 @@ function startAiQuiz(aiQuestions, timerSeconds = 0, examMode = false) {
 async function renderProgress() {
   if (!state.user) state.user = Auth.current();
   if (!state.user) return navigate('/login');
-  if (!state.course) state.course = CourseRegistry.BUILTIN;
+  if (!state.course) return navigate('/dashboard');
+
+  await CourseRegistry.ensureLoaded();
+  const _regCourse = CourseRegistry.get(state.course.id);
+  if (_regCourse) state.course = _regCourse;
 
   await Data.ensureLoaded(state.course.id);
   $app.innerHTML = '';
   $app.appendChild(tmpl('tmpl-progress'));
+  $app.firstElementChild?.classList.add('page-enter');
   wireTopbar();
 
   const uid = state.user.email;
@@ -4961,26 +6180,49 @@ async function renderProgress() {
 }
 
 // ===== Shared topbar wiring =====
-function wireTopbar() {
-  // Rewrite course-scoped nav links to include the current courseId
-  const cid = state.course?.id || 'tohna1';
-  const courseRouteMap = {
-    '/insights': `/course/${cid}/insights`,
-    '/lab': `/course/${cid}/lab`,
-    '/progress': `/course/${cid}/progress`,
-  };
-  document.querySelectorAll('[data-route]').forEach(link => {
-    let r = link.getAttribute('data-route');
-    if (courseRouteMap[r]) {
-      r = courseRouteMap[r];
-      link.setAttribute('data-route', r);
-      link.setAttribute('href', '#' + r);
-    }
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (r) navigate(r);
-    });
+function wireTopbar(cid) {
+  // cid: explicit course id (string/number). Pass null from renderDashboard (global).
+  // If omitted/undefined, fall back to state.course?.id.
+  const activeCid = cid !== undefined ? cid : (state.course?.id ?? null);
+
+  // Show/hide course-only nav items based on whether we're inside a course.
+  document.querySelectorAll('[data-course-nav="1"]').forEach(el => {
+    el.style.display = activeCid ? '' : 'none';
   });
+
+  if (activeCid) {
+    const courseRouteMap = {
+      '/insights': `/course/${activeCid}/insights`,
+      '/lab': `/course/${activeCid}/lab`,
+      '/progress': `/course/${activeCid}/progress`,
+    };
+    document.querySelectorAll('[data-route]').forEach(link => {
+      let r = link.getAttribute('data-route');
+      if (courseRouteMap[r]) {
+        r = courseRouteMap[r];
+        link.setAttribute('data-route', r);
+        link.setAttribute('href', '#' + r);
+      }
+      if (!link.dataset.wired) {
+        link.dataset.wired = '1';
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (r) navigate(r);
+        });
+      }
+    });
+  } else {
+    document.querySelectorAll('[data-route]').forEach(link => {
+      if (!link.dataset.wired) {
+        link.dataset.wired = '1';
+        const r = link.getAttribute('data-route');
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          if (r) navigate(r);
+        });
+      }
+    });
+  }
   // User info
   const planEl = document.getElementById('user-plan');
   const nameEl = document.getElementById('user-name');
@@ -5160,18 +6402,102 @@ function renderSettings(initialTab) {
   document.getElementById('settings-name').textContent = u.name || '—';
   document.getElementById('settings-email').textContent = u.email || '—';
   document.getElementById('settings-name-input').value = u.name || '';
-  document.getElementById('settings-email-input').value = u.email || '';
-  document.getElementById('settings-save-profile').addEventListener('click', () => {
+  document.getElementById('settings-save-profile').addEventListener('click', async () => {
     const newName = document.getElementById('settings-name-input').value.trim();
     if (!newName) return;
-    state.user = Auth.update({ name: newName });
-    document.getElementById('settings-name').textContent = newName;
-    document.getElementById('settings-avatar').textContent = newName.slice(0, 1).toUpperCase();
+    const btn = document.getElementById('settings-save-profile');
     const status = document.getElementById('settings-save-status');
-    status.textContent = 'נשמר ✓';
-    status.classList.add('is-ok');
-    setTimeout(() => { status.textContent = ''; status.classList.remove('is-ok'); }, 2200);
+    btn.disabled = true;
+    status.textContent = 'שומר...';
+    status.className = 'settings-save-status';
+    try {
+      const token = await Auth.getToken();
+      const cfg = _sbConfig;
+      if (token && cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && state.user?.id) {
+        await fetch(`${cfg.SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(state.user.id)}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': cfg.SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${token}`,
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({ display_name: newName }),
+        });
+      }
+      state.user = Auth.update({ name: newName });
+      document.getElementById('settings-name').textContent = newName;
+      document.getElementById('settings-avatar').textContent = newName.slice(0, 1).toUpperCase();
+      status.textContent = 'נשמר ✓';
+      status.classList.add('is-ok');
+    } catch {
+      status.textContent = 'שגיאה בשמירה';
+      status.classList.add('is-err');
+    }
+    btn.disabled = false;
+    setTimeout(() => { status.textContent = ''; status.className = 'settings-save-status'; }, 2200);
   });
+
+  // Show password-change section only for email/password users (not Google OAuth)
+  getSbClient().then(async (sb) => {
+    if (!sb) return;
+    const { data: { session } } = await sb.auth.getSession().catch(() => ({ data: { session: null } }));
+    if (!session) return;
+    const identities = session.user?.identities || [];
+    const isOAuth = identities.some(id => id.provider !== 'email');
+    const pwSection = document.getElementById('settings-password-section');
+    if (!isOAuth && pwSection) {
+      pwSection.removeAttribute('hidden');
+      const pw1El     = document.getElementById('settings-new-password');
+      const pw2El     = document.getElementById('settings-new-password2');
+      const strengthEl = document.getElementById('settings-pw-strength');
+
+      function pwStrength(pw) {
+        if (!pw) return { score: 0, label: '', cls: '' };
+        let s = 0;
+        if (pw.length >= 8)  s++;
+        if (pw.length >= 12) s++;
+        if (/[A-Z]/.test(pw)) s++;
+        if (/[a-z]/.test(pw)) s++;
+        if (/[0-9]/.test(pw)) s++;
+        if (/[^A-Za-z0-9]/.test(pw)) s++;
+        if (s <= 2) return { score: s, label: 'חלשה', cls: 'pw-weak' };
+        if (s <= 4) return { score: s, label: 'בינונית', cls: 'pw-medium' };
+        return { score: s, label: 'חזקה', cls: 'pw-strong' };
+      }
+
+      pw1El.addEventListener('input', () => {
+        const { label, cls } = pwStrength(pw1El.value);
+        if (strengthEl) { strengthEl.textContent = pw1El.value ? `עוצמה: ${label}` : ''; strengthEl.className = `pw-strength-label ${cls}`; }
+      });
+
+      document.getElementById('settings-save-password').addEventListener('click', async () => {
+        const pw1 = pw1El.value;
+        const pw2 = pw2El.value;
+        const status = document.getElementById('settings-password-status');
+        const { score } = pwStrength(pw1);
+        if (!pw1 || pw1.length < 8) { status.textContent = 'סיסמה חייבת להכיל לפחות 8 תווים'; status.className = 'settings-save-status'; return; }
+        if (score < 3) { status.textContent = 'הסיסמה חלשה מדי — הוסף אותיות גדולות, מספרים או תווים מיוחדים'; status.className = 'settings-save-status'; return; }
+        if (pw1 !== pw2) { status.textContent = 'הסיסמאות אינן תואמות'; status.className = 'settings-save-status'; return; }
+        const btn = document.getElementById('settings-save-password');
+        btn.disabled = true; btn.textContent = 'שומר...';
+        try {
+          const { error } = await sb.auth.updateUser({ password: pw1 });
+          if (error) throw new Error(error.message);
+          status.textContent = 'סיסמה שונתה בהצלחה ✓';
+          status.className = 'settings-save-status is-ok';
+          pw1El.value = ''; pw2El.value = '';
+          if (strengthEl) { strengthEl.textContent = ''; strengthEl.className = 'pw-strength-label'; }
+          setTimeout(() => { status.textContent = ''; status.className = 'settings-save-status'; }, 3500);
+        } catch (err) {
+          status.textContent = err.message || 'שגיאה בשמירת הסיסמה';
+          status.className = 'settings-save-status';
+        } finally {
+          btn.disabled = false; btn.textContent = 'שנה סיסמה';
+        }
+      });
+    }
+  }).catch(() => {});
 
   // Plan section
   const planInfo = PLAN_INFO[u.plan] || PLAN_INFO.free;
@@ -5217,26 +6543,34 @@ function renderSettings(initialTab) {
       });
     });
   } else {
-    // Regular user: show available plans (upgrade only)
-    document.querySelectorAll('.settings-plan-tile').forEach(tile => {
-      if (tile.dataset.plan === u.plan) tile.classList.add('is-current');
-      tile.addEventListener('click', () => {
-        const newPlan = tile.dataset.plan;
-        if (newPlan === u.plan) return;
-        // Redirect to pricing page for real upgrade
-        location.hash = '#pricing';
-        navigate('/');
-      });
-    });
+    // Non-admin: no upgrade path yet — show info only
+    const planGrid = document.querySelector('.settings-plan-grid');
+    if (planGrid) {
+      planGrid.innerHTML = `
+        <div style="grid-column:1/-1;background:var(--surface-alt,#f8f9fa);border-radius:12px;padding:20px 24px;text-align:center;border:1px solid var(--border-soft);">
+          <div style="font-size:28px;margin-bottom:8px;">🚀</div>
+          <strong style="font-size:15px;">מנוי ${planInfo.label}</strong>
+          <p style="margin:8px 0 0;font-size:13px;color:var(--text-muted);">${planInfo.desc}</p>
+          <p style="margin:12px 0 0;font-size:13px;color:var(--text-muted);">אפשרויות שדרוג יהיו זמינות בקרוב כשמערכת התשלומים תופעל.</p>
+        </div>
+      `;
+    }
   }
 
-  document.getElementById('settings-upgrade-btn').addEventListener('click', (e) => {
-    e.preventDefault();
-    location.hash = '#pricing';
-    navigate('/');
-  });
-  document.getElementById('settings-manage-billing').addEventListener('click', () => {
-    alert('ניהול חיוב יתחבר ל-Stripe ב-Phase 2.\nכרגע אין נתוני חיוב אמיתיים.');
+  const upgradeBtn = document.getElementById('settings-upgrade-btn');
+  if (upgradeBtn) {
+    if (u.isAdmin) {
+      upgradeBtn.addEventListener('click', (e) => { e.preventDefault(); });
+    } else {
+      upgradeBtn.style.display = 'none';
+    }
+  }
+  document.getElementById('settings-manage-billing')?.addEventListener('click', () => {
+    if (u.isAdmin) {
+      alert('ניהול חיוב יתחבר ל-Stripe ב-Phase 2.\nכרגע אין נתוני חיוב אמיתיים.');
+    } else {
+      toast('ניהול חיוב יהיה זמין בקרוב', 'info');
+    }
   });
 
   // Appearance / theme
@@ -5299,9 +6633,31 @@ function renderSettings(initialTab) {
     alert('המנוי בוטל. החשבון יחזור למצב חינמי.');
     renderSettings('plan');
   });
-  document.getElementById('settings-delete-account').addEventListener('click', () => {
+  document.getElementById('settings-delete-account').addEventListener('click', async () => {
     if (!confirm('למחוק לצמיתות את החשבון שלך וכל הנתונים?\nפעולה זו לא ניתנת לביטול.')) return;
     if (!confirm('זוהי הזדמנות אחרונה. למחוק לצמיתות?')) return;
+    const btn = document.getElementById('settings-delete-account');
+    btn.disabled = true;
+    btn.textContent = 'מוחק...';
+    try {
+      const token = await Auth.getToken();
+      const res = await fetch('/api/account/delete', {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast(body.error || 'שגיאה במחיקת החשבון. נסה שוב.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'מחק חשבון לצמיתות';
+        return;
+      }
+    } catch (e) {
+      toast('שגיאת תקשורת. נסה שוב.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'מחק חשבון לצמיתות';
+      return;
+    }
     try {
       Object.keys(localStorage).filter(k => k.startsWith('ep_')).forEach(k => localStorage.removeItem(k));
     } catch {}
@@ -5435,6 +6791,7 @@ function showPaywallModal(context) {
 
 async function renderStudyList() {
   if (!state.user) return navigate('/login');
+  if (!state.course) return navigate('/dashboard');
   const tpl = tmpl('tmpl-study-list');
   $app.innerHTML = '';
   $app.appendChild(tpl);
@@ -5449,7 +6806,7 @@ async function renderStudyList() {
     link.addEventListener('click', (e) => { e.preventDefault(); navigate(link.getAttribute('data-route')); });
   });
 
-  const packs = StudyStore.list();
+  const packs = StudyStore.list().filter(p => (p.courseId ?? p.course_id) === state.course.id);
   const quota = StudyStore.quotaForUser(state.user);
   const banner = document.getElementById('study-quota-banner');
   if (!quota.unlimited) {
@@ -5615,7 +6972,7 @@ async function renderStudyCreate() {
         errBox.textContent = 'הסיכום ארוך מדי — מקסימום 60,000 תווים.';
         return;
       }
-      body = JSON.stringify({ kind: 'paste', text, title });
+      body = JSON.stringify({ kind: 'paste', text, title, courseId: state.course?.id || null });
       headers['Content-Type'] = 'application/json';
     } else {
       const file = fileInput.files?.[0];
@@ -5631,6 +6988,7 @@ async function renderStudyCreate() {
       fd.append('pdf', file);
       const t = document.getElementById('study-title-pdf').value.trim();
       if (t) fd.append('title', t);
+      if (state.course?.id) fd.append('courseId', String(state.course.id));
       body = fd;
     }
 
@@ -5735,10 +7093,11 @@ async function renderStudyCreate() {
         ? (document.getElementById('study-title-paste').value.trim() || 'סיכום ללא שם')
         : (fileInput.files[0].name.replace(/\.pdf$/i, '') || 'סיכום ללא שם'));
       const pack = {
-        id: 'local_' + Date.now(),
+        id: data.pack_id ? String(data.pack_id) : ('local_' + Date.now()),
         title: packTitle,
         courseName: state.course?.name || packTitle,
         source_kind: data.source_kind || activeTab,
+        courseId: state.course?.id || null,
         materials: data.materials || {},
         created_at: new Date().toISOString(),
       };
@@ -5763,7 +7122,8 @@ async function renderStudyPack(packId) {
   const pack = StudyStore.get(packId);
   if (!pack) {
     toast('חבילת הלימוד לא נמצאה', 'error');
-    return navigate('/study');
+    const cid = pack?.courseId || state.course?.id;
+    return navigate(cid ? `/course/${cid}/study` : '/dashboard');
   }
   const tpl = tmpl('tmpl-study-pack');
   $app.innerHTML = '';
@@ -6053,6 +7413,33 @@ function updateSelfTestResult(answers) {
   }
 }
 
+// Helper: detect whether a Supabase session exists in localStorage even if
+// the ep_user cache was cleared. This lets the boot step render protected
+// routes optimistically when the user is still signed in at the token level.
+function _hasStoredSupabaseSession() {
+  try {
+    const cfg = window.APP_CONFIG || {};
+    const ref = cfg.SUPABASE_URL?.match(/https:\/\/([^.]+)\./)?.[1];
+    if (!ref) return false;
+    const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return !!(parsed?.access_token || parsed?.refresh_token);
+  } catch { return false; }
+}
+
+// Instant boot skeleton — prevents the blank-page flash while we validate
+// the session on refresh. Shown for at most a few hundred ms in the happy path.
+function showBootSkeleton() {
+  if (!$app) return;
+  $app.innerHTML = `
+    <div class="boot-skeleton" role="status" aria-live="polite">
+      <div class="boot-skeleton-spinner"></div>
+      <p class="boot-skeleton-label">טוען את החשבון שלך...</p>
+    </div>
+  `;
+}
+
 // ===== Boot =====
 (async function boot() {
   Theme.init();
@@ -6062,16 +7449,36 @@ function updateSelfTestResult(answers) {
   const route = getRoute();
   const needsAuth = route.startsWith('/course/') || route === '/dashboard' ||
                     route === '/settings' || route.startsWith('/study');
+  const hasStoredSession = _hasStoredSupabaseSession();
 
-  if (needsAuth && state.user) {
-    // For auth-required pages: restore session first so API tokens work
+  if (needsAuth && (state.user || hasStoredSession)) {
+    // Auth-required page, and we have SOMETHING to try with — paint a skeleton
+    // immediately so the user never sees a blank screen, then restore in the
+    // background and render when ready.
+    showBootSkeleton();
     try {
       const u = await Auth.restoreSession();
       if (u) state.user = u;
     } catch {}
-    renderRoute();
+    if (state.user) {
+      renderRoute();
+    } else if (hasStoredSession) {
+      // We had a session but restoreSession couldn't rebuild a user — keep the
+      // skeleton a moment longer and try once more. This avoids the false
+      // "kicked back to login" when the profile fetch times out on refresh.
+      await new Promise(r => setTimeout(r, 250));
+      try {
+        const u2 = await Auth.restoreSession();
+        if (u2) state.user = u2;
+      } catch {}
+      if (state.user) renderRoute();
+      else { navigate('/login'); renderRoute(); }
+    } else {
+      navigate('/login');
+      renderRoute();
+    }
   } else {
-    // For public pages: render immediately, restore session in background
+    // Public page or no credentials at all — render immediately, restore in bg.
     renderRoute();
     Auth.restoreSession().then(u => {
       if (u && (!state.user || state.user.email !== u.email || state.user.plan !== u.plan)) {
@@ -6092,12 +7499,19 @@ function updateSelfTestResult(answers) {
       sb.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
           const profile = await Auth._fetchProfile(session.user.id).catch(() => null);
+          let _dl = null;
+          if (profile?.plan === 'trial' && profile?.plan_expires_at) {
+            _dl = Math.max(0, Math.ceil((new Date(profile.plan_expires_at) - Date.now()) / 86400000));
+          }
           const u = {
             id: session.user.id,
             email: session.user.email,
             name: profile?.display_name || session.user.user_metadata?.username || session.user.email.split('@')[0],
             plan: profile?.plan || 'free',
             isAdmin: profile?.is_admin || false,
+            daysLeft: _dl,
+            planExpiresAt: profile?.plan_expires_at || null,
+            trialUsed: profile?.trial_used || false,
           };
           Auth.save(u);
           state.user = u;
@@ -6128,11 +7542,21 @@ function updateSelfTestResult(answers) {
               });
             } catch {}
             u.plan = 'trial';
+            // Clear onboarding flag so tour fires on first dashboard visit
+            try { localStorage.removeItem('ep_onboarding_v2'); } catch {}
           }
           if (getRoute() === '/' || getRoute().startsWith('/login')) {
             navigate('/dashboard');
           }
         } else if (event === 'SIGNED_OUT') {
+          // Guard against spurious SIGNED_OUT events that supabase-js fires on
+          // page load if it reads localStorage before _consumeOAuthHash() runs,
+          // or during a token-refresh race. Only honor the event if we have NO
+          // valid session token left.
+          if (_hasStoredSupabaseSession()) {
+            console.warn('[auth] ignoring SIGNED_OUT — stored session still present');
+            return;
+          }
           Auth.clearLocal();
           state.user = null;
           navigate('/');

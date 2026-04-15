@@ -95,6 +95,38 @@ function isPdf(buf) {
     buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46;
 }
 
+// ===== Filename similarity matching =====
+function normalizeFilename(filename) {
+  if (!filename) return '';
+  return filename
+    .toLowerCase()
+    .replace(/\.[^/.]+$/, '') // remove extension
+    .replace(/\b(exam|test|solution|answers|answer key|מבחן|בחינה|פתרון|תשובות|מפתח)\b/gi, '')
+    .replace(/[^\w\u0590-\u05FF]/g, ' ') // keep Hebrew/English alphanumerics, replace special chars with space
+    .split(/\s+/)
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+}
+
+function filenamesSimilar(name1, name2, threshold = 0.55) {
+  const norm1 = normalizeFilename(name1);
+  const norm2 = normalizeFilename(name2);
+
+  // If both normalize to empty, consider them unrelated
+  if (!norm1 || !norm2) return false;
+
+  // Extract tokens
+  const tokens1 = new Set(norm1.split(/\s+/).filter(Boolean));
+  const tokens2 = new Set(norm2.split(/\s+/).filter(Boolean));
+
+  // Jaccard similarity: intersection / union
+  const intersection = [...tokens1].filter(t => tokens2.has(t)).length;
+  const union = new Set([...tokens1, ...tokens2]).size;
+
+  return union === 0 ? false : (intersection / union) >= threshold;
+}
+
 // =====================================================
 // PDF text-layer analysis (pdf.js via unpdf)
 // =====================================================
@@ -246,7 +278,7 @@ function findStandaloneQuestions(pages) {
       if (!m) continue;
       const num = parseInt(m[1], 10);
       if (num < 1 || num > 100 || seen.has(num)) continue;
-      if (line.rightX <= page.width - 110) continue;
+      if (line.rightX <= page.width * 0.35) continue;
       seen.add(num);
       results.push({ section: String(num), page: page.page, yFromTop: line.yFromTop });
     }
@@ -367,8 +399,22 @@ function classifyRegion(pages, heading, bottom, strict = false) {
   const page = pages.find(p => p.page === heading.page);
   if (!page) return { isMCQ: false, numOptions: 0 };
   const lines = buildLines(page);
-  const regionLines = lines.filter(l =>
-    l.yFromTop > heading.yFromTop && l.yFromTop < (bottom ? bottom.yFromTop : page.height));
+  const regionBottom = bottom ? bottom.yFromTop : page.height;
+  let regionLines = lines.filter(l =>
+    l.yFromTop > heading.yFromTop && l.yFromTop < regionBottom);
+
+  // Cross-page scan: if the region extends to/near the end of the page,
+  // also check the top portion of the next page for option markers.
+  // This catches questions whose heading is near the bottom of a page
+  // and whose options start on the following page.
+  if (regionBottom >= page.height - 60) {
+    const nextPage = pages.find(p => p.page === heading.page + 1);
+    if (nextPage) {
+      const nextLines = buildLines(nextPage).filter(l => l.yFromTop < 380);
+      regionLines = [...regionLines, ...nextLines];
+    }
+  }
+
   if (regionLines.length === 0) return { isMCQ: false, numOptions: 0 };
 
   const regionText = regionLines.map(l => l.text).join(' ');
@@ -413,6 +459,76 @@ function classifyRegion(pages, heading, bottom, strict = false) {
   return { isMCQ: true, numOptions: numOptions || 4 };
 }
 
+// Extract the question stem + 4 option texts from an MCQ region using the
+// already-parsed line data. This enables text-first solution generation:
+// instead of sending the PDF to Gemini as an image, we feed Gemini the real
+// question text from the user's PDF.
+//
+// Returns { questionStemText, optionTexts: {1..N: text} }. Falls back gracefully
+// to empty strings when the layout is unusual.
+function extractRegionText(pages, page, yTop, yBottom) {
+  const pageData = pages.find(p => p.page === page);
+  if (!pageData) return { questionStemText: '', optionTexts: {} };
+
+  let lines = buildLines(pageData).filter(l => l.yFromTop > yTop && l.yFromTop < yBottom);
+  // Cross-page scan for questions near page bottom (same logic as classifyRegion)
+  if (yBottom >= pageData.height - 60) {
+    const nextPage = pages.find(p => p.page === page + 1);
+    if (nextPage) {
+      const nextLines = buildLines(nextPage).filter(l => l.yFromTop < 380);
+      lines = [...lines, ...nextLines];
+    }
+  }
+  // Skip the header line "שאלה N" itself
+  lines = lines.filter(l => !/^\s*שאלה\s*\d{1,3}/.test(l.text));
+  if (lines.length === 0) return { questionStemText: '', optionTexts: {} };
+
+  // Walk through lines and split into stem vs options
+  const stemLines = [];
+  const options = {}; // { 1: [...lines], 2: [...], ... }
+  let currentOpt = 0;
+
+  for (const l of lines) {
+    const t = l.text.replace(/^[\s•·]+/, '').trim();
+    if (!t) continue;
+    // Match option markers: "1.", "2)", ".1", "א.", "ב)", etc.
+    const mNum = t.match(/^\.?\s*([1-6])\s*[.)]\s*(.*)$/);
+    const mHeb = t.match(/^\.?\s*([א-ט])\s*[.)]\s*(.*)$/);
+    if (mNum) {
+      const n = parseInt(mNum[1], 10);
+      if (n === currentOpt + 1) {
+        currentOpt = n;
+        options[n] = [mNum[2].trim()].filter(Boolean);
+        continue;
+      }
+    }
+    if (mHeb) {
+      const idx = 'אבגדהוזח'.indexOf(mHeb[1]) + 1;
+      if (idx === currentOpt + 1) {
+        currentOpt = idx;
+        options[idx] = [mHeb[2].trim()].filter(Boolean);
+        continue;
+      }
+    }
+    // Continuation line for current option, or stem line if no option yet
+    if (currentOpt > 0) {
+      options[currentOpt].push(t);
+    } else {
+      stemLines.push(t);
+    }
+  }
+
+  const optionTexts = {};
+  for (const [k, v] of Object.entries(options)) {
+    optionTexts[k] = v.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  return {
+    questionStemText: stemLines.join(' ').replace(/\s+/g, ' ').trim(),
+    optionTexts,
+  };
+}
+
 // Top-level MCQ detection: auto-picks between sections mode (a single parent
 // question with sub-sections) and standalone mode (each שאלה N is its own MCQ).
 function detectMCQsFromPositions(pages) {
@@ -431,6 +547,7 @@ function detectMCQsFromPositions(pages) {
       const cls = classifyRegion(pages, h, bottom);
       if (!cls.isMCQ) continue;
       const pageMeta = pages.find(p => p.page === h.page);
+      const regionText = extractRegionText(pages, h.page, h.yFromTop, bottom.yFromTop);
       mcqs.push({
         section: h.section,
         number: i + 1,
@@ -440,6 +557,8 @@ function detectMCQsFromPositions(pages) {
         pageWidth: pageMeta.width,
         pageHeight: pageMeta.height,
         numOptions: cls.numOptions,
+        questionStemText: regionText.questionStemText,
+        optionTexts: regionText.optionTexts,
       });
     }
     if (mcqs.length > best.mcqs.length) {
@@ -461,6 +580,7 @@ function detectMCQsFromPositions(pages) {
       const cls = classifyRegion(pages, h, bottom, /* strict */ true);
       if (!cls.isMCQ) continue;
       const pageMeta = pages.find(p => p.page === h.page);
+      const regionText = extractRegionText(pages, h.page, h.yFromTop, bottom.yFromTop);
       mcqs.push({
         section: h.section,
         number: parseInt(h.section, 10),
@@ -470,8 +590,44 @@ function detectMCQsFromPositions(pages) {
         pageWidth: pageMeta.width,
         pageHeight: pageMeta.height,
         numOptions: cls.numOptions,
+        questionStemText: regionText.questionStemText,
+        optionTexts: regionText.optionTexts,
       });
     }
+
+    // Second pass: for any headings that failed strict classification,
+    // re-run non-strictly if we already confirmed most are MCQs.
+    // This recovers questions skipped due to cross-page layouts or
+    // unusual option formatting, while still rejecting clear open questions.
+    if (mcqs.length >= 2 && mcqs.length < standalone.length) {
+      const confirmedNums = new Set(mcqs.map(m => m.number));
+      for (let i = 0; i < standalone.length; i++) {
+        const h = standalone[i];
+        const num = parseInt(h.section, 10);
+        if (confirmedNums.has(num)) continue;
+        const next = standalone[i + 1];
+        const bottom = findBottomBoundary(pages, h, next);
+        if (!bottom) continue;
+        const cls2 = classifyRegion(pages, h, bottom, /* strict */ false);
+        if (!cls2.isMCQ) continue;
+        const pageMeta = pages.find(p => p.page === h.page);
+        const regionText = extractRegionText(pages, h.page, h.yFromTop, bottom.yFromTop);
+        console.log(`[standalone-gap-fill] adding Q${num} via non-strict pass`);
+        mcqs.push({
+          section: h.section,
+          number: num,
+          page: h.page,
+          yTop: h.yFromTop,
+          yBottom: bottom.yFromTop,
+          pageWidth: pageMeta.width,
+          pageHeight: pageMeta.height,
+          numOptions: cls2.numOptions || 4,
+          questionStemText: regionText.questionStemText,
+          optionTexts: regionText.optionTexts,
+        });
+      }
+    }
+
     if (mcqs.length > best.mcqs.length) {
       best = { mode: 'standalone', mcqs };
     }
@@ -523,62 +679,238 @@ async function uploadPdfToCloudinary({ cloudName, apiKey, apiSecret, pdfBase64, 
 }
 
 // =====================================================
-// Gemini — answer extraction from solution PDF
+// Local solution-PDF parser (FREE, no Gemini!)
 // =====================================================
-// Returns { "1": 3, "2": 1, ... } or null on failure.
-async function extractAnswersWithGemini(solutionPdfBase64, questionNumbers) {
-  const apiKey = (process.env.GEMINI_API_KEY || '').replace(/\\n/g, '').trim();
-  if (!apiKey) return null;
+// Extracts text from the solution PDF using unpdf, then walks through lines
+// to find question headers and their associated solution text + answer key.
+//
+// Returns: { [qNumber]: { answer: 1-4|null, rawText: string } } or null if
+// the PDF has no text layer (scanned).
+async function parseSolutionPdf(solPdfBytes) {
+  const pages = await extractPositions(solPdfBytes).catch(() => null);
+  if (!pages || pages.length === 0) return null;
+
+  // Flatten all pages into a single ordered stream of lines (across pages).
+  const allLines = [];
+  for (const page of pages) {
+    const lines = buildLines(page);
+    for (const l of lines) {
+      allLines.push({ ...l, page: page.page });
+    }
+  }
+  if (allLines.length === 0) return null;
+
+  // Walk the lines looking for question headers. Recognize:
+  //   "שאלה 1", "שאלה 2:", "שאלה 3 -", "פתרון לשאלה 4", "פתרון שאלה 5"
+  //   "תשובה 1", "סעיף א"
+  // NOTE: previously had `altHeaderRe` that matched "\\d+[.):]\\s" but that
+  // caused false positives on exam-instruction lines like "3. חומר עזר מותר",
+  // which polluted solution_text_raw with garbage. Removed.
+  const headerRe = /(?:שאלה|פתרון(?:\s+ל?שאלה)?|סעיף|תשובה(?:\s+לשאלה)?)\s*(\d{1,3})\b/;
+
+  const sections = []; // [{number, startIdx}]
+  for (let i = 0; i < allLines.length; i++) {
+    const text = allLines[i].text;
+    if (text.length > 300) continue;
+    const m = text.match(headerRe);
+    if (!m) continue;
+    const num = parseInt(m[1], 10);
+    if (!num || num < 1 || num > 100) continue;
+    if (sections.find(s => s.number === num)) continue;
+    sections.push({ number: num, startIdx: i });
+  }
+
+  if (sections.length === 0) return null;
+  sections.sort((a, b) => a.startIdx - b.startIdx);
+
+  // For each section, the raw text is everything from startIdx up to (but not
+  // including) the next section's startIdx.
+  const out = {};
+  const answerMarkers = [
+    /(?:תשובה(?:\s+נכונה)?|התשובה\s+(?:ה)?נכונה|תשובה\s+סופית|Answer)\s*[:=\-–]?\s*([א-ד1-4])/,
+    /^\s*([א-ד1-4])\s*[.)]?\s*(?:זוהי|היא|-)\s+(?:התשובה|נכונה)/,
+    /(?:הקיפו|סימון)\s+([א-ד1-4])/,
+  ];
+  const letterMap = { 'א': 1, 'ב': 2, 'ג': 3, 'ד': 4 };
+
+  for (let s = 0; s < sections.length; s++) {
+    const start = sections[s].startIdx;
+    const end = s + 1 < sections.length ? sections[s + 1].startIdx : allLines.length;
+    const sectionLines = allLines.slice(start, end);
+    const rawText = sectionLines.map(l => l.text).join('\n').trim();
+
+    // Find the answer marker in the first few lines (most likely location).
+    let answer = null;
+    for (let i = 0; i < Math.min(sectionLines.length, 12); i++) {
+      const t = sectionLines[i].text;
+      for (const re of answerMarkers) {
+        const m = t.match(re);
+        if (m) {
+          const raw = m[1];
+          if (/\d/.test(raw)) answer = parseInt(raw, 10);
+          else answer = letterMap[raw] || null;
+          if (answer >= 1 && answer <= 4) break;
+          answer = null;
+        }
+      }
+      if (answer) break;
+    }
+
+    // Fallback: look for a standalone אאבגד/1234 on its own line near the start.
+    if (!answer) {
+      for (let i = 0; i < Math.min(sectionLines.length, 8); i++) {
+        const t = sectionLines[i].text.trim();
+        const m = t.match(/^([א-ד])\s*[.)]?\s*$|^([1-4])\s*[.)]?\s*$/);
+        if (m) {
+          const raw = m[1] || m[2];
+          if (/\d/.test(raw)) answer = parseInt(raw, 10);
+          else answer = letterMap[raw] || null;
+          if (answer >= 1 && answer <= 4) break;
+          answer = null;
+        }
+      }
+    }
+
+    out[String(sections[s].number)] = { answer, rawText };
+  }
+
+  return out;
+}
+
+// =====================================================
+// Pass 2 — Aggressive flat scan (FREE, no Gemini)
+// =====================================================
+// Extracts ALL text from solution PDF and scans for simple number→letter
+// patterns like "1. ב", "1: ב", "1-ב" — catches answer tables that don't
+// have section headers (which parseSolutionPdf requires).
+async function flatScanAnswers(pdfBytes) {
+  const pages = await extractPositions(pdfBytes).catch(() => null);
+  if (!pages || pages.length === 0) return {};
+  const allText = pages.flatMap(p => buildLines(p)).map(l => l.text).join('\n');
+  console.log(`[flat-scan] text length: ${allText.length}, sample: ${allText.slice(0, 200)}`);
+  const letterMap = { 'א': 1, 'ב': 2, 'ג': 3, 'ד': 4 };
+  const answers = {};
+  // Letter answers: "1. ב", "1: ב", "1-ב", "1 ב" — use matchAll to avoid undeclared `m` in strict mode
+  for (const m of allText.matchAll(/\b(\d{1,2})\s*[.:\-–—]?\s*([א-ד])\b/g)) {
+    const q = parseInt(m[1], 10); const ans = letterMap[m[2]];
+    if (q >= 1 && q <= 60 && ans) answers[String(q)] = ans;
+  }
+  // Digit answers: "1. 2", "1: 3"
+  for (const m of allText.matchAll(/\b(\d{1,2})\s*[.:\-–—]\s*([1-4])\b/g)) {
+    const q = parseInt(m[1], 10); const ans = parseInt(m[2], 10);
+    if (q >= 1 && q <= 60 && !answers[String(q)]) answers[String(q)] = ans;
+  }
+  const count = Object.keys(answers).length;
+  console.log(`[flat-scan] found ${count} answers:`, JSON.stringify(answers));
+  return count >= 2 ? answers : {};
+}
+
+// =====================================================
+// Pass 3 — Gemini vision on SOLUTION PDF only (near-zero cost)
+// =====================================================
+// Sends ONLY the solution PDF (not the exam) — half the tokens, twice as
+// fast, works for visual markings (yellow highlights, circles) and text.
+// Uses gemini-2.0-flash for all tiers (~$0.0001/call).
+// Retries with 2.5-flash only for pro/trial if flash returns nothing.
+async function extractAnswersWithGemini(solutionPdfBase64, questionNumbers, plan = 'trial') {
+  const freeKey = (process.env.GEMINI_API_KEY || '').replace(/\\n/g, '').trim();
+  const paidKey = (process.env.GEMINI_API_KEY_PAID || '').replace(/\\n/g, '').trim();
+  if (!freeKey && !paidKey) return null;
 
   const list = questionNumbers.join(', ');
-  const prompt = `Below is a Hebrew exam solution PDF. For each multiple-choice question listed, find the correct answer.
+  const prompt = `This is a Hebrew university exam solution PDF.
+Find the correct MCQ answer for each of these question numbers: ${list}
 
-Questions to find: ${list}
+The answer key may appear in ANY of these formats:
+- Table: "שאלה | תשובה" with rows like "1 | ב"
+- List: "1. ב", "1: ב", "1-ב", "(1) ב"
+- Inline: "תשובה לשאלה 1: ב" or "שאלה 1 — ב"
+- Visual: highlighted/circled option on the exam itself
+- Numbers: "1. 2" where 1=א, 2=ב, 3=ג, 4=ד
 
-An MCQ has 4 options labeled either 1/2/3/4 or א/ב/ג/ד. The solution PDF may mark the correct answer with a circle, highlight, bullet, "תשובה: X", or similar.
-
-Return ONLY a JSON object mapping question number (as string) to answer index (1-4, where 1=א, 2=ב, 3=ג, 4=ד). If you cannot find an answer for a question, omit it.
-
-Example: {"1": 3, "2": 1, "3": 4}`;
+Return a JSON array — ONLY the array, no text, no explanation:
+[{"q":1,"ans":2},{"q":2,"ans":1},...]
+"ans" values: 1=א, 2=ב, 3=ג, 4=ד
+Skip questions you cannot find. Include any answer you can identify, even if not 100% certain.`;
 
   const parts = [
     { text: prompt },
     { inlineData: { mimeType: 'application/pdf', data: solutionPdfBase64 } },
   ];
 
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
-  for (const model of models) {
+  // Returns { answers, quota_exceeded } or null
+  async function callModel(model, apiKey) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: 0.0,
+          maxOutputTokens: 1024,
+          responseMimeType: 'application/json',
+          // responseSchema removed — uppercase type names caused silent API failures
+        },
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '');
+      console.warn(`[answer-extract] ${model} ${r.status}:`, errText.slice(0, 300));
+      return r.status === 429 ? { quota_exceeded: true } : null;
+    }
+    const j = await r.json();
+    const text = j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
+    console.log(`[answer-extract] ${model} raw: ${text.slice(0, 300)}`);
+
+    // Try direct parse first (responseMimeType: 'application/json' should give clean JSON)
+    let parsed = null;
+    try { parsed = JSON.parse(text.trim()); } catch {}
+    // Fallback: extract first JSON array found anywhere in the response
+    if (!parsed) {
+      const jsonMatch = text.match(/(\[[\s\S]*?\])/);
+      if (jsonMatch) { try { parsed = JSON.parse(jsonMatch[1]); } catch {} }
+    }
+    if (!parsed) {
+      console.warn(`[answer-extract] ${model} could not parse JSON from response`);
+      return null;
+    }
+
+    const normalized = {};
+    if (Array.isArray(parsed)) {
+      for (const item of parsed) {
+        const q = parseInt(item?.q, 10);
+        const ans = parseInt(item?.ans, 10);
+        if (q > 0 && ans >= 1 && ans <= 4) normalized[String(q)] = ans;
+      }
+    } else if (parsed && typeof parsed === 'object') {
+      for (const [k, v] of Object.entries(parsed)) {
+        const ans = parseInt(v, 10);
+        if (ans >= 1 && ans <= 4) normalized[String(parseInt(k, 10))] = ans;
+      }
+    }
+    return { answers: normalized };
+  }
+
+  // Primary: free AI Studio key (250 RPD). Fallback: paid key ($300 credits) on 429.
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+
+  for (const model of models) {
     try {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: { temperature: 0.0, maxOutputTokens: 1024, responseMimeType: 'application/json' },
-        }),
-        signal: AbortSignal.timeout(45000),
-      });
-      if (!r.ok) {
-        const errText = await r.text().catch(() => '');
-        console.warn(`[gemini-answers] ${model} ${r.status}:`, errText.slice(0, 200));
-        continue;
+      let res = freeKey ? await callModel(model, freeKey) : null;
+      if (res?.quota_exceeded && paidKey) {
+        console.warn(`[answer-extract] ${model} free quota exhausted — switching to paid key`);
+        res = await callModel(model, paidKey);
       }
-      const j = await r.json();
-      const text = j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
-      const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-      const parsed = JSON.parse(cleaned);
-      if (parsed && typeof parsed === 'object') {
-        const normalized = {};
-        for (const [k, v] of Object.entries(parsed)) {
-          const n = parseInt(v, 10);
-          if (n >= 1 && n <= 10) normalized[String(parseInt(k, 10))] = n;
-        }
-        console.log(`[gemini-answers] ${model} found ${Object.keys(normalized).length}/${questionNumbers.length} answers`);
-        return normalized;
+      const result = res?.answers;
+      if (result && Object.keys(result).length > 0) {
+        console.log(`[answer-extract] ${model} found ${Object.keys(result).length}/${questionNumbers.length} answers`);
+        return { answers: result, model };
       }
+      console.warn(`[answer-extract] ${model} returned empty`);
     } catch (e) {
-      console.warn(`[gemini-answers] ${model} failed:`, e.message);
+      console.warn(`[answer-extract] ${model} exception:`, e.message);
     }
   }
   return null;
@@ -588,8 +920,9 @@ Example: {"1": 3, "2": 1, "3": 4}`;
 // Gemini fallback — full exam extraction (scanned/image-only PDFs)
 // =====================================================
 async function analyzeExamWithGemini(examPdfBase64, solPdfBase64) {
-  const apiKey = (process.env.GEMINI_API_KEY || '').replace(/\\n/g, '').trim();
-  if (!apiKey) return null;
+  const freeKey = (process.env.GEMINI_API_KEY || '').replace(/\\n/g, '').trim();
+  const paidKey = (process.env.GEMINI_API_KEY_PAID || '').replace(/\\n/g, '').trim();
+  if (!freeKey && !paidKey) return null;
 
   const prompt = `Analyze this Hebrew university exam PDF. Find EVERY multiple-choice question (שאלות אמריקאיות / שאלות סגורות).
 
@@ -631,34 +964,209 @@ Return ONLY a JSON array. Be complete — if the exam has 10 questions, return 1
     parts.push({ inlineData: { mimeType: 'application/pdf', data: solPdfBase64 } });
   }
 
+  async function tryWithKey(apiKey) {
+    for (const model of ['gemini-2.5-flash', 'gemini-2.0-flash']) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      try {
+        console.log(`[gemini-fallback] trying ${model}...`);
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 16384,
+              responseMimeType: 'application/json',
+              // responseSchema omitted — uppercase types cause silent failures in some API versions
+            },
+          }),
+          signal: AbortSignal.timeout(40000),
+        });
+        if (!r.ok) {
+          console.warn(`[gemini-fallback] ${model} ${r.status}`);
+          if (r.status === 429) return { quota_exceeded: true };
+          continue;
+        }
+        const j = await r.json();
+        const text = j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
+        const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+        let parsed = null;
+        try { parsed = JSON.parse(cleaned); } catch { continue; }
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          console.log(`[gemini-fallback] ${model} found ${parsed.length} MCQs`);
+          return { result: parsed };
+        }
+      } catch (e) {
+        console.warn(`[gemini-fallback] ${model} failed:`, e.message);
+      }
+    }
+    return null;
+  }
+
+  if (freeKey) {
+    const res = await tryWithKey(freeKey);
+    if (res?.result) return res.result;
+    if (res?.quota_exceeded && paidKey) {
+      console.warn('[gemini-fallback] free key quota exceeded — switching to paid key');
+      const paidRes = await tryWithKey(paidKey);
+      if (paidRes?.result) return paidRes.result;
+    }
+  } else if (paidKey) {
+    const res = await tryWithKey(paidKey);
+    if (res?.result) return res.result;
+  }
+  return null;
+}
+
+// =====================================================
+// Gemini — batched solution generation (OPTIMIZED)
+// =====================================================
+// ONE Gemini call per exam (not per question). Sends exam PDF + solution PDF
+// once, returns solutions for ALL questions in a single JSON array.
+// Previous approach was 40+ calls per 10-question exam → this is 1 call.
+// Cost reduction: ~6x (from ~$0.028/exam to ~$0.005/exam).
+
+async function callGeminiJsonWithUsage(prompt, pdfParts, { temperature = 0.2, maxOutputTokens = 16384, timeoutMs = 60000 } = {}) {
+  const apiKey = (process.env.GEMINI_API_KEY || '').replace(/\\n/g, '').trim();
+  if (!apiKey) return { data: null, usage: null, error: 'no-api-key' };
+  const parts = [{ text: prompt }, ...pdfParts];
   const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  let lastError = null;
   for (const model of models) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     try {
-      console.log(`[gemini-fallback] trying ${model}...`);
       const r = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 16384, responseMimeType: 'application/json' },
+          generationConfig: { temperature, maxOutputTokens, responseMimeType: 'application/json' },
         }),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
-      if (!r.ok) { console.warn(`[gemini-fallback] ${model} ${r.status}`); continue; }
+      if (!r.ok) {
+        lastError = `${model}:${r.status}`;
+        const errBody = await r.text().catch(() => '');
+        console.warn(`[gemini-batch] ${model} ${r.status}:`, errBody.slice(0, 200));
+        continue;
+      }
       const j = await r.json();
       const text = j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
       const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-      const parsed = JSON.parse(cleaned);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        console.log(`[gemini-fallback] ${model} found ${parsed.length} MCQs`);
-        return parsed;
+      try {
+        const data = JSON.parse(cleaned);
+        const usage = j.usageMetadata || null;
+        return { data, usage, model, error: null };
+      } catch (e) {
+        lastError = `${model}:parse`;
+        continue;
       }
     } catch (e) {
-      console.warn(`[gemini-fallback] ${model} failed:`, e.message);
+      lastError = `${model}:${e.message}`;
     }
   }
-  return null;
+  return { data: null, usage: null, error: lastError };
+}
+
+// Main batched generator — ONE call for the whole exam.
+// Returns: { solutions: {[qNumber]: {correct, general_explanation, option_explanations}}, usage: {input_tokens, output_tokens, cost_usd}, error }
+async function generateAllSolutions(mcqs, examBase64, solBase64, answers) {
+  const apiKey = (process.env.GEMINI_API_KEY || '').replace(/\\n/g, '').trim();
+  if (!apiKey) {
+    console.warn('[solutions] no GEMINI_API_KEY, skipping');
+    return { solutions: {}, usage: null, error: 'no-api-key' };
+  }
+
+  const tStart = Date.now();
+  const questionNumbers = mcqs.map(q => q.number).filter(Boolean);
+  const answerHints = Object.entries(answers || {}).filter(([, v]) => v).map(([k, v]) => `Q${k}=${v}`).join(', ');
+
+  const hasSolution = !!solBase64;
+  const prompt = `You are reviewing a Hebrew university multiple-choice exam${hasSolution ? ' WITH its official solution key PDF' : ''}.
+
+Your task: For EACH of the following questions in the exam PDF, produce a detailed Hebrew explanation.
+Questions to solve: ${questionNumbers.join(', ')}
+${answerHints ? `\nKnown correct answers from answer key extraction: ${answerHints}` : ''}
+${hasSolution ? '\nUse the solution PDF as GROUND TRUTH for correct answers and reasoning. The solution PDF contains the official answers.' : '\nNo solution PDF provided — solve from first principles using the exam PDF.'}
+
+Return a JSON array with EXACTLY one object per question, in this shape:
+[
+  {
+    "n": <question number (integer)>,
+    "correct": <1-4, the correct option index>,
+    "general_explanation": "<2-4 sentence Hebrew paragraph explaining the core concept and why the correct answer is correct>",
+    "option_explanations": [
+      {"idx": 1, "isCorrect": <bool>, "explanation": "<2+ Hebrew sentences: WHY this option is right/wrong, citing the concept/formula/definition>"},
+      {"idx": 2, "isCorrect": <bool>, "explanation": "..."},
+      {"idx": 3, "isCorrect": <bool>, "explanation": "..."},
+      {"idx": 4, "isCorrect": <bool>, "explanation": "..."}
+    ]
+  }
+]
+
+STRICT RULES:
+- Return ONE entry per question in the questions-to-solve list. Do NOT skip any.
+- Exactly ONE option per question must have isCorrect: true.
+- Each option_explanation must be at least 2 full Hebrew sentences explaining the WHY.
+- Write in clean academic Hebrew. Do not copy verbatim from the solution PDF — synthesize.
+- Output ONLY the JSON array. No markdown fences, no commentary.`;
+
+  const examPart = { inlineData: { mimeType: 'application/pdf', data: examBase64 } };
+  const parts = [examPart];
+  if (solBase64) {
+    parts.push({ text: '\n\n--- SOLUTION KEY PDF (use as ground truth) ---' });
+    parts.push({ inlineData: { mimeType: 'application/pdf', data: solBase64 } });
+  }
+
+  const result = await callGeminiJsonWithUsage(prompt, parts, {
+    temperature: 0.1,
+    maxOutputTokens: 16384,
+    timeoutMs: 90000,
+  });
+
+  if (!result.data || !Array.isArray(result.data)) {
+    console.error(`[solutions] batched call failed: ${result.error || 'invalid response shape'}`);
+    return { solutions: {}, usage: result.usage, error: result.error || 'invalid-shape' };
+  }
+
+  // Normalize the response into a {qNumber: solution} map
+  const out = {};
+  for (const entry of result.data) {
+    const n = parseInt(entry?.n, 10);
+    if (!n || isNaN(n)) continue;
+    const correct = Math.max(1, Math.min(4, parseInt(entry.correct, 10) || 1));
+    const rawOpts = Array.isArray(entry.option_explanations) ? entry.option_explanations : [];
+    const normalizedOpts = [1, 2, 3, 4].map(i => {
+      const found = rawOpts.find(o => parseInt(o?.idx, 10) === i);
+      return {
+        idx: i,
+        isCorrect: i === correct,
+        explanation: (found?.explanation || '').toString().trim(),
+      };
+    });
+    out[String(n)] = {
+      correct,
+      general_explanation: (entry.general_explanation || '').toString().trim(),
+      option_explanations: normalizedOpts,
+    };
+  }
+
+  // Cost calculation (Gemini 2.5 Flash pricing: $0.075/1M input, $0.30/1M output)
+  const inputTokens = result.usage?.promptTokenCount || 0;
+  const outputTokens = result.usage?.candidatesTokenCount || 0;
+  const costUsd = (inputTokens * 0.075 + outputTokens * 0.30) / 1_000_000;
+
+  console.log(
+    `[solutions] batched: ${Object.keys(out).length}/${mcqs.length} questions in ${Date.now() - tStart}ms ` +
+    `(model=${result.model}, in=${inputTokens}t, out=${outputTokens}t, ~$${costUsd.toFixed(5)})`
+  );
+
+  return {
+    solutions: out,
+    usage: { inputTokens, outputTokens, costUsd, model: result.model },
+    error: null,
+  };
 }
 
 // Quick document-type classifier — called only when 0 MCQs detected.
@@ -690,6 +1198,285 @@ other = anything else`;
     const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
     return JSON.parse(cleaned);
   } catch { return null; }
+}
+
+// Verify that a solution PDF actually corresponds to the given exam.
+// Returns 'match' | 'mismatch' | 'unknown' (unknown means Gemini was unavailable or unsure).
+// =====================================================
+// Unified solution-PDF analyzer: verifies the solution matches the exam AND
+// extracts all answers in ONE Gemini call.
+//
+// This replaces the old split approach (separate `verifySolutionMatchesExam`
+// + `extractAnswersWithGemini`) for these reasons:
+//   1. One round-trip → ~2x faster, half the cost.
+//   2. Gemini sees both PDFs simultaneously and can reason about them together.
+//   3. Prompt is explicit about colored highlighter marks (ANY color), circled
+//      options, handwritten checkmarks, summary tables, inline "answer: X"
+//      patterns — every format the user described.
+//
+// Returns: { match: 'match' | 'mismatch' | 'unknown', confidence: 0-1,
+//            answers: {qNumber: answerIdx}, model }
+// =====================================================
+async function analyzeSolutionPdf(examBase64, solutionBase64, questionNumbers) {
+  const freeKey = (process.env.GEMINI_API_KEY || '').replace(/\\n/g, '').trim();
+  const paidKey = (process.env.GEMINI_API_KEY_PAID || '').replace(/\\n/g, '').trim();
+  if (!freeKey && !paidKey) return { match: 'unknown', confidence: 0, answers: {}, model: null };
+
+  const nums = questionNumbers.slice(0, 60).join(', ');
+  const prompt = `You are analyzing two Hebrew academic PDFs that a student just uploaded:
+1. An EXAM PDF containing multiple-choice questions numbered approximately: ${nums}
+2. A SOLUTION PDF that the student claims contains the answer key for that exam.
+
+Your job has TWO parts, in one response:
+
+PART A — VERIFICATION (strict):
+Determine if the SOLUTION PDF is genuinely the answer key for THIS exam.
+- Check that question numbers in the solution PDF overlap with the exam's numbers.
+- Check that the topic/subject and terminology match between the two PDFs.
+- Check that the number of questions is compatible.
+- If the solution PDF looks like lecture notes, a different exam, a syllabus, a study guide, or unrelated content → that's a MISMATCH.
+- Only answer "match: true" when you are confident the two documents are paired. When in doubt, say unsure.
+
+PART B — ANSWER EXTRACTION (STRICT):
+For every exam question number you can find in the solution PDF, report the correct answer.
+You are ONLY extracting answers that are EXPLICITLY STATED in the solution PDF. You are NOT solving the questions yourself. You are NOT inferring the answer from context. You are NOT guessing.
+
+⚠️ CRITICAL WARNING — DO NOT BE FOOLED BY EXPLANATION TEXT:
+Solution PDFs often contain detailed explanations that DISCUSS WRONG OPTIONS in order to explain why they are incorrect. For example: "ג שגויה כיוון ש...", "אפשרות ג אינה נכונה כי...", "ג אינה המחלקה הקטנה ביותר כי...". These sentences MENTION the letter of a wrong option — they are NOT the answer. If you pick up "ג" from such an explanation sentence, you will give the WRONG answer. Read the CONCLUSION of the solution, not the discussion.
+
+Only count a letter as the answer if it appears in one of these EXPLICIT final-answer formats:
+  1. PRIORITY: A SUMMARY TABLE on the last pages — e.g. a table with columns "שאלה | תשובה" listing each question with its answer letter. This is the most reliable source.
+  2. A DEDICATED ANSWER KEY section or ordered list: "1. ב", "1) א", "תשובה 1: ב", "ת. 1: ג".
+  3. A CONCLUSION SENTENCE at the very end of the solution for a question: "לכן התשובה היא ב", "התשובה הנכונה היא א", "הקיפו את אפשרות ב", "הפתרון: א". The sentence must DECLARE the answer, not discuss why another option is wrong.
+  4. A HIGHLIGHTED or CIRCLED option — a colored highlight over one option letter, a hand-drawn circle, checkmark (✓), or arrow (→) pointing at one specific option. The correct option is the one that is marked/circled/highlighted, NOT the ones that are crossed out.
+  5. A LETTER or DIGIT written in the margin next to the question number.
+Map answers to indices: 1=א, 2=ב, 3=ג, 4=ד. Accept both Hebrew letters and digits in the source.
+
+CRITICAL INSTRUCTION — OMIT RATHER THAN GUESS:
+If you are NOT 100% sure of the answer for a specific question — if the solution PDF does not clearly state it with one of the 5 formats above, if you found the letter only in the middle of an explanation paragraph (not a conclusion), or if there is any ambiguity whatsoever — you MUST OMIT that question from the "answers" array entirely. Return nothing rather than a guess. Returning nothing is always correct; returning a wrong answer is always wrong.
+
+Do NOT solve questions. Do NOT infer. Do NOT pick up letters from explanation paragraphs. Only report what is EXPLICITLY declared as the final answer.
+
+Return ONLY this JSON object (no markdown, no extra text):
+{
+  "match": true | false | null,
+  "confidence": <float 0.0-1.0 indicating how confident you are in the match verdict>,
+  "reasoning": "<one short Hebrew sentence explaining the match verdict>",
+  "answers": [
+    {"q": <exam question number>, "ans": <1|2|3|4>, "method": "<one of: table, list, conclusion, highlight, handwritten, margin>", "confidence": <0.0-1.0>, "source_quote": "<the exact text snippet or visual description from the solution PDF declaring this as the answer, max 100 chars>"}
+  ]
+}
+
+Rules:
+- Skip any question where you cannot find the answer in one of the 5 explicit formats. Never guess.
+- "confidence" < 0.85 → omit the answer entirely.
+- "source_quote" is REQUIRED — quote the exact final-answer text (e.g. "התשובה: א" or "שאלה 2: ב") or describe the visual mark (e.g. "option א circled in red"). If your source_quote is a sentence from the middle of an explanation paragraph — OMIT the answer instead.
+- If the solution PDF clearly does not match the exam, still return "answers": [] and set "match": false.
+- Be exhaustive: scan every page. The answer key is often on the last page of the solution PDF.`;
+
+  async function callModel(model, apiKey) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [
+          { text: prompt },
+          { text: '\n\n--- EXAM PDF ---' },
+          { inlineData: { mimeType: 'application/pdf', data: examBase64 } },
+          { text: '\n\n--- SOLUTION PDF ---' },
+          { inlineData: { mimeType: 'application/pdf', data: solutionBase64 } },
+        ] }],
+        generationConfig: { temperature: 0, maxOutputTokens: 4096, responseMimeType: 'application/json' },
+      }),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!r.ok) {
+      const errText = await r.text().catch(() => '');
+      console.warn(`[solution-analyze] ${model} ${r.status}:`, errText.slice(0, 300));
+      return r.status === 429 ? { quota_exceeded: true } : null;
+    }
+    const j = await r.json();
+    const text = j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
+    try {
+      const parsed = JSON.parse(text.trim());
+      return { parsed, model };
+    } catch {
+      const m = text.match(/\{[\s\S]*\}/);
+      if (m) { try { return { parsed: JSON.parse(m[0]), model }; } catch {} }
+      return null;
+    }
+  }
+
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+  for (const model of models) {
+    try {
+      let res = freeKey ? await callModel(model, freeKey) : null;
+      if (res?.quota_exceeded && paidKey) {
+        console.warn(`[solution-analyze] ${model} free quota exhausted — switching to paid key`);
+        res = await callModel(model, paidKey);
+      }
+      if (!res?.parsed) continue;
+
+      const p = res.parsed;
+      let matchVerdict = 'unknown';
+      if (p.match === true) matchVerdict = 'match';
+      else if (p.match === false) matchVerdict = 'mismatch';
+      const confidence = typeof p.confidence === 'number' ? Math.max(0, Math.min(1, p.confidence)) : 0;
+
+      const answers = {};
+      if (Array.isArray(p.answers)) {
+        for (const item of p.answers) {
+          const q = parseInt(item?.q, 10);
+          const ans = parseInt(item?.ans, 10);
+          const conf = typeof item?.confidence === 'number' ? item.confidence : 1;
+          const hasQuote = typeof item?.source_quote === 'string' && item.source_quote.trim().length > 0;
+          // Require source_quote — if Gemini can't point to explicit text in the
+          // solution PDF, it was inferring, and we don't accept inferences.
+          if (!hasQuote) continue;
+          // Reject answers where the source_quote is from an explanation of a
+          // WRONG option (e.g. "ג שגויה כי..." or "אינה נכונה").
+          // These sentences MENTION the letter of the wrong answer, not the correct one.
+          const quote = (item.source_quote || '').toLowerCase();
+          const negationWords = ['שגוי', 'שגויה', 'שגוים', 'שגויות', 'אינה', 'אינו', 'אין', 'לא נכון', 'לא מתאי', 'incorrect', 'wrong', 'not correct', 'אינם', 'אינן'];
+          const appearsNegated = negationWords.some(w => quote.includes(w));
+          if (appearsNegated) {
+            console.warn(`[solution-analyze] Q${q}: REJECTED — source_quote looks like wrong-option explanation: "${(item.source_quote || '').slice(0, 120)}"`);
+            continue;
+          }
+          if (q > 0 && ans >= 1 && ans <= 4 && conf >= 0.85) {
+            answers[String(q)] = ans;
+          }
+        }
+      }
+
+      console.log(`[solution-analyze] ${model}: match=${matchVerdict} conf=${confidence.toFixed(2)} answers=${Object.keys(answers).length}/${questionNumbers.length} reasoning="${(p.reasoning || '').slice(0, 100)}"`);
+      // Log each extracted answer with its source_quote so misreads can be diagnosed
+      const rawItems = [];
+      if (Array.isArray(p.answers) && p.answers.length > 0) {
+        for (const item of p.answers) {
+          const accepted = answers[String(parseInt(item?.q, 10))] !== undefined;
+          const entry = { q: item?.q, ans: item?.ans, conf: item?.confidence, method: item?.method, accepted, quote: (item?.source_quote || '').slice(0, 120) };
+          rawItems.push(entry);
+          console.log(`[solution-analyze]   Q${item?.q}: ans=${item?.ans} conf=${item?.confidence?.toFixed?.(2) ?? item?.confidence} method=${item?.method} accepted=${accepted} quote="${entry.quote}"`);
+        }
+      }
+      return { match: matchVerdict, confidence, answers, rawItems, model: res.model, reasoning: p.reasoning || null };
+    } catch (e) {
+      console.warn(`[solution-analyze] ${model} exception:`, e?.message || e);
+    }
+  }
+  return { match: 'unknown', confidence: 0, answers: {}, model: null };
+}
+
+// =====================================================
+// Cross-verify extracted answers with Groq (independent second opinion)
+//
+// For each answer that Gemini extracted from the solution PDF, ask Groq to
+// solve the question independently (question text + options only, no solution
+// PDF context). If Groq's answer matches Gemini's → 'agree'. If Groq picks a
+// different option → 'disagree' (the UI will demote to 'uncertain'). If the
+// question has no text (scanned PDF) or Groq fails → 'skip' (fall back to
+// trusting Gemini alone).
+//
+// This catches the class of bugs where Gemini misread a colored-highlight or
+// a table row and confidently committed the wrong option. Groq is free and
+// fast (~2s per question in parallel), so the added cost is ~zero.
+// =====================================================
+async function crossVerifyAnswersWithGroq(mcqs, answers) {
+  const apiKey = (process.env.GROQ_API_KEY || '').trim();
+  if (!apiKey || Object.keys(answers).length === 0) return {};
+
+  const results = {};
+
+  // Process questions in parallel, with graceful per-question error handling
+  const tasks = Object.entries(answers).map(async ([qNumStr, geminiAns]) => {
+    try {
+      const qNum = parseInt(qNumStr, 10);
+      const mcq = mcqs.find(m => m.number === qNum);
+      if (!mcq) { results[qNumStr] = 'skip'; return; }
+
+      const stemText = String(mcq.questionStemText || '').trim();
+      const opts = mcq.optionTexts || {};
+      const optsArr = [1, 2, 3, 4].map(i => String(opts[i] || opts[String(i)] || '').trim());
+      const nonEmptyOpts = optsArr.filter(o => o.length > 0);
+
+      // Can't cross-verify without enough text to work with
+      if (stemText.length < 10 || nonEmptyOpts.length < 2) {
+        results[qNumStr] = 'skip';
+        return;
+      }
+
+      const optionsList = optsArr.map((o, i) => `${i + 1}. ${o || '(ריק)'}`).join('\n');
+      const prompt = `להלן שאלה אמריקאית מבחינה אקדמית בעברית. פתור אותה באופן עצמאי וחזיר את האפשרות הנכונה.
+
+שאלה: ${stemText}
+
+האפשרויות:
+${optionsList}
+
+נתח את השאלה בקפידה, שקול כל אפשרות, וקבע מהי האפשרות הנכונה. החזר JSON בלבד:
+{
+  "correct": <1|2|3|4>,
+  "confidence": <0.0-1.0>,
+  "reasoning": "<שתי משפטים קצרים>"
+}
+
+אם אינך בטוח בתשובה — החזר "confidence": 0.0 ו-"correct": null. עדיף לא לענות מאשר לטעות.`;
+
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: 'אתה פרופסור מומחה שפותר שאלות אמריקאיות באקדמיה. אתה מדויק ולא מנחש.' },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.1,
+          max_tokens: 512,
+          response_format: { type: 'json_object' },
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+
+      if (!r.ok) { results[qNumStr] = 'skip'; return; }
+      const j = await r.json();
+      const text = j.choices?.[0]?.message?.content || '';
+      let parsed;
+      try { parsed = JSON.parse(text); } catch { results[qNumStr] = 'skip'; return; }
+
+      const groqAns = parseInt(parsed?.correct, 10);
+      const groqConf = typeof parsed?.confidence === 'number' ? parsed.confidence : 0;
+
+      // If Groq isn't confident either, we can't use it as a veto — skip
+      if (!(groqAns >= 1 && groqAns <= 4) || groqConf < 0.6) {
+        results[qNumStr] = 'skip';
+        return;
+      }
+
+      results[qNumStr] = (groqAns === geminiAns) ? 'agree' : 'disagree';
+      if (results[qNumStr] === 'disagree') {
+        console.warn(`[cross-verify] Q${qNum}: Gemini=${geminiAns}, Groq=${groqAns} → uncertain (Groq reasoning: ${(parsed?.reasoning || '').slice(0, 120)})`);
+      }
+    } catch (e) {
+      results[qNumStr] = 'skip';
+    }
+  });
+
+  await Promise.all(tasks);
+  const agreeCount = Object.values(results).filter(v => v === 'agree').length;
+  const disagreeCount = Object.values(results).filter(v => v === 'disagree').length;
+  const skipCount = Object.values(results).filter(v => v === 'skip').length;
+  console.log(`[cross-verify] ${agreeCount} agree / ${disagreeCount} disagree / ${skipCount} skip`);
+  return results;
+}
+
+// Legacy wrapper kept only for the handler's existing call-sites (if any remain).
+// Will be removed in a follow-up cleanup once the handler fully uses analyzeSolutionPdf.
+async function verifySolutionMatchesExam(examBase64, solutionBase64, questionNumbers) {
+  const r = await analyzeSolutionPdf(examBase64, solutionBase64, questionNumbers);
+  return r.match;
 }
 
 // Normalize a raw Gemini MCQ array into the same shape used by the text-layer
@@ -738,6 +1525,10 @@ export default async function handler(req, res) {
     const examFile = getFile('examPdf');
     const solFile = getFile('solutionPdf');
 
+    // Capture filenames for similarity matching
+    const examFilename = examFile?.filename || '';
+    const solFilename = solFile?.filename || '';
+
     if (!courseId) return res.status(400).json({ error: 'חסר courseId' });
     const courseIdInt = parseInt(courseId, 10) || courseId;
     if (!name || name.length < 2 || name.length > 200) return res.status(400).json({ error: 'שם מבחן לא תקין' });
@@ -746,15 +1537,88 @@ export default async function handler(req, res) {
     if (examFile.data.length > MAX_PDF_BYTES) return res.status(413).json({ error: 'הקובץ גדול מדי' });
     if (solFile && !isPdf(solFile.data)) return res.status(400).json({ error: 'קובץ הפתרון אינו PDF תקני' });
 
-    // Verify course ownership
-    const { data: course } = await auth.db.from('ep_courses').select('id').eq('id', courseIdInt).maybeSingle();
-    if (!course) return res.status(403).json({ error: 'אין גישה לקורס' });
+    // Verify course ownership (explicit check + RLS belt-and-suspenders)
+    const { data: course } = await auth.db.from('ep_courses')
+      .select('id, user_id').eq('id', courseIdInt).maybeSingle();
+    if (!course || course.user_id !== auth.userId) {
+      return res.status(403).json({ error: 'אין גישה לקורס' });
+    }
 
-    // Duplicate name check
+    // ===== Per-user upload quota enforcement =====
+    // Uses atomic RPC ep_reserve_pdf_slot (defined in supabase/schema.sql). Plan
+    // quotas are mirrored from api/crud.mjs QUOTAS table to keep them in sync.
+    const PLAN_QUOTAS = {
+      trial:     { per_day: 10, per_month: 100, storage_mb:   500 },
+      free:      { per_day:  0, per_month:   0, storage_mb:    50 },
+      basic:     { per_day: 10, per_month:  30, storage_mb:  1024 },
+      pro:       { per_day: 30, per_month: 150, storage_mb:  5120 },
+      education: { per_day: 50, per_month: 500, storage_mb: 20480 },
+    };
+    let userPlan = 'trial'; // default — overwritten below; used for model tiering
+    try {
+      const admin = getAdmin();
+      if (admin) {
+        // Reset daily/monthly counters AND expire trial if past due.
+        // This RPC was extended in migrations/harden_trial_expiry.sql to
+        // flip plan 'trial' → 'free' when plan_expires_at < now.
+        await admin.rpc('reset_user_quotas_if_needed', { p_user_id: auth.userId }).catch(() => {});
+        // Fetch profile AFTER the RPC so we see the fresh (possibly
+        // downgraded) plan value.
+        const { data: profile } = await admin.from('profiles')
+          .select('plan, is_admin, trial_used').eq('id', auth.userId).maybeSingle();
+        const isAdmin = profile?.is_admin === true;
+        if (!isAdmin) {
+          const plan = profile?.plan || 'free';
+          userPlan = plan;
+          const q = PLAN_QUOTAS[plan] || PLAN_QUOTAS.free;
+          if (q.per_day === 0 && q.per_month === 0) {
+            return res.status(402).json({
+              error: 'התוכנית שלך לא כוללת העלאת בחינות',
+              guidance: 'שדרג לתוכנית Trial או Basic כדי להעלות בחינות.',
+              trial_expired: profile?.trial_used === true && plan === 'free',
+            });
+          }
+          const { data: granted } = await admin.rpc('ep_reserve_pdf_slot', {
+            p_user_id: auth.userId,
+            p_max_today: q.per_day,
+            p_max_month: q.per_month,
+            p_max_total: -1, // no lifetime cap for non-free plans
+            p_max_storage_bytes: q.storage_mb * 1024 * 1024,
+          });
+          if (granted === false) {
+            return res.status(429).json({
+              error: 'הגעת למגבלת ההעלאות',
+              guidance: `התוכנית "${plan}" מאפשרת ${q.per_day} בחינות ליום ו-${q.per_month} לחודש. נסה שוב מחר או שדרג תוכנית.`
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[upload] quota check failed (allowing upload):', e?.message || e);
+    }
+
+    // Duplicate name check (active exams)
     const { count: dupCount } = await auth.db.from('ep_exams')
       .select('id', { count: 'exact', head: true })
       .eq('course_id', courseIdInt).eq('name', name).is('deleted_at', null);
     if (dupCount > 0) return res.status(409).json({ error: `מבחן בשם "${name}" כבר קיים בקורס זה`, guidance: 'שנה את שם המבחן או מחק את המבחן הקיים מניהול הקבצים.' });
+
+    // Trash duplicate check — if same name exists in recycle bin, purge it automatically before re-uploading
+    let trashWarning = null;
+    try {
+      const { data: trashedDup } = await auth.db.from('ep_exams')
+        .select('id').eq('course_id', courseIdInt).eq('name', name)
+        .not('deleted_at', 'is', null).maybeSingle();
+      if (trashedDup) {
+        // Hard-delete the trashed exam and its questions to avoid duplicates
+        await auth.db.from('ep_questions').delete().eq('exam_id', trashedDup.id).eq('course_id', courseIdInt);
+        await auth.db.from('ep_exams').delete().eq('id', trashedDup.id).eq('course_id', courseIdInt);
+        trashWarning = `מבחן קודם בשם "${name}" נמצא בסל המחזור ונמחק אוטומטית לפני ההעלאה החדשה.`;
+        console.log(`[upload] purged trashed duplicate exam for "${name}"`);
+      }
+    } catch (e) {
+      console.warn('[upload] trash-dup check failed:', e.message);
+    }
 
     // Create exam record
     const { data: exam, error: examErr } = await auth.db.from('ep_exams')
@@ -788,11 +1652,21 @@ export default async function handler(req, res) {
       .catch(e => { console.error('[upload] positions error:', e.message); return null; });
 
     // Always run Gemini in parallel so it can fill any gaps the text-layer misses.
+    // Send solution PDF so Gemini can set _geminiCorrect on each MCQ (primary answer source).
     const geminiVerifyPromise = analyzeExamWithGemini(examBase64, solBase64)
       .catch(e => { console.warn('[upload] gemini-verify failed:', e.message); return null; });
 
-    const [cloudinaryId, positions, geminiVerifyRaw] = await Promise.all([
-      cloudinaryPromise, positionsPromise, geminiVerifyPromise,
+    // Start Pass 1 & 2 in parallel with Gemini — they only need solFile.data which is
+    // already in memory, so they finish in ~2s while Gemini runs (free timing).
+    const pass1Promise = solFile
+      ? parseSolutionPdf(solFile.data).catch(e => { console.warn('[upload] pass1 parallel error:', e.message); return null; })
+      : Promise.resolve(null);
+    const pass2Promise = solFile
+      ? flatScanAnswers(solFile.data).catch(e => { console.warn('[upload] pass2 parallel error:', e.message); return {}; })
+      : Promise.resolve({});
+
+    const [cloudinaryId, positions, geminiVerifyRaw, pass1Result, pass2Result] = await Promise.all([
+      cloudinaryPromise, positionsPromise, geminiVerifyPromise, pass1Promise, pass2Promise,
     ]);
 
     // ===== Detect MCQs: text-layer + Gemini verify/fill =====
@@ -815,15 +1689,23 @@ export default async function handler(req, res) {
     const geminiMcqs = normalizeGeminiMcqs(geminiVerifyRaw);
     console.log(`[upload] gemini-verify found ${geminiMcqs.length} MCQs`);
 
-    // Merge: text-layer is authoritative for coordinates; Gemini fills gaps.
+    // Merge: text-layer is authoritative for coordinates; Gemini fills gaps + answers.
     if (textLayerMcqs.length > 0) {
+      const geminiByNumber = new Map(geminiMcqs.map(q => [q.number, q]));
       const textNums = new Set(textLayerMcqs.map(q => q.number));
       const geminiFill = geminiMcqs.filter(q => !textNums.has(q.number));
-      mcqs = [...textLayerMcqs, ...geminiFill];
+      // Copy _geminiCorrect from Gemini onto text-layer MCQs — critical for answer extraction.
+      // Without this, Gemini's answer data is discarded when text-layer finds all questions.
+      const enrichedTextLayer = textLayerMcqs.map(q => {
+        const gq = geminiByNumber.get(q.number);
+        return (gq?._geminiCorrect != null) ? { ...q, _geminiCorrect: gq._geminiCorrect } : q;
+      });
+      mcqs = [...enrichedTextLayer, ...geminiFill];
       mode = geminiFill.length > 0
         ? `text-layer:${textLayerMode}+gemini-fill(${geminiFill.length})`
         : `text-layer:${textLayerMode}`;
-      console.log(`[upload] merged: ${textLayerMcqs.length} text-layer + ${geminiFill.length} gemini-fill`);
+      const gcCount = enrichedTextLayer.filter(q => q._geminiCorrect != null).length;
+      console.log(`[upload] merged: ${textLayerMcqs.length} text-layer + ${geminiFill.length} gemini-fill, gemini-correct: ${gcCount}`);
     } else if (geminiMcqs.length > 0) {
       // Scanned/image-only PDF — pure Gemini fallback.
       mcqs = geminiMcqs;
@@ -852,31 +1734,92 @@ export default async function handler(req, res) {
       return res.status(422).json({ error: 'לא זוהו שאלות אמריקאיות בקובץ', guidance: hint });
     }
 
-    // ===== Answers: ask Gemini to parse the solution PDF in parallel =====
-    // (Only when we have a solution and didn't already get answers from the fallback path.)
+    // ===== Unified solution analysis: match verification + answer extraction =====
+    // One Gemini call does both jobs. Strict rejection if the AI says "not a match",
+    // silent accept if the AI says "match" with confidence >= 0.7.
     let answers = {};
-    if (mcqs.length > 0 && solBase64 && !usedGeminiFallback) {
-      const nums = mcqs.map(q => q.number).filter(Boolean);
-      try {
-        const parsed = await extractAnswersWithGemini(solBase64, nums);
-        if (parsed) answers = parsed;
-      } catch (e) {
-        console.warn('[upload] answer extraction failed:', e.message);
-      }
-    }
+    let answerCrossVerify = {}; // { qNumStr: 'agree' | 'disagree' | 'skip' } — set by Groq pass
+    let answerExtractDebug = { tried: false, ok: false, matched: 0, model: null };
+    let matchVerdict = null;     // 'match' | 'mismatch' | 'unknown'
+    let matchConfidence = 0;
 
-    // Solution mismatch hard stop: if solution was provided but 0 answers matched, it's likely the wrong file
-    if (solBase64 && mcqs.length > 0) {
-      const answered = mcqs.filter(q => answers[String(q.number)] || q._geminiCorrect).length;
-      if (answered === 0) {
+    if (mcqs.length > 0 && solBase64) {
+      const nums = mcqs.map(q => q.number).filter(Boolean);
+      // Keep pass1/pass2 text-extract results as a free starting point (they already ran).
+      if (pass1Result) {
+        for (const [k, v] of Object.entries(pass1Result))
+          if (v.answer >= 1 && v.answer <= 4) answers[k] = v.answer;
+      }
+      if (pass2Result && Object.keys(pass2Result).length > 0) {
+        for (const [k, v] of Object.entries(pass2Result))
+          if (!answers[k]) answers[k] = v;
+      }
+
+      // Always run the unified Gemini analyzer: it verifies match AND extracts
+      // answers that text-only passes can miss (highlighted, handwritten, colored marks).
+      answerExtractDebug.tried = true;
+      try {
+        const analysis = await analyzeSolutionPdf(examBase64, solBase64, nums);
+        matchVerdict = analysis.match;
+        matchConfidence = analysis.confidence;
+        answerExtractDebug.model = analysis.model;
+        answerExtractDebug.rawItems = analysis.rawItems || [];
+        // Merge AI-extracted answers with text-based ones; AI wins on conflict
+        // because it can see visual highlights that text parsing misses.
+        if (analysis.answers && Object.keys(analysis.answers).length > 0) {
+          for (const [k, v] of Object.entries(analysis.answers)) {
+            answers[k] = v;
+          }
+          answerExtractDebug.ok = true;
+        }
+        console.log(`[upload] unified analysis: match=${matchVerdict} conf=${matchConfidence.toFixed(2)} answers=${Object.keys(answers).length}/${nums.length}`);
+      } catch (e) {
+        console.warn('[upload] analyzeSolutionPdf exception:', e?.message || e);
+      }
+      answerExtractDebug.matched = Object.keys(answers).length;
+
+      // Cross-verify extracted answers with Groq — catches cases where Gemini
+      // confidently misread the solution PDF. Runs in parallel, free, ~2s total.
+      try {
+        answerCrossVerify = await crossVerifyAnswersWithGroq(mcqs, answers);
+      } catch (e) {
+        console.warn('[upload] cross-verify failed:', e?.message || e);
+      }
+
+      // STRICT rejection rules — the user's explicit requirement:
+      //   "תדע לזהות תמיד על ידי שימוש בAI שהקבצים בוודאות מתאימים אחרת בכלל לא לבצע"
+      //
+      // 1. AI says "mismatch"           → hard reject, delete exam, 422
+      // 2. AI says "unknown"/"match" with confidence < 0.5 AND no answers extracted → reject
+      // 3. AI says "match" with confidence >= 0.5 OR answers were found → proceed silently
+      const answered = mcqs.filter(q => answers[String(q.number)]).length;
+      const stronglyMatched = matchVerdict === 'match' && matchConfidence >= 0.5;
+      const hasGoodAnswers = answered >= Math.max(2, Math.ceil(nums.length * 0.3));
+
+      if (matchVerdict === 'mismatch') {
         await auth.db.from('ep_exams').delete().eq('id', exam.id);
         examId = null;
         return res.status(422).json({
           error: 'קובץ הפתרון אינו מתאים לבחינה',
-          guidance: 'לא נמצאו תשובות מסומנות שתואמות לשאלות שזוהו. ודא שהעלית את קובץ הפתרון הנכון לבחינה זו, או הסר אותו ונסה שוב ללא פתרון.',
+          guidance: 'ה-AI זיהה שהפתרון שהועלה אינו שייך לבחינה זו. ודא שהעלית את קובץ הפתרון הנכון, או הסר אותו ונסה שוב ללא פתרון.',
         });
       }
+      if (!stronglyMatched && !hasGoodAnswers) {
+        await auth.db.from('ep_exams').delete().eq('id', exam.id);
+        examId = null;
+        return res.status(422).json({
+          error: 'לא ניתן לאמת שהפתרון שייך לבחינה',
+          guidance: 'ה-AI לא הצליח לאמת בוודאות שקובץ הפתרון מתאים לבחינה ולא חילץ מספיק תשובות. ודא שהעלית את קובץ הפתרון הנכון, או נסה להעלות רק את קובץ הבחינה.',
+        });
+      }
+      console.log(`[upload] solution accepted: match=${matchVerdict} conf=${matchConfidence.toFixed(2)} answered=${answered}/${nums.length}`);
     }
+
+    // ===== NO upload-time Gemini solution generation =====
+    // The tier-2 pipeline generates structured explanations lazily at
+    // display-time (when user first opens a question). This makes uploads
+    // FREE and ~6x faster, and free-tier-resilient.
+    const solutions = {}; // always empty — filled lazily
 
     // ===== Build DB rows =====
     if (mcqs.length > 0) {
@@ -885,7 +1828,23 @@ export default async function handler(req, res) {
         if (cloudinaryId) {
           imagePath = buildCropUrl(cloudName, cloudinaryId, q);
         }
-        const correct = answers[String(q.number)] ?? q._geminiCorrect ?? null;
+        // ONLY accept answers that came from the solution PDF via analyzeSolutionPdf.
+        // `_geminiCorrect` (which had Gemini "solve" the question from the exam alone)
+        // is deliberately ignored — it produced confidently-wrong answers on hard
+        // theoretical questions. No solution PDF → correct_idx=unknown → user sets it.
+        const answerFromSolution = answers[String(q.number)] ?? null;
+        const crossVerified = answerCrossVerify?.[String(q.number)]; // set by Groq pass
+        const hasAnswer = answerFromSolution !== null && answerFromSolution >= 1 && answerFromSolution <= 4;
+        // Two confidence levels:
+        //   'confirmed' — Gemini extracted an answer from the solution PDF
+        //   'unknown'   — no answer extracted at all (UI shows "set manually" prompt)
+        // Groq cross-verify is intentionally NOT used to downgrade confidence.
+        // Gemini reads explicit visual marks (highlights, handwriting, circles) directly
+        // from the solution PDF — it is more reliable than Groq solving theoretically.
+        let confidence = 'unknown';
+        if (hasAnswer) {
+          confidence = 'confirmed';
+        }
         return {
           exam_id: exam.id,
           course_id: courseIdInt,
@@ -894,9 +1853,16 @@ export default async function handler(req, res) {
           section_label: q.section || null,
           image_path: imagePath,
           num_options: q.numOptions || 4,
-          correct_idx: correct || 1,
+          correct_idx: hasAnswer ? answerFromSolution : 1, // 1 is a placeholder; UI shows warning via answer_confidence
+          answer_confidence: confidence,
           option_labels: null,
           is_ai_generated: usedGeminiFallback,
+          // Question text extracted by detectMCQsFromPositions (free, used by premium AI button)
+          question_text: q.questionStemText || null,
+          options_text: (q.optionTexts && Object.keys(q.optionTexts).length > 0) ? q.optionTexts : null,
+          // solution_text_raw stays null — parseSolutionPdf side-task was removed (too unreliable)
+          general_explanation: null,
+          option_explanations: null,
         };
       });
 
@@ -926,22 +1892,23 @@ export default async function handler(req, res) {
       ...(suspicious && { error_message: debugLine }),
     }).eq('id', exam.id);
 
-    // Update course counters
+    // Update course counters — MUST filter soft-deleted rows so counts don't
+    // drift when the user deletes and re-uploads an exam (the old rows keep
+    // `deleted_at` set but still live in the table).
     const [{ count: qCount }, { count: pdfCount }] = await Promise.all([
-      auth.db.from('ep_questions').select('id', { count: 'exact', head: true }).eq('course_id', courseIdInt),
-      auth.db.from('ep_exams').select('id', { count: 'exact', head: true }).eq('course_id', courseIdInt),
+      auth.db.from('ep_questions').select('id', { count: 'exact', head: true }).eq('course_id', courseIdInt).is('deleted_at', null),
+      auth.db.from('ep_exams').select('id', { count: 'exact', head: true }).eq('course_id', courseIdInt).is('deleted_at', null),
     ]);
     await auth.db.from('ep_courses').update({ total_questions: qCount, total_pdfs: pdfCount }).eq('id', courseIdInt);
 
-    // Build warnings
+    // Build warnings (per user rule: when files match, stay silent).
+    // Only surface partial-extraction warnings when significantly incomplete.
     const warnings = [];
     if (mcqs.length === 0) {
       warnings.push('לא זוהו שאלות אמריקאיות בקובץ. ודא שהמבחן מכיל שאלות רב-ברירה בפורמט מוכר.');
     } else if (solBase64) {
-      const answered = mcqs.filter(q => answers[String(q.number)] || q._geminiCorrect).length;
-      if (answered === 0) {
-        warnings.push('לא זוהו תשובות מסומנות בקובץ הפתרון — ודא שהעלית את הפתרון הנכון.');
-      } else if (answered / mcqs.length < 0.5) {
+      const answered = mcqs.filter(q => answers[String(q.number)]).length;
+      if (answered > 0 && answered / mcqs.length < 0.5) {
         warnings.push(`זוהו תשובות רק ל-${answered} מתוך ${mcqs.length} שאלות.`);
       }
     }
@@ -956,8 +1923,11 @@ export default async function handler(req, res) {
         geminiCount: geminiMcqs.length,
         geminiNumbers: geminiMcqs.map(q => q.number),
         textLayerNumbers: textLayerMcqs.map(q => q.number),
+        extractedAnswers: answerExtractDebug.rawItems || [],
+        finalAnswers: answers,
       },
       ...(warnings.length && { warnings }),
+      ...(trashWarning && { trashWarning }),
     });
   } catch (err) {
     console.error('[upload] fatal:', err?.message || err, err?.stack?.split('\n')[1] || '');

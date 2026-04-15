@@ -6,6 +6,7 @@
 // =====================================================
 
 import { createClient } from '@supabase/supabase-js';
+import { checkIpThrottle } from '../lib/ipThrottle.mjs';
 
 export const config = { maxDuration: 10 };
 
@@ -29,10 +30,26 @@ async function resend() {
   return _resend;
 }
 
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const throttle = await checkIpThrottle(req, 'contact', { maxDay: 5, maxWeek: 15, blockHours: 24 });
+  if (!throttle.allowed) {
+    return res.status(429).json({ error: 'rate_limited', reason: throttle.reason });
   }
 
   const { name, email, subject, message } = req.body || {};
@@ -42,11 +59,14 @@ export default async function handler(req, res) {
   if (message.length > 5000) {
     return res.status(400).json({ error: 'message too long' });
   }
+  if (!EMAIL_RE.test(String(email).trim())) {
+    return res.status(400).json({ error: 'invalid email' });
+  }
 
-  const safeName = name.slice(0, 200);
-  const safeEmail = email.slice(0, 320);
-  const safeSubject = (subject || 'general').slice(0, 100);
-  const safeMessage = message.slice(0, 5000);
+  const safeName = String(name).slice(0, 200);
+  const safeEmail = String(email).trim().slice(0, 320);
+  const safeSubject = String(subject || 'general').slice(0, 100);
+  const safeMessage = String(message).slice(0, 5000);
 
   // Store in DB
   const sb = supabaseAdmin();
@@ -67,6 +87,10 @@ export default async function handler(req, res) {
       accessibility: 'נגישות', other: 'אחר',
     };
     const subjectLabel = subjectMap[safeSubject] || safeSubject;
+    const hName = escapeHtml(safeName);
+    const hEmail = escapeHtml(safeEmail);
+    const hSubjectLabel = escapeHtml(subjectLabel);
+    const hMessage = escapeHtml(safeMessage);
     r.emails.send({
       from: 'ExamPrep <support@try-examprep.com>',
       to: CONTACT_NOTIFY_EMAIL,
@@ -75,14 +99,14 @@ export default async function handler(req, res) {
         <div dir="rtl" style="font-family:Arial,sans-serif;max-width:600px;">
           <h2 style="color:#1d4ed8;">הודעה חדשה מטופס יצירת קשר</h2>
           <table style="width:100%;border-collapse:collapse;">
-            <tr><td style="padding:8px;font-weight:bold;color:#666;">שם:</td><td style="padding:8px;">${safeName}</td></tr>
-            <tr><td style="padding:8px;font-weight:bold;color:#666;">אימייל:</td><td style="padding:8px;"><a href="mailto:${safeEmail}">${safeEmail}</a></td></tr>
-            <tr><td style="padding:8px;font-weight:bold;color:#666;">נושא:</td><td style="padding:8px;">${subjectLabel}</td></tr>
+            <tr><td style="padding:8px;font-weight:bold;color:#666;">שם:</td><td style="padding:8px;">${hName}</td></tr>
+            <tr><td style="padding:8px;font-weight:bold;color:#666;">אימייל:</td><td style="padding:8px;"><a href="mailto:${hEmail}">${hEmail}</a></td></tr>
+            <tr><td style="padding:8px;font-weight:bold;color:#666;">נושא:</td><td style="padding:8px;">${hSubjectLabel}</td></tr>
           </table>
           <div style="margin-top:16px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
-            <p style="margin:0;white-space:pre-wrap;">${safeMessage}</p>
+            <p style="margin:0;white-space:pre-wrap;">${hMessage}</p>
           </div>
-          <p style="margin-top:16px;font-size:12px;color:#94a3b8;">ניתן להשיב ישירות ל-${safeEmail}</p>
+          <p style="margin-top:16px;font-size:12px;color:#94a3b8;">ניתן להשיב ישירות ל-${hEmail}</p>
         </div>
       `,
       replyTo: safeEmail,

@@ -4,12 +4,17 @@
   "outputDirectory": ".",
   "functions": {
     "api/upload.mjs": { "maxDuration": 120, "memory": 1024 },
-    "api/study/generate.mjs": { "maxDuration": 60, "memory": 1024 }
+    "api/study/generate.mjs": { "maxDuration": 120, "memory": 1024 },
+    "api/questions/generate-solution.mjs": { "maxDuration": 60, "memory": 1024 },
+    "api/questions/enhance-solution.mjs": { "maxDuration": 60, "memory": 1024 },
+    "api/exams/generate-solutions.mjs": { "maxDuration": 120, "memory": 1024 },
+    "api/exams/reverify-answers.mjs": { "maxDuration": 120, "memory": 512 }
   },
   "rewrites": [
     { "source": "/api/me", "destination": "/api/crud" },
     { "source": "/api/courses", "destination": "/api/crud" },
     { "source": "/api/courses/:courseId", "destination": "/api/crud" },
+    { "source": "/api/courses/:courseId/courses", "destination": "/api/crud" },
     { "source": "/api/courses/:courseId/exams", "destination": "/api/crud" },
     { "source": "/api/courses/:courseId/questions", "destination": "/api/crud" },
     { "source": "/api/courses/:courseId/review-queue", "destination": "/api/crud" },
@@ -35,6 +40,10 @@
     { "source": "/lab", "destination": "/public/index.html" },
     { "source": "/progress", "destination": "/public/index.html" },
     { "source": "/courses/(.*)", "destination": "/public/index.html" },
+    { "source": "/degree/(.*)", "destination": "/public/index.html" },
+    { "source": "/legal/terms.html", "destination": "/public/legal/terms.html" },
+    { "source": "/legal/privacy.html", "destination": "/public/legal/privacy.html" },
+    { "source": "/legal/cookies.html", "destination": "/public/legal/cookies.html" },
     { "source": "/vocab", "destination": "/vocab/index.html" },
     { "source": "/vocab/", "destination": "/vocab/index.html" }
   ],
@@ -47,7 +56,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" },
         { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; img-src 'self' data: blob: https://*.supabase.co https://res.cloudinary.com; script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://esm.sh https://cdn.esm.sh; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'; worker-src 'self' blob:" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; img-src 'self' data: blob: https://*.supabase.co https://res.cloudinary.com https://images.unsplash.com https://placehold.co; script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.esm.sh; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://esm.sh https://cdn.esm.sh; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; manifest-src 'self'; worker-src 'self' blob:" }
       ]
     },
     {
