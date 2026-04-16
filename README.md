@@ -1,109 +1,89 @@
-# ExamPrep - SaaS לתרגול שאלות אמריקאיות
+# ExamPrep — AI-Powered Exam Practice SaaS
 
-פלטפורמה ישראלית בעברית להעלאת קבצי PDF של מבחנים, עיבוד אוטומטי של שאלות אמריקאיות, ויצירת אפליקציית תרגול מקצועית עם מעקב התקדמות, ניתוח דפוסי מרצה, ויצירת שאלות AI דומות.
+A full-stack SaaS platform that lets students upload past exam PDFs, automatically extracts multiple-choice questions, and generates an interactive practice environment with AI-powered analysis and question generation.
 
-## פיצ'רים עיקריים
+## Features
 
-### חינמי לכל משתמש
-- ✅ העלאה של עד 5 קבצי PDF
-- ✅ קורס אחד פעיל
-- ✅ עיבוד אוטומטי של PDF (חיתוך שאלות + זיהוי תשובות מסימוני צהוב)
-- ✅ תרגול מלא עם טיימר ומעקב התקדמות
-- ✅ ממשק מודרני, רספונסיבי, RTL עברי
+### Free tier (all users)
+- Upload up to 5 PDFs per course
+- 1 active course
+- Automatic PDF processing — question extraction + answer detection from yellow highlights
+- Full practice mode with timer and progress tracking
+- Modern responsive Hebrew/RTL interface
 
-### מנויים בתשלום
-- 💎 **Basic** (₪19.90/חודש): 30 PDFs, 5 קורסים, 100 שאלות AI
-- 💎 **Pro** (₪49.90/חודש): 150 PDFs, ∞ קורסים, 500 שאלות AI
-- 💎 **Education** (₪199/חודש): למורים - דשבורד תלמידים, 2000 שאלות AI
+### Paid subscriptions
+| Plan | Price | PDFs | Courses | AI Questions |
+|------|-------|------|---------|-------------|
+| Basic | ₪19.90/mo | 30 | 5 | 100 |
+| Pro | ₪49.90/mo | 150 | ∞ | 500 |
+| Education | ₪199/mo | Unlimited | ∞ | 2,000 |
 
-### פיצ'רי AI מתקדמים
-- 🧠 **ניתוח דפוסי מרצה** - AI מזהה אילו נושאים המרצה אוהב לשאול ומציע על מה להתמקד
-- ✨ **שאלות AI דומות** - יוצר שאלות חדשות באותו סגנון לתרגול בלתי מוגבל
-- 💡 **פידבק חכם** - אחרי כל מקבץ AI אומר על מה לחזור ומציע שאלות ממוקדות
+### AI features
+- **Lecturer pattern analysis** — identifies which topics and question styles appear most frequently
+- **Similar question generation** — creates new questions in the same style for unlimited practice
+- **Smart feedback** — after each session, highlights weak areas and suggests targeted follow-up questions
 
-## ארכיטקטורה
+## Architecture
 
 ```
 examprep/
-├── server.mjs              # Express server (לשימוש מקומי / API)
+├── server.mjs              # Express server (local dev / API)
 ├── scripts/
-│   ├── process-pdf.mjs     # Pipeline עיבוד PDFs (חיתוך + זיהוי תשובות)
-│   └── build-prod.mjs      # מייצר config.js מ-env vars
+│   ├── process-pdf.mjs     # PDF pipeline: question extraction + answer detection
+│   └── build-prod.mjs      # Builds config.js from env vars
 ├── public/
-│   ├── index.html          # SPA עם templates לכל דף
-│   ├── styles.css          # עיצוב בסגנון gotest.co.il
-│   ├── app.js              # router + Supabase client
-│   ├── config.js.template  # template - לעולם לא שמור עם sectrets
-│   └── config.js           # נוצר אוטומטית מ-.env (gitignored)
+│   ├── index.html          # Single-page app with route templates
+│   ├── styles.css          # UI styling
+│   ├── app.js              # Router + Supabase client
+│   └── config.js.template  # Template — never committed with secrets
 ├── legal/
-│   ├── privacy.html        # מדיניות פרטיות (חוק הגנת הפרטיות)
-│   ├── terms.html          # תנאי שימוש
-│   ├── accessibility.html  # הצהרת נגישות (תקנה 35)
-│   └── cookies.html        # מדיניות עוגיות
+│   ├── privacy.html        # Privacy policy (Israeli Privacy Protection Law)
+│   ├── terms.html          # Terms of service
+│   ├── accessibility.html  # Accessibility statement (Regulation 35)
+│   └── cookies.html        # Cookie policy
 ├── supabase/
-│   └── schema.sql          # סכמת DB עם RLS
-├── BUSINESS_PLAN.md        # תוכנית עסקית מלאה עם חישובי טוקנים
-├── .env.example            # template ל-environment variables
-├── .gitignore              # מסתיר .env, config.js, node_modules
-└── vercel.json             # הגדרות פריסה + security headers
+│   └── schema.sql          # Database schema with Row Level Security
+└── vercel.json             # Deployment config + security headers
 ```
 
-## אבטחה
+## Security
 
-הפלטפורמה תוכננה לפי best practices לאבטחה:
+- All secrets stored in `.env` — never committed to git
+- **Row Level Security** (Supabase) — users can only access their own data
+- `service_role` key used server-side only, never sent to the client
+- Rate limiting on all endpoints
+- Two-layer quotas — daily + monthly
+- **SHA-256 deduplication** — prevents duplicate PDF uploads
+- Email verification to prevent spam
+- Security headers (HSTS, X-Frame-Options, CSP) via `vercel.json`
+- HTTPS-only in production
+- **GDPR** and Israeli Privacy Protection Law compliant
 
-1. **כל הסודות ב-.env** - לעולם לא בקוד, לעולם לא ב-git
-2. **Row Level Security** ב-Supabase - כל משתמש רואה רק את הנתונים שלו
-3. **Service-role key** רק בשרת - לעולם לא נשלח ללקוח
-4. **Rate limiting** על כל endpoint
-5. **קווטות דו-שכבתיות** - יומיות + חודשיות
-6. **SHA-256 deduplication** - מונע העלאה כפולה של אותו קובץ
-7. **Email verification** - מונע ספאם
-8. **Security headers** ב-vercel.json: HSTS, X-Frame-Options, CSP, etc.
-9. **HTTPS only** ב-production
-10. **תאימות GDPR** ו-**חוק הגנת הפרטיות הישראלי**
+## Tech Stack
 
-## תאימות חוקית בישראל
+- **Node.js + Express** — backend API
+- **Supabase (PostgreSQL)** — database with RLS
+- **AI API** — question generation and analysis
+- **Vercel** — deployment and hosting
+- **Vanilla JS SPA** — frontend (no framework)
 
-- ✅ **חוק הגנת הפרטיות, תשמ"א-1981**
-- ✅ **תקנות הגנת הפרטיות (אבטחת מידע), תשע"ז-2017**
-- ✅ **תקנה 35 לתקנות שוויון זכויות לאנשים עם מוגבלות** (נגישות אתרים)
-- ✅ **תקן ת"י 5568** ו-**WCAG 2.1 ברמה AA**
-- ✅ **GDPR** של האיחוד האירופי
-- ✅ **חוק חוזה מרחק** - אפשרות ביטול מנוי
-- ✅ **חוק הגנת הצרכן** - תיאור מוצר ברור
+## Setup
 
-## הוראות התקנה ופיתוח
-
-### 1. Clone והתקנה
 ```bash
-git clone https://github.com/omerkonkol/examprep.git
+git clone https://github.com/tryexamprep/examprep.git
 cd examprep
 npm install
-```
 
-### 2. הגדרת Supabase
-1. צור פרויקט חדש ב-https://supabase.com (חינמי)
-2. ב-SQL Editor, הרץ את `supabase/schema.sql`
-3. ב-Authentication > Providers > Email, **כבה** את "Confirm email" (לטסטים)
-4. ב-Project Settings > API, העתק:
-   - Project URL
-   - anon public key
-   - service_role secret (שמור בסוד!)
-
-### 3. צור .env מקומי
-```bash
+# Configure environment
 cp .env.example .env
-# ערוך את .env והכנס את ה-keys שלך
-```
+# Add your Supabase URL, anon key, and service_role key to .env
 
-### 4. הרץ את השרת המקומי
-```bash
 npm start
-# פתח http://localhost:3000
+# Open http://localhost:3000
 ```
 
-### 5. פריסה ל-Vercel
+## Deploy to Vercel
+
 ```bash
 vercel link
 vercel env add SUPABASE_URL production
@@ -112,15 +92,6 @@ vercel env add SUPABASE_SERVICE_ROLE_KEY production
 vercel --prod
 ```
 
-## הוראות שימוש למשתמש קצה
+---
 
-ראה את ה-[BUSINESS_PLAN.md](BUSINESS_PLAN.md) לתוכנית העסקית המלאה עם:
-- ניתוח עלויות טוקנים מדויק
-- אסטרטגיית תמחור
-- מנגנוני הגנה מנגד ניצול לרעה
-- רוד-מאפ פיתוח
-- חישובי רווח/הפסד
-
-## רישיון
-
-© 2026 ExamPrep. כל הזכויות שמורות.
+*Full-stack SaaS — Node.js · Supabase · AI · Vercel*
